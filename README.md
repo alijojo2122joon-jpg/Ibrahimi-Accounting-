@@ -100,3 +100,6 @@
 ## فایل‌ها
 - `index.html` — کل اپ (یک فایل)
 - `sw.js`، `manifest.json`، `icons/` — نصب و کار آفلاین
+
+## UI sounds
+UI sounds are from the SND kit 01 by the Dentsu sound designers (https://snd.dev). They are free to use, and the sound designers keep the copyright. You can turn them off in Settings → Display.
