@@ -1177,8 +1177,8 @@ let MAPMOVED=false, MAPA='', MAPQ='', MK={}, MAPLAYER=null, MYACC=null, WATCH=nu
 const MAP_LAYERS={street:['خیابان','https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png','© OpenStreetMap',19],
  sat:['ماهواره','https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}','© Esri',19],
  light:['ساده','https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}.png','© OpenStreetMap © CARTO',19]};
-function mapShops(){ const c=C(), wd=todayW(), lim=addDays(today(),-21);
- return DB.customers.filter(x=>{ if(x.deleted||x.walkin) return false; const u=c.CU[x.id]||{bal:0,oldest:0};
+function mapShops(){ const c=C(), wd=todayW(), lim=addDays(today(),-21), rs=ROUTE?new Set(ROUTE.ids):null;
+ return DB.customers.filter(x=>{ if(x.deleted||x.walkin) return false; if(rs) return rs.has(x.id); const u=c.CU[x.id]||{bal:0,oldest:0};
   if(MAPA&&(x.area||'').split(/[،,]/)[0].trim()!==MAPA) return false;
   if(MAPF==='debt'&&u.bal<=0.5) return false; if(MAPF==='old'&&!(u.bal>0.5&&u.oldest>30)) return false; if(MAPF==='sleep'&&!(u.last&&u.last<lim)) return false; if(MAPF==='today'&&!(x.days||[]).includes(wd)) return false; if(MAPF==='plan'&&!(x.plan&&planStatus(x).behind>0.5)) return false;
   return true; }); }
@@ -1246,7 +1246,7 @@ function singleMk(d){ const {x,c,st}=d; const m=L.marker([x.lat,x.lng],{icon:sho
  m.bindTooltip(esc(x.name)+(c.bal>0.5?' — '+kfmt(c.bal):''),{direction:'top',permanent:true,className:'mlbl',offset:[0,-12]});
  m.bindPopup(()=>shopPopup(x),{maxWidth:300,minWidth:250,autoPanPaddingTopLeft:[20,80],autoPanPaddingBottomRight:[70,20]}); MK[x.id]=m; }
 function renderMk(){ if(!MAP||!ML) return; ML.clearLayers(); MK={}; const z=MAP.getZoom();
- if(z>=15||MAPDATA.length<=12){ MAPDATA.forEach(singleMk); return; }
+ if(z>=15||MAPDATA.length<=12||ROUTE){ MAPDATA.forEach(singleMk); return; }
  const G={}, S=66; MAPDATA.forEach(d=>{ const p=MAP.project([d.x.lat,d.x.lng],z), k=Math.floor(p.x/S)+':'+Math.floor(p.y/S); (G[k]=G[k]||[]).push(d); });
  Object.values(G).forEach(g=>{ if(g.length===1) return singleMk(g[0]);
   const lat=g.reduce((s,d)=>s+d.x.lat,0)/g.length, lng=g.reduce((s,d)=>s+d.x.lng,0)/g.length, debt=g.reduce((s,d)=>s+Math.max(0,d.c.bal),0), col=g.some(d=>d.st.cls==='neg')?'#c0392b':g.some(d=>d.c.bal>0.5)?'#d98a00':'#1e8e5a', sz=Math.min(64,34+g.length*2);
