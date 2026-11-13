@@ -2071,7 +2071,7 @@ function viewTxns(){ const types=[['','همه'],['sale','فروش'],['receipt','
  </div>
  <div class="uchips" id="uchips"></div>
  <div class="tabs" style="margin-top:-6px">${types.map(t=>`<button class="${TQ.type===t[0]?'on':''}" onclick="TQ.type='${t[0]}';render()">${t[1]}</button>`).join('')}</div>
- <details class="more" style="margin-bottom:14px"><summary>${I('clock')} بازهٔ دلخواه</summary><div class="f2" style="margin-top:10px">${fl('از',`<input class="in" type="date" value="${TQ.from}" onchange="TQ.from=this.value;TQ.rng='x';drawTList()">`)}${fl('تا',`<input class="in" type="date" value="${TQ.to}" onchange="TQ.to=this.value;TQ.rng='x';drawTList()">`)}</div></details>
+ ${can('reports')?`<button class="btn sm alt" style="margin:0 0 12px" onclick="R={v:'reports',tab:'log'};render()">${I('clock')} تاریخچهٔ فعالیت — ثبت، ویرایش و ابطال هر نفر</button>`:''}<details class="more" style="margin-bottom:14px"><summary>${I('clock')} بازهٔ دلخواه</summary><div class="f2" style="margin-top:10px">${fl('از',`<input class="in" type="date" value="${TQ.from}" onchange="TQ.from=this.value;TQ.rng='x';drawTList()">`)}${fl('تا',`<input class="in" type="date" value="${TQ.to}" onchange="TQ.to=this.value;TQ.rng='x';drawTList()">`)}</div></details>
  <div id="tlist"></div>`; }
 let WD; try{ WD=new Intl.DateTimeFormat('fa-AF',{weekday:'long'}); }catch(e){}
 function drawTList(){ const el=$('#tlist'); if(!el) return; const q=TQ.q.trim().toLowerCase();
