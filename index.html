@@ -448,7 +448,7 @@ body.mopen #snack{bottom:auto;top:16px;transform:translate(-50%,-20px)}body.mope
 <script id="engine">
 'use strict';
 const LS = 'ebrahimi_acc_v1';
-const VERSION = '7.4';
+const VERSION = '7.5';
 
 /* ---- Chart of accounts (کدینگ حساب‌ها) ----
    nature: A=asset (debit), L=liability (credit), E=equity (credit), E-=contra equity (debit),
@@ -919,7 +919,7 @@ function viewSimple(){ const td=today(), recv=DB.txns.filter(t=>!t.void&&t.date=
  return `<div class="simplehi"><b>${hi}، ${esc(META.user)}</b><div class="mu">${fd(td)}</div></div>
  <div class="grid k2" style="grid-template-columns:repeat(2,minmax(0,1fr))">${kpi('cash','#16a37a','پولی که امروز گرفتید',money(recv),fm(bills)+' بل فروش','pos')}${kpi('wallet','#13a389','باید در دست شما باشد',money(recv-DB.txns.filter(t=>!t.void&&t.date===td&&t.by===META.user&&t.method!=='bank'&&['expense','payment','drawing'].includes(t.type)).reduce((s,t)=>s+num(t.amount),0)+handNet(META.user,td)),'نقد امروز منهای مصارف و تحویلی')}</div>
  <div class="bigtiles">${T.map(t=>`<button onclick="${t[3]}"><span class="ic" style="--c:${t[1]}">${I(t[0])}</span><b>${t[2]}</b></button>`).join('')}</div>
- ${truckCard()}${ordersCard()}${agendaCard()}${todayShopsCard()}
+ ${myGoalCard()}${truckCard()}${ordersCard()}${agendaCard()}${todayShopsCard()}
  <div style="text-align:center;margin-top:22px"><button class="btn alt" onclick="setSimple(META.user,false)">نمایش کامل</button></div>`; }
 function viewDash(){
  if(isSimple()) return viewSimple();
@@ -966,7 +966,7 @@ function viewDash(){
   ${!can('profit')?'':kpi('bank','#3b6fd8','ارزش خالص کسب‌وکار',money(cash+bank+ar+inv+(S['1500']||0)-ap+(S['2200']||0)),'دارایی منهای قرض')}
  </div>
  <div class="card" style="margin-top:18px"><h3>${I('chart')} فروش و پول جمع‌شده — ۱۴ روز اخیر<span class="sp"></span><span class="lg"><i style="background:#13a389"></i>فروش <i style="background:#f08c2e"></i>وصول</span></h3>${chart14()}</div>
- ${truckCard()}${changesCard()}${payablesCard()}${fixedCard()}${agendaCard()}
+ ${myGoalCard()}${truckCard()}${changesCard()}${payablesCard()}${fixedCard()}${agendaCard()}
  ${ordersCard()}
  ${todayShopsCard()}
  <div class="grid k2" style="margin-top:18px">
@@ -1097,6 +1097,7 @@ function viewMap(){
   <button class="btn sm ${MAPF==='all'?'':'alt'}" onclick="MAPF='all';drawMarkers()">همه</button>
   <button class="btn sm ${MAPF==='debt'?'':'alt'}" onclick="MAPF='debt';drawMarkers()">فقط بدهکارها</button>
   <button class="btn sm ${MAPF==='old'?'':'alt'}" onclick="MAPF='old';drawMarkers()">بدهی کهنه (+۳۰ روز)</button>
+  <button class="btn sm ${MAPF==='sleep'?'':'alt'}" onclick="MAPF='sleep';drawMarkers()">خواب (+۲۱ روز بی‌خرید)</button>
   <button class="btn sm bl" onclick="locateMe()">${I('pin')} من کجا هستم؟</button>
   <button class="btn sm" style="--c:#f08c2e" onclick="routeMenu()">${I('truck')} مسیر امروز</button>
  </div>
@@ -1120,10 +1121,10 @@ function initMap(){
  drawRouteLine();
 }
 function drawMarkers(fit){
- document.querySelectorAll('.mapbar .btn.sm').forEach((b,i)=>{ if(i<3) b.classList.toggle('alt',['all','debt','old'][i]!==MAPF); });
+ document.querySelectorAll('.mapbar .btn.sm').forEach((b,i)=>{ if(i<4) b.classList.toggle('alt',['all','debt','old','sleep'][i]!==MAPF); });
  drawNear(); if(!MAP||!ML) return; ML.clearLayers(); const pts=[];
  for(const x of DB.customers){ if(x.deleted||!x.lat) continue; const c=C().CU[x.id]||{bal:0,oldest:0};
-  if(MAPF==='debt'&&c.bal<=0.5) continue; if(MAPF==='old'&&!(c.bal>0.5&&c.oldest>30)) continue;
+  if(MAPF==='debt'&&c.bal<=0.5) continue; if(MAPF==='old'&&!(c.bal>0.5&&c.oldest>30)) continue; if(MAPF==='sleep'&&!(c.last&&c.last<addDays(today(),-21))) continue;
   const st=custSt(x.id);
   const m=L.circleMarker([x.lat,x.lng],{radius:c.bal>0.5?11:8,color:'#fff',weight:2,fillColor:st.col,fillOpacity:.95}).addTo(ML);
   m.bindTooltip(esc(x.name)+(c.bal>0.5?' — '+money(c.bal):''),{direction:'top',permanent:true,className:'mlbl'});
@@ -1803,6 +1804,10 @@ function priceRiseCheck(old){ const c=C(), rnd=v=>v>=1000?Math.round(v/50)*50:v>
  <div class="stick"><button class="btn alt" onclick="closeModal()">نه، همان بماند</button><button class="btn" onclick="applyRise()">${I('check')} تغییر قیمت فروش</button></div>`); }
 function applyRise(){ const l=F.list.filter(x=>x.on&&x.price>0); batch(()=>l.forEach(x=>save('product',Object.assign({},prod(x.pid),{price:x.price})))); closeModal(); toast('✓ قیمت '+fm(l.length)+' جنس تغییر کرد'); render(); }
 
+function myGoalCard(){ const g=(DB.settings.goalsU||{})[META.user]; if(!g) return ''; const ms=monthStart(), v=DB.txns.filter(t=>!t.void&&t.type==='sale'&&t.by===META.user&&t.date>=ms).reduce((s,t)=>s+txnTotal(t),0)-DB.txns.filter(t=>!t.void&&t.type==='sreturn'&&t.by===META.user&&t.date>=ms).reduce((s,t)=>s+txnTotal(t),0);
+ const pct=Math.min(100,v/g*100), left=Math.max(0,monthLen()-daysBetween(ms,today())-1);
+ return `<div class="card" style="margin-bottom:18px"><h3>${I('trend')} هدف فروش این ماه شما</h3><div class="row" style="justify-content:space-between"><b style="font-size:20px">${money(v)}</b><span class="mu">از ${money(g)}</span></div><div class="hb2" style="margin:10px 0 6px"><i style="width:${pct}%"></i></div><div class="mu" style="font-size:12.5px">${v>=g?'🎉 به هدف رسیدید!':fm(Math.round(pct))+'٪ — باقی '+money(g-v)+(left?'، روزی حدود '+money((g-v)/left)+' در '+fm(left)+' روز باقی‌مانده':'')}</div></div>`; }
+
 /* ---------- text size ---------- */
 function applyFont(){ const z={lg:1.12,xl:1.25}[META.font]||1; document.body.style.zoom=z===1?'':z; }
 function setFont(v){ META.font=v; persist(); applyFont(); render(); }
@@ -1970,7 +1975,7 @@ function monthExtra(){ const ms=persianMonths(12).filter(m=>m.to>=DB.settings.st
  const per={}; tx.forEach(t=>{ const u=t.by||'؟'; const o=per[u]||(per[u]={n:0,sale:0,bills:0,coll:0,exp:0,disc:0,vd:0}); o.n++; if(t.type==='sale'){ o.bills++; o.sale+=txnTotal(t); o.coll+=num(t.paid); o.disc+=num(t.discount); } if(t.type==='receipt') o.coll+=num(t.amount); if(t.type==='expense'||t.type==='wage') o.exp+=num(t.amount); });
  DB.txns.forEach(t=>{ if(t.void&&t.date>=m.from&&t.date<=m.to){ const u=t.voidBy||t.by||'؟'; const o=per[u]||(per[u]={n:0,sale:0,bills:0,coll:0,exp:0,disc:0,vd:0}); o.vd++; } });
  const exU={}; ex.forEach(t=>exU[t.by||'؟']=(exU[t.by||'؟']||0)+num(t.amount)); const exT=ex.reduce((s,t)=>s+num(t.amount),0);
- return `<div class="card" style="margin-top:18px"><h3>${I('user')} کی چه ثبت کرده — ${esc(m.label)}</h3><div class="tw"><table class="tbl"><tr><th>نفر</th><th class="n">همه ثبت‌ها</th><th class="n">بل فروش</th><th class="n">فروش</th><th class="n">پول گرفته</th><th class="n">مصرف</th><th class="n">تخفیف داده</th><th class="n">ابطال</th></tr>${Object.entries(per).sort((a,b)=>b[1].n-a[1].n).map(([u,o])=>`<tr class="click" onclick="TQ.user=this.dataset.u;TQ.from='${m.from}';TQ.to='${m.to}';TQ.rng='x';TQ.type='';go('txns')" data-u="${esc(u)}"><td>${who(u)}</td><td class="n">${fm(o.n)}</td><td class="n">${fm(o.bills)}</td><td class="n">${money(o.sale)}</td><td class="n pos">${money(o.coll)}</td><td class="n neg">${money(o.exp)}</td><td class="n ${o.disc?'warn':''}">${o.disc?money(o.disc):'—'}</td><td class="n ${o.vd?'neg':''}">${o.vd?fm(o.vd):'—'}</td></tr>`).join('')||'<tr><td colspan="8" class="empty">ثبتی نیست</td></tr>'}</table></div><div class="hint" style="margin-top:8px">روی هر نفر بزنید تا همهٔ ثبت‌های او در این ماه را ببینید.</div></div>
+ return `<div class="card" style="margin-top:18px"><h3>${I('user')} کی چه ثبت کرده — ${esc(m.label)}</h3><div class="tw"><table class="tbl"><tr><th>نفر</th><th class="n">همه ثبت‌ها</th><th class="n">بل فروش</th><th class="n">فروش</th><th class="n">پول گرفته</th><th class="n">مصرف</th><th class="n">تخفیف داده</th><th class="n">ابطال</th></tr>${Object.entries(per).sort((a,b)=>b[1].n-a[1].n).map(([u,o])=>`<tr class="click" onclick="TQ.user=this.dataset.u;TQ.from='${m.from}';TQ.to='${m.to}';TQ.rng='x';TQ.type='';go('txns')" data-u="${esc(u)}"><td>${who(u)}${(DB.settings.goalsU||{})[u]?`<div class="mu" style="font-size:11px;margin-top:3px">هدف ${kfmt(DB.settings.goalsU[u])} — ${fm(Math.round(o.sale/DB.settings.goalsU[u]*100))}٪</div>`:''}</td><td class="n">${fm(o.n)}</td><td class="n">${fm(o.bills)}</td><td class="n">${money(o.sale)}</td><td class="n pos">${money(o.coll)}</td><td class="n neg">${money(o.exp)}</td><td class="n ${o.disc?'warn':''}">${o.disc?money(o.disc):'—'}</td><td class="n ${o.vd?'neg':''}">${o.vd?fm(o.vd):'—'}</td></tr>`).join('')||'<tr><td colspan="8" class="empty">ثبتی نیست</td></tr>'}</table></div><div class="hint" style="margin-top:8px">روی هر نفر بزنید تا همهٔ ثبت‌های او در این ماه را ببینید.</div></div>
  <div class="card" style="margin-top:18px"><h3>${I('fuel')} لیست مصارف ماه<span class="sp"></span><b class="neg">${money(exT)}</b></h3>${Object.keys(exU).length>1?`<div class="row" style="gap:8px;margin-bottom:10px">${Object.entries(exU).map(([u,v])=>`<span>${who(u)} <b>${kfmt(v)}</b></span>`).join('')}</div>`:''}<div class="tw"><table class="tbl"><tr><th>تاریخ</th><th>نوع</th><th>شرح</th><th>ثبت‌کننده</th><th class="n">مبلغ</th></tr>${ex.map(t=>`<tr class="click" onclick="showTxn('${t.id}')"><td>${fd(t.date)}<div class="mu" style="font-size:11px">${hm(t.createdAt)}</div></td><td>${t.type==='wage'?'معاش':esc((ACC[t.acc||'6900']||{}).name||'')}</td><td>${esc(t.note||partyName(t)||'')}</td><td>${who(t.by)}${t.okBy?`<div class="pos" style="font-size:11px">✓ تأیید ${esc(t.okBy)}</div>`:(roleOf(META.user)==='owner'&&t.by&&t.by!==META.user?`<div><button class="btn sm alt" style="padding:3px 9px;font-size:11.5px;margin-top:3px" onclick="event.stopPropagation();approveTxn('${t.id}')">✓ تأیید</button></div>`:'')}</td><td class="n neg">${money(num(t.amount))}</td></tr>`).join('')||'<tr><td colspan="5" class="empty">مصرفی ثبت نشده</td></tr>'}</table></div></div>`; }
 function repMonth0(){ const ms=persianMonths(12).filter(m=>m.to>=DB.settings.startDate).reverse(); if(!ms.length) return '<div class="empty">هنوز ماهی نیست</div>'; if(MREP>=ms.length) MREP=0;
  const m=ms[MREP], d=monthData(m), pm0=ms[MREP+1], part=MREP===0&&pm0, pm=part?{from:pm0.from,to:addDays(pm0.from,daysBetween(m.from,m.to)),label:pm0.label}:pm0, pd=pm?monthData(pm):null, ar=balOf('1100',m.to), ap=-balOf('2100',m.to);
@@ -2033,10 +2038,11 @@ function goalsCard(){ const g=DB.settings.goals||{}; if(!num(g.sales)&&!num(g.co
  return `<div class="card" style="margin-top:18px"><h3>${I('trend')} هدف این ماه<span class="sp"></span>${can('settings')?`<button class="btn sm alt" onclick="goalForm()">تغییر</button>`:''}</h3><div class="grid k2">${num(g.sales)?one('فروش',M.netSales,num(g.sales),'#13a389'):''}${num(g.coll)?one('جمع کردن پول',coll,num(g.coll),'#f08c2e'):''}</div></div>`; }
 function goalForm(){ const g=DB.settings.goals||{}, b=DB.settings.budgets||{}; F={type:'goals'};
  openModal('هدف ماهانه و بودجهٔ مصارف',sec('trend','هدف هر ماه',`<div class="f2">${fl('هدف فروش ماه',inp('g_sales',g.sales||'','inputmode="decimal" placeholder="مثلاً ۶۰۰٬۰۰۰"'))}${fl('هدف جمع کردن پول',inp('g_coll',g.coll||'','inputmode="decimal"'))}</div>`)+
+ sec('user','هدف فروش هر نفر (اختیاری)',`<div class="f2">${(DB.settings.users||[]).map(u=>fl(esc(u),`<input class="in" id="gu_${(DB.settings.users||[]).indexOf(u)}" inputmode="decimal" value="${(DB.settings.goalsU||{})[u]||''}" placeholder="—">`)).join('')}</div>`)+
  sec('fuel','سقف مصرف هر ماه (اختیاری)',`<div class="hint" style="margin:-4px 0 10px">اگر مصرفی از سقفش بگذرد، هنگام ثبت و در داشبورد هشدار می‌آید.</div><div class="f2">${ACCOUNTS.filter(a=>a[0][0]==='6'&&!['6800','6950'].includes(a[0])).map(a=>fl(a[1],`<input class="in" id="b_${a[0]}" inputmode="decimal" value="${b[a[0]]||''}" placeholder="—">`)).join('')}</div>`)+
  `<div class="stick"><div class="ft"></div><button class="btn" onclick="saveGoals()">${I('check')} ذخیره</button></div>`); }
 function saveGoals(){ const b={}; ACCOUNTS.forEach(a=>{ const e=$('#b_'+a[0]); if(e&&num(e.value)) b[a[0]]=num(e.value); });
- save('settings',Object.assign({},DB.settings,{goals:{sales:num(fv('g_sales')),coll:num(fv('g_coll'))},budgets:b})); closeModal(); toast('ذخیره شد ✓'); render(); }
+ const gu={}; (DB.settings.users||[]).forEach((u,i)=>{ const e=$('#gu_'+i), v=e?num(e.value):0; if(v) gu[u]=v; }); save('settings',Object.assign({},DB.settings,{goals:{sales:num(fv('g_sales')),coll:num(fv('g_coll'))},budgets:b,goalsU:gu})); closeModal(); toast('ذخیره شد ✓'); render(); }
 function budgetUse(acc){ const lim=num((DB.settings.budgets||{})[acc]); if(!lim) return null; const used=sums(monthStart(),today())[acc]||0; return {lim,used,pct:used/lim*100}; }
 function budgetAlerts(){ const b=DB.settings.budgets||{}; return Object.keys(b).map(a=>({a,u:budgetUse(a)})).filter(o=>o.u&&o.u.pct>=90); }
 function budgetHint(){ const el=$('#bhint'); if(!el) return; const u=budgetUse(fv('acc')); if(!u){ el.innerHTML=''; return; } const after=u.used+num(fv('amount'));
