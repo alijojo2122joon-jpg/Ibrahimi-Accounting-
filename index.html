@@ -371,7 +371,7 @@ svg.flip{transform:scaleX(-1)}
 <script id="engine">
 'use strict';
 const LS = 'ebrahimi_acc_v1';
-const VERSION = '1.9';
+const VERSION = '2.0';
 
 /* ---- Chart of accounts (کدینگ حساب‌ها) ----
    nature: A=asset (debit), L=liability (credit), E=equity (credit), E-=contra equity (debit),
@@ -812,12 +812,12 @@ function viewDash(){
  return `
  ${can('settings')&&DB.txns.length>15&&!META.sync.url&&(!META.lastBackup||daysBetween(META.lastBackup.slice(0,10),today())>=7)?`<div class="card banner"><div class="ic" style="--c:#e5484d">${I('alert')}</div><div style="flex:1"><b>${META.lastBackup?'آخرین بکاپ '+fm(daysBetween(META.lastBackup.slice(0,10),today()))+' روز پیش بود':'هنوز از اطلاعات بکاپ نگرفته‌اید'}</b><div class="hint">اگر گوشی گم یا خراب شود، حساب‌ها از بین می‌رود. یک فایل بکاپ بگیرید و در تلگرام یا گوگل‌درایو نگه دارید.</div></div><button class="btn sm red" onclick="exportJSON();render()">بکاپ</button></div>`:''}
  ${typeof deferredInstall!=='undefined'&&deferredInstall?`<div class="card banner"><div class="ic" style="--c:#13a389">${I('in')}</div><div style="flex:1"><b>اپ را روی گوشی نصب کنید</b><div class="hint">مثل یک برنامه باز می‌شود و بدون انترنت هم کار می‌کند.</div></div><button class="btn sm" onclick="installApp()">نصب</button></div>`:''}
- ${DB.txns.length===0&&DB.customers.length===0?`<div class="card" style="margin-bottom:18px"><b>👋 خوش آمدید!</b><div class="hint">۱) در «اجناس» اجناس‌تان را با موجودی فعلی ثبت کنید. ۲) در «دکان‌ها» مشتریان و طلب قبلی‌شان را بنویسید. ۳) با دکمهٔ «＋» فروش، خرید و دریافت پول را ثبت کنید. برای امتحان می‌توانید از تنظیمات «دادهٔ آزمایشی» را بارگذاری کنید.</div></div>`:''}
+ ${setupCard()}
  <div class="qrow dashq">${[['receipt','#13a389','فروش','saleForm()'],['cash','#16a37a','دریافت پول','receiptForm()'],['cart','#3b6fd8','خرید عمده','purchaseForm()'],['fuel','#e5484d','مصرف','expenseForm()'],['map','#f08c2e','نقشه',"go('map')"],['shop','#8b5cf6','دکان جدید','customerForm()'],['wallet','#0f8f78','بستن صندوق','cashCloseForm()']].map(q=>act(q[0],q[1],q[2],q[3])).join('')}</div>
  <div class="card hero">
   <div class="ring"><svg viewBox="0 0 200 200"><defs><linearGradient id="rg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#ffc24b"/><stop offset="1" stop-color="#ff5a4e"/></linearGradient></defs>
    <circle cx="100" cy="100" r="84" fill="none" stroke="var(--line)" stroke-width="12"/>
-   <circle cx="100" cy="100" r="84" fill="none" stroke="url(#rg)" stroke-width="12" stroke-linecap="round" stroke-dasharray="${(rate/100*527.8).toFixed(1)} 528"/></svg>
+   <circle cx="100" cy="100" r="84" fill="none" stroke="url(#rg)" stroke-width="12" stroke-linecap="round" stroke-dasharray="${(rate/100*527.8).toFixed(1)} 528" ${rate>0?'':'stroke-opacity="0"'}/></svg>
    <div class="in"><b>${fm(Math.round(rate))}<small>٪</small></b><span>وصول پول در ۳۰ روز<br>${money(recv30)} از ${money(p30.netSales)}</span></div></div>
   <div class="hrows">
    <div class="hrow" onclick="R={v:'reports',tab:'daily'};render()"><div class="ic" style="--c:#13a389">${I('wallet')}</div><div class="m"><b>صندوق نقدی</b><div>بانک/حواله: ${money(bank)}</div></div><div class="v">${money(cash)}</div></div>
@@ -969,7 +969,7 @@ let CA='';
 function viewCustomers(){ const c=C(), cs=DB.customers.filter(x=>!x.deleted), deb=cs.filter(x=>(c.CU[x.id]||{}).bal>0.5), tot=deb.reduce((s,x)=>s+c.CU[x.id].bal,0), old=deb.filter(x=>c.CU[x.id].oldest>30).length, nl=cs.filter(x=>!x.lat).length;
  const areas={}; cs.forEach(x=>{ const a=(x.area||'').split(/[،,]/)[0].trim(); if(a) areas[a]=(areas[a]||0)+1; }); const top=Object.entries(areas).sort((a,b)=>b[1]-a[1]).slice(0,10);
  return `<div class="grid k4">${kpi('in','#f08c2e','مجموع طلب',money(tot),fm(deb.length)+' دکان بدهکار','warn',"CF='debt';render()")}${kpi('clock','#e5484d','بدهی کهنه',fm(old),'بیش از ۳۰ روز',old?'neg':'',"CF='old';render()")}${kpi('shop','#13a389','همه دکان‌ها',fm(cs.length),'')}${kpi('pin','#3b6fd8','بدون لوکیشن',fm(nl),'روی نقشه نیستند','',"CF='noloc';render()")}</div>
- <div class="row" style="margin:18px 0 12px"><div class="sbox" style="flex:1;min-width:200px;margin:0">${I('search')}<input placeholder="جستجوی نام دکان، صاحب، شماره، ساحه…" value="${esc(CQ)}" oninput="CQ=this.value;drawCList()"></div><button class="btn" onclick="customerForm()">${I('plus')} دکان جدید</button></div>
+ <div class="row" style="margin:18px 0 12px"><div class="sbox" style="flex:1;min-width:200px;margin:0">${I('search')}<input placeholder="جستجوی نام دکان، صاحب، شماره، ساحه…" value="${esc(CQ)}" oninput="CQ=this.value;drawCList()"></div><button class="btn" onclick="customerForm()">${I('plus')} دکان جدید</button><button class="btn alt" onclick="bulkForm('c')">${I('in')} ورود گروهی</button></div>
  ${top.length>1?`<div class="tabs">${[['','همه ساحه‌ها'],...top.map(t=>[t[0],t[0]+' ('+fm(t[1])+')'])].map(t=>`<button class="${CA===t[0]?'on':''}" onclick="CA='${esc(t[0]).replace(/'/g,'')}';render()">${esc(t[1])}</button>`).join('')}</div>`:''}
  <div class="tabs">${[['all','همه'],['debt','بدهکار'],['old','بدهی +۳۰ روز'],['noloc','بدون لوکیشن'],['credit','پیش‌پرداخت']].map(f=>`<button class="${CF===f[0]?'on':''}" onclick="CF='${f[0]}';render()">${f[1]}</button>`).join('')}
  <select class="in" style="width:auto" onchange="CS=this.value;drawCList()">${[['bal','بیشترین بدهی'],['old','قدیمی‌ترین بدهی'],['name','الفبا'],['last','آخرین معامله'],['sales','بیشترین خرید']].map(o=>`<option value="${o[0]}" ${CS===o[0]?'selected':''}>${o[1]}</option>`).join('')}</select></div>
@@ -984,7 +984,7 @@ function drawCList(){ const el=$('#clist'); if(!el) return; const c=C(), q=CQ.tr
  a.sort(so); const tot=a.reduce((s,x)=>s+Math.max(0,g(x).bal),0);
  el.innerHTML=`<div class="hint" style="padding:0 4px 6px">${fm(a.length)} دکان · مجموع طلب: <b>${money(tot)}</b></div>`+(a.map(custItem).join('')||'<div class="empty">دکانی پیدا نشد</div>');
 }
-function ringSvg(pct,col){ return `<svg viewBox="0 0 200 200"><circle cx="100" cy="100" r="84" fill="none" stroke="var(--line)" stroke-width="12"/><circle cx="100" cy="100" r="84" fill="none" stroke="${col}" stroke-width="12" stroke-linecap="round" stroke-dasharray="${(Math.max(0,Math.min(100,pct))/100*527.8).toFixed(1)} 528"/></svg>`; }
+function ringSvg(pct,col){ return `<svg viewBox="0 0 200 200"><circle cx="100" cy="100" r="84" fill="none" stroke="var(--line)" stroke-width="12"/><circle cx="100" cy="100" r="84" fill="none" stroke="${col}" stroke-width="12" stroke-linecap="round" stroke-dasharray="${(Math.max(0,Math.min(100,pct))/100*527.8).toFixed(1)} 528" ${pct>0?'':'stroke-opacity="0"'}/></svg>`; }
 const act=(ic,col,l,on,href)=>href?`<a class="qa" href="${href}" target="_blank" rel="noopener"><span class="ic" style="--c:${col}">${I(ic)}</span><b>${l}</b></a>`:`<button class="qa" onclick="${on}"><span class="ic" style="--c:${col}">${I(ic)}</span><b>${l}</b></button>`;
 function viewCustomer(){
  const x=cust(R.id); if(!x) return '<div class="empty">پیدا نشد</div>';
@@ -1046,7 +1046,7 @@ function viewProducts(){ const c=C(), ps=DB.products.filter(p=>!p.deleted);
  const cats=[...new Set(ps.map(p=>p.cat).filter(Boolean))];
  return `<div class="grid k4">${kpi('box','#3b6fd8','تعداد اجناس',fm(ps.length),cats.length?fm(cats.length)+' کتگوری':'')}${can('cost')?kpi('wallet','#13a389','ارزش جنس در هنگر',money(val),'به قیمت تمام‌شده'):kpi('wallet','#13a389','موجود در هنگر',fm(ps.reduce((s,p)=>s+Math.max(0,(c.P[p.id]||{qty:0}).qty),0)),'واحد')}${kpi('alert','#f08c2e','کم‌موجود',fm(low),'زیر حد اقل','warn',"shopList()")}${kpi('out','#e5484d','تمام‌شده',fm(out),'موجودی صفر یا منفی',out?'neg':'')}</div>
  <div class="row" style="margin:18px 0 12px"><div class="sbox" style="flex:1;min-width:200px;margin:0">${I('search')}<input placeholder="جستجوی جنس، کد یا کتگوری…" value="${esc(PQ)}" oninput="PQ=this.value;drawPList()"></div>
- <button class="btn" onclick="productForm()">${I('plus')} جنس جدید</button><button class="btn" style="--c:#f08c2e" onclick="shopList()">${I('cart')} لیست خرید مندوی</button><button class="btn alt" onclick="adjustForm()">${I('box')} شمارش هنگر</button></div>
+ <button class="btn" onclick="productForm()">${I('plus')} جنس جدید</button><button class="btn alt" onclick="bulkForm('p')">${I('in')} ورود گروهی</button><button class="btn" style="--c:#f08c2e" onclick="shopList()">${I('cart')} لیست خرید مندوی</button><button class="btn alt" onclick="adjustForm()">${I('box')} شمارش هنگر</button></div>
  <div class="tabs">${['',...cats].map(k=>`<button class="${PCAT===k?'on':''}" onclick="PCAT='${esc(k).replace(/'/g,'')}';render()">${k?esc(k):'همه'}</button>`).join('')}<span style="flex:1"></span><button class="${PVIEW==='cards'?'on':''}" onclick="PVIEW='cards';drawPList()">کارت</button><button class="${PVIEW==='table'?'on':''}" onclick="PVIEW='table';drawPList()">جدول</button></div>
  <div id="plist"></div>`; }
 function drawPList(){ const el=$('#plist'); if(!el) return; const c=C(), q=PQ.trim().toLowerCase();
@@ -1109,7 +1109,7 @@ function saveProduct(){ const name=fv('name').trim(); if(!name) return toast('ن
 
 /* ---------- suppliers ---------- */
 function viewSuppliers(){ const c=C(); const a=DB.suppliers.filter(s=>!s.deleted).sort((x,y)=>((c.SU[y.id]||{}).bal||0)-((c.SU[x.id]||{}).bal||0));
- return `<div class="row" style="margin-bottom:10px"><span style="flex:1" class="hint">عمده‌فروش‌ها در مندوی، شهرنو و… که از آن‌ها جنس می‌خرید.</span><button class="btn" onclick="supplierForm()">＋ عمده‌فروش جدید</button></div>
+ return `<div class="row" style="margin-bottom:10px"><span style="flex:1" class="hint">عمده‌فروش‌ها در مندوی، شهرنو و… که از آن‌ها جنس می‌خرید.</span><button class="btn" onclick="supplierForm()">${I('plus')} عمده‌فروش جدید</button><button class="btn alt" onclick="bulkForm('s')">${I('in')} ورود گروهی</button></div>
  <div class="card list">${a.map(s=>{ const b=(c.SU[s.id]||{bal:0}).bal; return `<div class="it" onclick="go('supplier','${s.id}')"><div class="av" style="--c:${colorOf(s.name)}">${esc(s.name[0]||'؟')}</div><div class="m"><div class="t">${esc(s.name)}</div><div class="d">${esc([s.owner,s.phone,s.area].filter(Boolean).join(' · '))}</div></div><div class="a ${b>0.5?'neg':'pos'}">${money(b)}</div></div>`; }).join('')||'<div class="empty">عمده‌فروشی ثبت نشده</div>'}</div>`; }
 function viewSupplier(){ const s=supp(R.id); if(!s) return '<div class="empty">پیدا نشد</div>'; const c=C().SU[s.id]||{bal:0,buys:0,paid:0};
  const tx=DB.txns.filter(t=>!t.void&&t.party===s.id).sort((a,b)=>(a.date+a.createdAt).localeCompare(b.date+b.createdAt)); let bal=num(s.openBal);
@@ -1316,6 +1316,49 @@ function cashDiff(){ const c=num(fv('counted')), d=r2(c-F.expected), el=$('#cdif
 function saveCashClose(){ if(fv('counted')==='') return toast('مقدار شمرده‌شده را بنویسید'); const c=num(fv('counted')), d=r2(c-F.expected);
  const t={type:'cashcount',date:today(),method:'cash',counted:c,expected:r2(F.expected),diff:d,amount:Math.abs(d),notes:F.notes,note:fv('note').trim(),no:nextNo('CNT')};
  save('txn',t); closeModal(); toast(Math.abs(d)<1?'✓ صندوق بسته شد — برابر':'✓ صندوق بسته شد — '+(d<0?'کسری ':'اضافه ')+money(Math.abs(d))+' ثبت شد'); render(); }
+
+/* ---------- bulk import (paste from Excel / WhatsApp / notes) ---------- */
+const BULK={
+ c:{t:'دکان‌ها',cols:['نام دکان','صاحب','شماره','ساحه','طلب قبلی'],ex:'سوپرمارکت برادران، حاجی نادر، 0791234567، کارته‌سه، 12000\nدکان امید، احمد، 0700111222، دشت برچی، 0'},
+ p:{t:'اجناس',cols:['نام جنس','واحد','قیمت فروش','موجودی','قیمت خرید','کتگوری','حد اقل'],ex:'روغن آفتاب ۵ لیتره، قطی، 780، 120، 690، روغن، 20\nبرنج سیلا ۲۵ کیلو، بوجی، 2650، 40، 2380، برنج و آرد، 8'},
+ s:{t:'عمده‌فروش‌ها',cols:['نام','شماره','آدرس','قرض قبلی'],ex:'تجارتخانه حاجی رحیم، 0799000111، مندوی، 45000'} };
+const isPhone=v=>/^(\+?93|0)?7\d{8}$/.test(String(v).replace(/[^\d+۰-۹]/g,'').replace(/[۰-۹]/g,d=>'۰۱۲۳۴۵۶۷۸۹'.indexOf(d)));
+function bulkForm(k='c'){ F={type:'bulk',k};
+ openModal('ورود گروهی',`<div class="tabs">${Object.entries(BULK).map(([key,b])=>`<button class="${k===key?'on':''}" onclick="bulkForm('${key}')">${b.t}</button>`).join('')}</div>
+ <div class="hint" style="margin-bottom:10px">هر ${k==='p'?'جنس':k==='c'?'دکان':'عمده‌فروش'} در یک خط. ستون‌ها را با ویرگول (، یا ,) یا Tab جدا کنید — می‌توانید مستقیم از Excel کاپی کنید.<br><b>ترتیب:</b> ${BULK[k].cols.join(' ، ')}</div>
+ <textarea class="in" id="f_bulk" rows="7" dir="rtl" placeholder="${esc(BULK[k].ex)}" oninput="bulkPreview()"></textarea>
+ <div class="row" style="margin:10px 0"><label class="btn sm alt">${I('in')} از فایل CSV<input type="file" accept=".csv,.txt,text/csv,text/plain" style="display:none" onchange="bulkFile(this.files[0])"></label><button class="btn sm alt" onclick="$('#f_bulk').value=BULK[F.k].ex;bulkPreview()">نمونه</button></div>
+ <div id="bprev"></div>
+ <div class="stick"><div class="ft"><span class="mu">آماده برای ثبت</span><b id="ftot">۰</b></div><button class="btn" onclick="bulkSave()">${I('check')} ثبت همه</button></div>`); bulkPreview(); }
+function bulkFile(f){ if(!f) return; const r=new FileReader(); r.onload=()=>{ $('#f_bulk').value=String(r.result).replace(/^﻿/,''); bulkPreview(); }; r.readAsText(f); }
+function bulkParse(){ const k=F.k, lines=(fv('bulk')||'').split(/\r?\n/).map(l=>l.trim()).filter(Boolean);
+ const list=k==='c'?DB.customers:k==='p'?DB.products:DB.suppliers, names=new Set(list.filter(x=>!x.deleted).map(x=>x.name.trim())), seen=new Set();
+ return lines.map(l=>{ let f=l.split(/\t|،|,|;/).map(x=>x.trim());
+  if(/^(نام|name)/i.test(f[0])) return null;   // header row
+  let o; if(k==='c'){ if(f[2]&&!isPhone(f[2])&&isPhone(f[1]||'')) [f[1],f[2]]=[f[2],f[1]]; o={name:f[0],owner:f[1]||'',phone:f[2]||'',area:f[3]||'',openBal:num(f[4])}; }
+  else if(k==='p') o={name:f[0],unit:f[1]||'دانه',price:num(f[2]),openQty:num(f[3]),openCost:num(f[4]),cat:f[5]||'',minQty:num(f[6])};
+  else o={name:f[0],phone:f[1]||'',area:f[2]||'',openBal:num(f[3])};
+  o._dup=names.has(o.name)||seen.has(o.name); seen.add(o.name); o._bad=!o.name; return o; }).filter(Boolean); }
+function bulkPreview(){ const a=bulkParse(), ok=a.filter(o=>!o._dup&&!o._bad), el=$('#bprev'); $('#ftot').textContent=fm(ok.length)+' مورد';
+ if(!a.length){ el.innerHTML=''; return; } const k=F.k, cols=BULK[k].cols;
+ const vals=o=>k==='c'?[o.name,o.owner,o.phone,o.area,o.openBal?fm(o.openBal):'']:k==='p'?[o.name,o.unit,fm(o.price),fm(o.openQty),fm(o.openCost),o.cat,o.minQty?fm(o.minQty):'']:[o.name,o.phone,o.area,o.openBal?fm(o.openBal):''];
+ el.innerHTML=`<div class="tw"><table class="tbl"><tr><th></th>${cols.map(c=>`<th>${c}</th>`).join('')}</tr>${a.map(o=>`<tr style="${o._dup||o._bad?'opacity:.45':''}"><td>${o._bad?'✕':o._dup?'<span class="badge" style="--c:var(--or)">تکراری</span>':'<span class="pos">✓</span>'}</td>${vals(o).map(v=>`<td>${esc(v)}</td>`).join('')}</tr>`).join('')}</table></div>${a.some(o=>o._dup)?'<div class="hint">ردیف‌های تکراری (نامی که از قبل هست) ثبت نمی‌شوند.</div>':''}`; }
+function bulkSave(){ const k=F.k, a=bulkParse().filter(o=>!o._dup&&!o._bad); if(!a.length) return toast('چیزی برای ثبت نیست');
+ a.forEach(o=>{ delete o._dup; delete o._bad; if(k==='c') save('customer',Object.assign({code:nextNo('C')},o)); else if(k==='p') save('product',Object.assign({code:nextNo('P')},o)); else save('supplier',Object.assign({code:nextNo('S')},o)); });
+ closeModal(); toast('✓ '+fm(a.length)+' '+BULK[k].t+' ثبت شد'); go(k==='c'?'customers':k==='p'?'products':'suppliers'); }
+
+/* ---------- first-run setup guide ---------- */
+function setupCard(){ if(META.setupDone||!can('settings')) return ''; const s=DB.settings;
+ const steps=[[!!(s.phone||s.addr||(s.biz&&s.biz!=='ابراهیمی اکانتینگ')),'نام، شماره و آدرس کسب‌وکار','روی بل چاپی می‌آید',"go('settings')"],
+  [!!(num(s.openCash)||num(s.openBank)||DB.txns.some(t=>t.type==='capital')),'پول نقد فعلی صندوق','تا صندوق از عدد درست شروع شود',"go('settings')"],
+  [DB.products.some(p=>!p.deleted),'اجناس و موجودی فعلی هنگر','یکجا از Excel یا لیست کاپی کنید',"bulkForm('p')"],
+  [DB.customers.some(c=>!c.deleted),'دکان‌ها و طلب‌های قبلی','یکجا وارد کنید، لوکیشن را بعداً در دکان بگیرید',"bulkForm('c')"],
+  [hasPins(),'رمز برای کاربران','تا اگر گوشی دست کسی افتاد حساب‌ها امن باشد',"go('settings')"]];
+ const done=steps.filter(x=>x[0]).length; if(done===steps.length) return '';
+ return `<div class="card" style="margin-bottom:18px"><h3>${I('check')} راه‌اندازی سیستم — ${fm(done)} از ${fm(steps.length)}<span class="sp"></span><button class="btn sm alt" onclick="META.setupDone=1;persist();render()">بعداً</button></h3>
+ <div class="aging" style="margin:0 0 14px"><i style="width:${done/steps.length*100}%;background:linear-gradient(90deg,#1bc3a4,#0f8f78)"></i></div>
+ <div class="steps2">${steps.map((x,i)=>`<div class="st" style="cursor:pointer" onclick="${x[3]}"><em style="${x[0]?'background:linear-gradient(145deg,#1bc3a4,#0f8f78)':''}">${x[0]?'✓':fm(i+1)}</em><div class="m"><b style="${x[0]?'text-decoration:line-through;opacity:.6':''}">${x[1]}</b><div class="mu">${x[2]}</div></div>${x[0]?'':I('chev')}</div>`).join('')}</div>
+ <div class="hint" style="margin-top:10px">برای امتحان می‌توانید از تنظیمات «دادهٔ آزمایشی» را بارگذاری کنید.</div></div>`; }
 
 /* ---------- transaction detail ---------- */
 function showTxn(id,fresh){ const t=DB.txns.find(x=>x.id===id); if(!t) return; const tt=TT[t.type]; const js=C().J.filter(j=>j.tx===id);
