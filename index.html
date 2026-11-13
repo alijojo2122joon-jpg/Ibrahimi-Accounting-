@@ -448,7 +448,7 @@ body.mopen #snack{bottom:auto;top:16px;transform:translate(-50%,-20px)}body.mope
 <script id="engine">
 'use strict';
 const LS = 'ebrahimi_acc_v1';
-const VERSION = '5.6';
+const VERSION = '5.7';
 
 /* ---- Chart of accounts (کدینگ حساب‌ها) ----
    nature: A=asset (debit), L=liability (credit), E=equity (credit), E-=contra equity (debit),
@@ -553,6 +553,8 @@ function save(kind,rec){
  rec=Object.assign({},rec); rec.kind=kind; rec.updatedAt=nowIso();
  if(!rec.id) rec.id=uid();
  if(!rec.createdAt){ rec.createdAt=rec.updatedAt; rec.by=META.user; }
+ if(['product','customer','supplier'].includes(kind)){ rec.updatedBy=META.user; const o=(DB[KIND[kind]]||[]).find(x=>x.id===rec.id);
+  if(kind==='product'&&o&&o.createdAt&&num(o.price)!==num(rec.price)) rec.priceHist=[...(o.priceHist||[]).slice(-19),{at:rec.updatedAt,by:META.user,old:num(o.price),new:num(rec.price)}]; }
  if(kind==='settings'){ rec.id='settings'; DB.settings=rec; }
  else { if(!Array.isArray(DB[KIND[kind]])) DB[KIND[kind]]=[]; const arr=DB[KIND[kind]]; const i=arr.findIndex(x=>x.id===rec.id); if(i>=0) arr[i]=rec; else arr.push(rec); }
  if(!META.dirty.includes(rec.id)) META.dirty.push(rec.id);
@@ -1255,7 +1257,7 @@ function viewProduct(){ const p=prod(R.id); if(!p) return '<div class="empty">پ
  <div class="card">${p.photo?`<img class="cphoto" style="float:left;margin:0" src="${p.photo}" onclick="viewPhoto(this.src)">`:''}<div class="ctt">${esc(p.name)}</div><div class="mu">${esc([p.code,p.cat,p.unit].filter(Boolean).join('، '))}</div></div>
  <div class="grid k4" style="margin-top:18px">${kpi('box','#3b6fd8','موجودی',fm(s.qty)+' '+esc(p.unit||''),num(p.minQty)?'حد اقل '+fm(p.minQty):'',s.qty<=0?'neg':num(p.minQty)&&s.qty<=num(p.minQty)?'warn':'')}${kpi('trend','#13a389','فروش ۳۰ روز',fm(sold30)+' '+esc(p.unit||''),days!==null?'تقریباً '+fm(days)+' روز دیگر کافی است':'فروش اخیر ندارد')}${kpi('cash','#f08c2e','قیمت فروش',money(p.price),can('cost')?'آخرین خرید '+money(s.lastBuy):'')}${can('cost')?kpi('wallet','#8b5cf6','قیمت تمام‌شده (میانگین)',money(s.avg),'سود تا حالا '+money(s.rev-s.cogs),'',''):''}</div>
  ${(()=>{ const e=expiringBatches(3650).filter(o=>o.p.id===p.id); return e.length?`<div class="card" style="margin-top:18px"><h3>${I('clock')} تاریخ انقضای موجودی</h3>${e.map(o=>`<div class="tpr"><span class="rk">${I('clock')}</span><div class="m"><div class="row" style="justify-content:space-between;flex-wrap:nowrap"><b>${qtyTxt(p,o.q)}</b><b class="${o.days<0?'neg':o.days<=30?'warn':''}">${fd(o.exp)}</b></div><div class="mu" style="font-size:11.5px">${o.days<0?'تاریخ گذشته':fm(o.days)+' روز مانده'}، ${esc(o.no)}</div></div></div>`).join('')}</div>`:''; })()}
- ${supplierPriceCard(p)}
+ ${supplierPriceCard(p)}${(p.priceHist||[]).length?`<div class="card" style="margin-top:18px"><h3>${I('trend')} تاریخچهٔ قیمت فروش</h3><div class="slist">${p.priceHist.slice().reverse().map(h=>`<div class="sr" style="cursor:default"><div class="m"><b>${fm(h.old)} ← ${fm(h.new)}</b> <span class="${h.new>h.old?'pos':'neg'}">${h.new>h.old?'▲':'▼'}</span><div class="mu">${new Date(h.at).toLocaleString('fa-AF-u-ca-persian',{month:'long',day:'numeric',hour:'2-digit',minute:'2-digit'})}</div></div>${who(h.by)}</div>`).join('')}</div></div>`:''}
  ${top.length?`<div class="card" style="margin-top:18px"><h3>${I('shop')} بیشترین خریداران</h3><div class="list">${top.map(([cid,qq])=>{ const x=cust(cid); return x?`<div class="it" onclick="go('customer','${cid}')"><div class="av" style="--c:${colorOf(x.name)}">${esc(x.name[0]||'؟')}</div><div class="m"><div class="t">${esc(x.name)}</div><div class="d">${esc(x.area||'')}</div></div><div class="a">${fm(qq)} ${esc(p.unit||'')}</div></div>`:''; }).join('')}</div></div>`:''}
  <div class="card" style="margin-top:18px"><h3>${I('book')} کاردکس (ورود و خروج جنس)</h3><div class="tw"><table class="tbl"><tr><th>تاریخ</th><th>شرح</th><th class="n">وارده</th><th class="n">صادره</th><th class="n">مانده</th><th class="n">فی</th></tr>
  ${k.slice().reverse().map(r=>`<tr class="${r.id?'click':''}" ${r.id?`onclick="showTxn('${r.id}')"`:''}><td>${fd(r.d)}<div class="mu" style="font-size:11.5px">${esc(r.no||'')}</div></td><td>${esc(r.desc)}</td><td class="n pos">${r.in?fm(r.in):''}</td><td class="n neg">${r.out?fm(r.out):''}</td><td class="n"><b>${fm(r.bal)}</b></td><td class="n mu">${r.price&&(can('cost')||['sale','sreturn'].includes(r.type))?fm(r.price):''}</td></tr>`).join('')||'<tr><td colspan="6" class="empty">حرکتی نیست</td></tr>'}</table></div></div>`; }
@@ -1749,7 +1751,7 @@ const fxRate=()=>{ const c=fv('cur'); return c&&c!=='AFN'?num(fv('rate')):1; };
 let ALU='';
 function repLog(){ const ev=[]; const nm=t=>(TT[t.type]||[''])[0]+' '+(t.no||'')+(partyName(t)?' — '+partyName(t):'');
  DB.txns.forEach(t=>{ ev.push({at:t.createdAt,by:t.by,txt:'ثبت '+nm(t),amt:txnTotal(t),id:t.id,k:'new'}); (t.history||[]).forEach(h=>ev.push({at:h.at,by:h.by,txt:'ویرایش '+nm(t),id:t.id,k:'edit'})); if(t.void) ev.push({at:t.voidAt,by:t.voidBy,txt:'ابطال '+nm(t)+(t.voidReason?' ('+t.voidReason+')':''),id:t.id,k:'void'}); });
- [['customer',DB.customers,'دکان'],['product',DB.products,'جنس'],['supplier',DB.suppliers,'عمده‌فروش']].forEach(([k,a,l])=>a.forEach(x=>{ if(x.createdAt) ev.push({at:x.createdAt,by:x.by,txt:l+' جدید: '+x.name,k:'ent'}); if(x.deleted) ev.push({at:x.updatedAt,by:'',txt:l+' حذف شد: '+x.name,k:'void'}); }));
+ [['customer',DB.customers,'دکان'],['product',DB.products,'جنس'],['supplier',DB.suppliers,'عمده‌فروش']].forEach(([k,a,l])=>a.forEach(x=>{ if(x.createdAt) ev.push({at:x.createdAt,by:x.by,txt:l+' جدید: '+x.name,k:'ent'}); if(x.deleted) ev.push({at:x.updatedAt,by:x.updatedBy||'',txt:l+' حذف شد: '+x.name,k:'void'}); (x.priceHist||[]).forEach(h=>ev.push({at:h.at,by:h.by,txt:'قیمت «'+x.name+'» از '+fm(h.old)+' به '+fm(h.new)+' تغییر کرد',k:'edit'})); }));
  const list=ev.filter(e=>e.at&&(!ALU||e.by===ALU)).sort((a,b)=>b.at.localeCompare(a.at)).slice(0,250);
  const col={new:'#13a389',edit:'#f08c2e',void:'#e5484d',ent:'#3b6fd8'};
  return `<h3>${I('user')} فعالیت کاربران — چه کسی چه کرد</h3><div class="tabs">${['',...(DB.settings.users||[])].map(u=>`<button class="${ALU===u?'on':''}" onclick="ALU='${esc(u).replace(/'/g,'')}';render()">${u?esc(u):'همه'}</button>`).join('')}</div>
