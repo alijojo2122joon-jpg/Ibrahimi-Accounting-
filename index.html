@@ -298,6 +298,7 @@ body.mapfsb #bnav,body.mapfsb #fab{display:none!important}
 .mk.pl{outline:3px dashed #e5484d;outline-offset:2px}
 .me{width:22px;height:22px;border-radius:50%;background:#3b6fd8;border:4px solid #fff;box-shadow:0 0 0 6px rgba(59,111,216,.25),0 2px 8px rgba(0,0,0,.3);animation:mepulse 2s infinite}
 @keyframes mepulse{0%{box-shadow:0 0 0 0 rgba(59,111,216,.45),0 2px 8px rgba(0,0,0,.3)}70%{box-shadow:0 0 0 14px rgba(59,111,216,0),0 2px 8px rgba(0,0,0,.3)}100%{box-shadow:0 0 0 0 rgba(59,111,216,0),0 2px 8px rgba(0,0,0,.3)}}
+.pop .pa{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px;margin-top:10px}.pop .pa>*{display:flex;flex-direction:column;align-items:center;gap:3px;padding:8px 2px;border-radius:12px;background:color-mix(in srgb,var(--c) 13%,transparent);color:var(--c);font:700 11.5px Vazirmatn,Tahoma;text-decoration:none;border:0;cursor:pointer}.pop .pa svg.i{width:19px;height:19px}
 .chipf{border:0;cursor:pointer;font:inherit;border-radius:14px;padding:8px 13px;background:var(--bg);box-shadow:var(--upS);color:var(--tx);display:inline-flex;align-items:center;gap:7px;font-weight:700;font-size:13px}
 .chipf i{font-style:normal;background:var(--line);border-radius:99px;padding:0 7px;font-size:11px}
 .chipf.on{box-shadow:var(--inS);color:var(--g2)}.chipf.on i{background:var(--g2);color:#fff}
@@ -1222,15 +1223,14 @@ function shopPopup(x){ const c=C().CU[x.id]||{bal:0,oldest:0,last:null}, st=cust
   <div style="margin-top:6px">بدهی: <b class="${st.cls}">${money(c.bal)}</b>${c.bal>0.5?`، ${fm(c.oldest)} روز`:''}</div>
   <div class="mu" style="font-size:12px">${c.last?'آخرین خرید: '+fd(c.last):'هنوز خرید نکرده'}${lastV?'، آخرین ویزیت: '+fd(lastV.at.slice(0,10)):''}${MYPOS?'<br>فاصله از شما: <b>'+distTxt(hav(MYPOS.lat,MYPOS.lng,x.lat,x.lng))+'</b>':''}${x.gpsAcc?'، دقت لوکیشن ~'+fm(x.gpsAcc)+' م':''}</div>
   ${x.plan&&planStatus(x).behind>0.5?`<div class="neg" style="font-size:12px">قسط عقب: ${money(planStatus(x).behind)}</div>`:''}
-  <div class="row"><button class="btn sm" onclick="receiptForm('${x.id}')">💵 دریافت</button><button class="btn sm alt" onclick="saleForm('${x.id}')">🧾 فروش</button><a class="btn sm bl" href="${gmaps(x.lat,x.lng)}" target="_blank" rel="noopener">🧭 مسیر</a></div>
-  <div class="row">${x.phone?`<a class="btn sm ghost" href="tel:${esc(x.phone)}">📞</a><a class="btn sm ghost" href="${waLink(x.phone,c.bal>0.5?remindText(x.id):'سلام')}" target="_blank" rel="noopener">💬</a>`:''}<button class="btn sm ghost" onclick="go('customer','${x.id}')">حساب</button>${can('edit')?`<button class="btn sm ghost" onclick="dragShop('${x.id}')">↔ جابجا</button>`:''}</div></div>`; }
+  <div class="pa"><button style="--c:#16a37a" onclick="receiptForm('${x.id}')">${I('cash')}دریافت پول</button><button style="--c:#13806b" onclick="saleForm('${x.id}')">${I('receipt')}بل فروش</button><a style="--c:#3b6fd8" href="${gmaps(x.lat,x.lng)}" target="_blank" rel="noopener">${I('truck')}مسیر</a>${x.phone?`<a style="--c:#8b5cf6" href="tel:${esc(x.phone)}">${I('phone')}تماس</a><a style="--c:#25b05a" href="${waLink(x.phone,c.bal>0.5?remindText(x.id):'سلام')}" target="_blank" rel="noopener">${I('wa')}واتس‌اپ</a>`:''}<button style="--c:#7d8796" onclick="go('customer','${x.id}')">${I('book')}حساب</button>${can('edit')?`<button style="--c:#f08c2e" onclick="dragShop('${x.id}')">${I('pin')}جابجا کردن</button>`:''}</div></div></div>`; }
 function drawMarkers(fit){
  document.querySelectorAll('.mapbar .chipf').forEach(b=>b.classList.toggle('on',b.dataset.f===MAPF));
  drawNear(); if(!MAP||!ML){ const el=$('#map'); if(el&&typeof L==='undefined') mapFallback(el); return; } ML.clearLayers(); MK={}; const pts=[]; let debt=0, n=0;
  for(const x of mapShops()){ if(!x.lat) continue; const c=C().CU[x.id]||{bal:0,oldest:0}, st=custSt(x.id);
   const m=L.marker([x.lat,x.lng],{icon:shopIcon(x,c,st),riseOnHover:true}).addTo(ML);
   m.bindTooltip(esc(x.name)+(c.bal>0.5?' — '+kfmt(c.bal):''),{direction:'top',permanent:true,className:'mlbl',offset:[0,-12]});
-  m.bindPopup(()=>shopPopup(x),{maxWidth:280}); MK[x.id]=m; pts.push([x.lat,x.lng]); n++; debt+=Math.max(0,c.bal); }
+  m.bindPopup(()=>shopPopup(x),{maxWidth:300,minWidth:250,autoPanPaddingTopLeft:[20,80],autoPanPaddingBottomRight:[70,20]}); MK[x.id]=m; pts.push([x.lat,x.lng]); n++; debt+=Math.max(0,c.bal); }
  const ms=$('#mstat'); if(ms) ms.innerHTML=`<b>${fm(n)}</b> دکان${debt>0.5?` — طلب <b>${kfmt(debt)}</b>`:''}`;
  if(fit&&pts.length) fitAll();
 }
