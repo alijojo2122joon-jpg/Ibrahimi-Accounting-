@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1">
-<meta name="theme-color" content="#0f5c4d">
+<meta name="theme-color" content="#e6eaef">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <title>ابراهیمی اکانتینگ</title>
@@ -11,105 +11,158 @@
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@400;600;800&display=swap">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
 <style>
-:root{--g:#0f5c4d;--g2:#13806b;--g3:#e6f2ef;--bg:#f2f5f4;--card:#fff;--tx:#18211f;--mu:#6b7a76;--red:#c0392b;--or:#d98a00;--gr:#1e8e5a;--bl:#2c5aa0;--line:#e2e8e6;--r:14px}
-*{box-sizing:border-box}
+:root{--bg:#e6eaef;--card:#e6eaef;--sd:#c3c9d2;--sl:#ffffff;--tx:#2b3340;--mu:#7d8796;--line:rgba(120,130,145,.18);
+ --g:#0f8f78;--g2:#13a389;--g3:rgba(19,163,137,.12);--red:#e5484d;--or:#f08c2e;--gr:#16a37a;--bl:#3b6fd8;--pu:#8b5cf6;
+ --acc1:#ffc24b;--acc2:#ff5a4e;--r:22px;
+ --up:7px 7px 16px var(--sd),-7px -7px 16px var(--sl);--upS:4px 4px 9px var(--sd),-4px -4px 9px var(--sl);
+ --in:inset 4px 4px 9px var(--sd),inset -4px -4px 9px var(--sl);--inS:inset 2px 2px 5px var(--sd),inset -2px -2px 5px var(--sl)}
+[data-theme=dark]{--bg:#2a2e35;--card:#2a2e35;--sd:#1b1e22;--sl:#383d46;--tx:#e9ecf1;--mu:#98a1ae;--line:rgba(255,255,255,.07);--g3:rgba(19,163,137,.16)}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 html,body{margin:0;background:var(--bg);color:var(--tx);font-family:Vazirmatn,Tahoma,sans-serif;font-size:15px}
-button,input,select,textarea{font-family:inherit;font-size:15px}
-#app{display:grid;grid-template-columns:230px minmax(0,1fr);min-height:100vh}
-#side{background:var(--g);color:#fff;position:sticky;top:0;height:100vh;overflow:auto;padding:14px 10px}
-#side .brand{font-weight:800;font-size:19px;padding:6px 10px 2px}
-#side .sub{opacity:.7;font-size:12px;padding:0 10px 14px}
-#side a{display:flex;gap:10px;align-items:center;color:#fff;text-decoration:none;padding:10px 12px;border-radius:10px;margin:2px 0;opacity:.88;cursor:pointer}
-#side a:hover{background:rgba(255,255,255,.08)}
-#side a.on{background:#fff;color:var(--g);opacity:1;font-weight:700}
-#side .qa{margin-top:14px;display:grid;gap:6px}
-#side .qa button{background:rgba(255,255,255,.12);color:#fff;border:0;border-radius:10px;padding:9px;cursor:pointer;text-align:right}
+button,input,select,textarea{font-family:inherit;font-size:15px;color:var(--tx)}
+a{color:var(--g2)}
+svg.i{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round;flex:none}
+#app{display:grid;grid-template-columns:250px minmax(0,1fr);min-height:100vh}
+#side{background:var(--bg);position:sticky;top:0;height:100vh;overflow:auto;padding:22px 16px;box-shadow:6px 0 18px var(--sd)}
+#side .brand{display:flex;align-items:center;gap:10px;font-weight:800;font-size:17px;padding:4px 6px}
+#side .logo{width:44px;height:44px;border-radius:50%;box-shadow:var(--up);display:grid;place-items:center;color:var(--g2);position:relative;flex:none}
+#side .logo:after{content:'';position:absolute;inset:-5px;border-radius:50%;border:2.5px solid transparent;border-top-color:var(--acc1);border-left-color:var(--acc2);transform:rotate(-30deg)}
+#side .sub{color:var(--mu);font-size:12px;padding:4px 6px 18px 6px;margin-right:56px;margin-top:-12px}
+#side a{display:flex;gap:12px;align-items:center;color:var(--mu);text-decoration:none;padding:11px 14px;border-radius:16px;margin:7px 0;cursor:pointer;transition:.2s}
+#side a:hover{color:var(--tx)}
+#side a.on{box-shadow:var(--in);color:var(--g2);font-weight:700}
+#side a.on:before{content:'';width:6px;height:6px;border-radius:50%;background:var(--g2);order:3;margin-right:auto;box-shadow:0 0 8px var(--g2)}
+#side .qa{margin-top:18px;display:grid;gap:10px}
+#side .qa button{background:var(--bg);color:var(--tx);border:0;border-radius:16px;padding:11px 14px;cursor:pointer;text-align:right;box-shadow:var(--upS);display:flex;align-items:center;gap:10px}
+#side .qa button svg{color:var(--g2)}
+#side .qa button:active{box-shadow:var(--inS)}
 main{min-width:0}
-#top{position:sticky;top:0;z-index:500;background:var(--card);border-bottom:1px solid var(--line);display:flex;align-items:center;gap:10px;padding:10px 16px}
-#top h1{font-size:17px;margin:0;flex:1}
-.chip{display:inline-flex;align-items:center;gap:6px;background:var(--g3);color:var(--g);border-radius:99px;padding:5px 11px;font-size:13px;font-weight:600;cursor:pointer;border:0}
-.dot{width:8px;height:8px;border-radius:50%;background:#aaa;display:inline-block}
-.dot.ok{background:var(--gr)}.dot.err{background:var(--red)}.dot.busy{background:var(--or)}
-#view{padding:16px;max-width:1200px;margin:auto;padding-bottom:110px}
+#top{position:sticky;top:0;z-index:500;background:color-mix(in srgb,var(--bg) 88%,transparent);backdrop-filter:blur(10px);display:flex;align-items:center;gap:10px;padding:12px 18px}
+#top h1{font-size:18px;margin:0;flex:1;font-weight:800}
+.chip{display:inline-flex;align-items:center;gap:7px;background:var(--bg);color:var(--tx);border-radius:99px;padding:8px 13px;font-size:13px;font-weight:600;cursor:pointer;border:0;box-shadow:var(--upS)}
+.chip:active{box-shadow:var(--inS)}
+.chip svg.i{width:17px;height:17px;color:var(--g2)}
+.dot{width:8px;height:8px;border-radius:50%;background:#a7afba;display:inline-block}
+.dot.ok{background:var(--gr);box-shadow:0 0 8px var(--gr)}.dot.err{background:var(--red);box-shadow:0 0 8px var(--red)}.dot.busy{background:var(--or)}
+#view{padding:10px 18px 18px;max-width:1240px;margin:auto;padding-bottom:120px}
 #bnav{display:none}
-.grid{display:grid;gap:12px}
+.grid{display:grid;gap:18px}
 .k4{grid-template-columns:repeat(4,minmax(0,1fr))}.k3{grid-template-columns:repeat(3,minmax(0,1fr))}.k2{grid-template-columns:repeat(2,minmax(0,1fr))}
-.card{background:var(--card);border-radius:var(--r);padding:14px;border:1px solid var(--line)}
-.card h3{margin:0 0 10px;font-size:15px;display:flex;align-items:center;gap:8px}
+.card{background:var(--card);border-radius:var(--r);padding:18px;box-shadow:var(--up)}
+.card .card{box-shadow:var(--in)}
+.card h3{margin:0 0 14px;font-size:15px;display:flex;align-items:center;gap:10px;font-weight:800}
 .card h3 .sp{flex:1}
-.kpi .l{color:var(--mu);font-size:12.5px}.kpi .v{font-size:20px;font-weight:800;margin-top:4px;direction:rtl}
+.card h3>svg.i{color:var(--g2)}
+.kpi{display:flex;gap:14px;align-items:center}
+.ic{--c:var(--g2);width:50px;height:50px;border-radius:50%;box-shadow:var(--upS);display:grid;place-items:center;color:var(--c);position:relative;flex:none;margin:5px}
+.ic:after{content:'';position:absolute;inset:-6px;border-radius:50%;border:2.5px solid transparent;border-top-color:var(--c);border-right-color:var(--c);opacity:.85;transform:rotate(-25deg)}
+.ic svg.i{width:22px;height:22px}
+.kt{min-width:0}
+.kpi .l{color:var(--mu);font-size:12.5px}.kpi .v{font-size:19px;font-weight:800;margin-top:3px;white-space:nowrap}
 .kpi .s{font-size:12px;color:var(--mu);margin-top:2px}
 .pos{color:var(--gr)}.neg{color:var(--red)}.warn{color:var(--or)}.mu{color:var(--mu)}
-.btn{background:var(--g2);color:#fff;border:0;border-radius:10px;padding:10px 14px;cursor:pointer;font-weight:600;display:inline-flex;align-items:center;gap:6px;justify-content:center}
-.btn.alt{background:var(--g3);color:var(--g)}.btn.red{background:var(--red)}.btn.bl{background:var(--bl)}.btn.or{background:var(--or)}.btn.sm{padding:6px 10px;font-size:13px}.btn.ghost{background:transparent;color:var(--g);border:1px solid var(--line)}
+.btn{--c:var(--g2);background:linear-gradient(145deg,color-mix(in srgb,var(--c) 88%,#fff),var(--c));color:#fff;border:0;border-radius:14px;padding:11px 16px;cursor:pointer;font-weight:700;display:inline-flex;align-items:center;gap:7px;justify-content:center;box-shadow:4px 4px 10px var(--sd),-4px -4px 10px var(--sl);text-decoration:none;transition:.15s}
+.hm{}
+.btn:active{transform:scale(.97);box-shadow:var(--inS)}
+.btn.alt,.btn.ghost{background:var(--bg);color:var(--g2)}
+.btn.red{--c:var(--red)}.btn.bl{--c:var(--bl)}.btn.or{--c:var(--or)}
+.btn.sm{padding:7px 12px;font-size:13px;border-radius:12px}
 .btn:disabled{opacity:.5}
-.row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
 .tbl{width:100%;border-collapse:collapse;font-size:14px}
-.tbl th{text-align:right;color:var(--mu);font-weight:600;font-size:12.5px;border-bottom:1px solid var(--line);padding:8px 6px;white-space:nowrap}
-.tbl td{border-bottom:1px solid var(--line);padding:9px 6px;vertical-align:top}
-.tbl tr.click{cursor:pointer}.tbl tr.click:hover td{background:#f7faf9}
+.tbl th{text-align:right;color:var(--mu);font-weight:600;font-size:12.5px;border-bottom:1px solid var(--line);padding:9px 8px;white-space:nowrap}
+.tbl td{border-bottom:1px solid var(--line);padding:10px 8px;vertical-align:top}
+.tbl tr.click{cursor:pointer}.tbl tr.click:hover td{background:var(--g3)}
 .tbl .n{text-align:left;white-space:nowrap;direction:ltr}
-.tbl tfoot td{font-weight:800;border-top:2px solid var(--tx)}
+.tbl tfoot td{font-weight:800;border-top:2px solid var(--mu)}
 .tw{overflow-x:auto}
-.badge{display:inline-block;border-radius:99px;padding:2px 9px;font-size:12px;font-weight:600;color:#fff;white-space:nowrap}
-.list .it{display:flex;gap:10px;align-items:center;padding:11px 4px;border-bottom:1px solid var(--line);cursor:pointer}
-.list .it:last-child{border:0}
+.badge{--c:#888;display:inline-flex;align-items:center;gap:6px;border-radius:99px;padding:4px 10px;font-size:12px;font-weight:700;color:var(--c);white-space:nowrap;background:color-mix(in srgb,var(--c) 14%,transparent)}
+.badge:before{content:'';width:7px;height:7px;border-radius:50%;background:var(--c)}
+.list .it{display:flex;gap:12px;align-items:center;padding:10px 12px;margin:0 0 10px;border-radius:18px;cursor:pointer;box-shadow:var(--upS);transition:.15s}
+.list .it:active{box-shadow:var(--inS)}
 .list .it .m{flex:1;min-width:0}.list .it .t{font-weight:700}.list .it .d{font-size:12.5px;color:var(--mu);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .list .it .a{text-align:left;font-weight:800;white-space:nowrap}
-.av{width:38px;height:38px;border-radius:12px;display:grid;place-items:center;font-weight:800;color:#fff;flex:none}
-input.in,select.in,textarea.in{width:100%;padding:10px 11px;border:1px solid #cfd8d5;border-radius:10px;background:#fff;color:var(--tx)}
-input.in:focus,select.in:focus,textarea.in:focus{outline:2px solid var(--g2);border-color:transparent}
-.fl{display:block;margin-bottom:10px}.fl>span{display:block;font-size:12.5px;color:var(--mu);margin-bottom:4px;font-weight:600}
-.f2{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:10px}
-.tabs{display:flex;gap:6px;overflow-x:auto;margin-bottom:12px;padding-bottom:4px}
-.tabs button{border:1px solid var(--line);background:#fff;border-radius:99px;padding:7px 14px;white-space:nowrap;cursor:pointer}
-.tabs button.on{background:var(--g);color:#fff;border-color:var(--g)}
-#modal{position:fixed;inset:0;background:rgba(10,25,20,.45);z-index:2000;display:flex;align-items:center;justify-content:center}
+.av{--c:var(--g2);width:40px;height:40px;border-radius:50%;display:grid;place-items:center;font-weight:800;color:var(--c);flex:none;box-shadow:var(--upS);position:relative;margin:3px}
+.av:after{content:'';position:absolute;inset:-4px;border-radius:50%;border:2px solid transparent;border-top-color:var(--c);border-left-color:var(--c);transform:rotate(20deg)}
+input.in,select.in,textarea.in{width:100%;padding:12px 14px;border:0;border-radius:14px;background:var(--bg);box-shadow:var(--in)}
+input.in:focus,select.in:focus,textarea.in:focus{outline:2px solid color-mix(in srgb,var(--g2) 55%,transparent)}
+.fl{display:block;margin-bottom:12px}.fl>span{display:block;font-size:12.5px;color:var(--mu);margin-bottom:6px;font-weight:600}
+.f2{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:12px}
+.tabs{display:flex;gap:10px;overflow-x:auto;margin-bottom:16px;padding:6px 6px 10px}
+.tabs button{border:0;background:var(--bg);border-radius:99px;padding:8px 16px;white-space:nowrap;cursor:pointer;box-shadow:var(--upS);color:var(--mu)}
+.tabs button.on{box-shadow:var(--inS);color:var(--g2);font-weight:700}
+.tabs select.in{padding:8px 12px}
+#modal{position:fixed;inset:0;background:rgba(30,36,45,.35);backdrop-filter:blur(3px);z-index:2000;display:flex;align-items:center;justify-content:center}
 #modal.hide{display:none}
-.sheet{background:#fff;border-radius:18px;width:min(680px,96vw);max-height:92vh;display:flex;flex-direction:column}
-.sh-head{display:flex;align-items:center;padding:14px 16px;border-bottom:1px solid var(--line)}
-.sh-head b{flex:1;font-size:16px}.sh-head button{border:0;background:var(--bg);border-radius:10px;width:34px;height:34px;cursor:pointer;font-size:16px}
-#mBody{padding:16px;overflow:auto}
-.irow{display:grid;grid-template-columns:1fr 80px 100px 90px 30px;gap:6px;align-items:center;margin-bottom:6px}
-.irow.adj{grid-template-columns:1fr 100px 90px 30px}
-.irow select,.irow input{padding:9px 8px;border:1px solid #cfd8d5;border-radius:9px;width:100%;min-width:0;background:#fff}
+.sheet{background:var(--bg);border-radius:26px;width:min(700px,96vw);max-height:92vh;display:flex;flex-direction:column;box-shadow:12px 12px 30px rgba(0,0,0,.25)}
+.sh-head{display:flex;align-items:center;padding:16px 18px}
+.sh-head b{flex:1;font-size:16px}.sh-head button{border:0;background:var(--bg);border-radius:50%;width:38px;height:38px;cursor:pointer;font-size:15px;box-shadow:var(--upS)}
+#mBody{padding:6px 18px 20px;overflow:auto}
+.irow{display:grid;grid-template-columns:1fr 80px 100px 90px 34px;gap:8px;align-items:center;margin-bottom:10px}
+.irow.adj{grid-template-columns:1fr 100px 90px 34px}
+.irow select,.irow input{padding:10px;border:0;border-radius:12px;width:100%;min-width:0;background:var(--bg);box-shadow:var(--inS)}
 .irow .ilt{font-size:12.5px;text-align:left;font-weight:700;direction:ltr}
-.irow .x{border:0;background:#fbeaea;color:var(--red);border-radius:8px;height:34px;cursor:pointer}
-.sum{background:var(--bg);border-radius:12px;padding:10px 12px;margin:10px 0}
-.sum div{display:flex;justify-content:space-between;padding:3px 0}.sum .big{font-weight:800;font-size:16px;border-top:1px dashed #bbb;margin-top:4px;padding-top:6px}
-#toast{position:fixed;bottom:90px;left:50%;transform:translateX(-50%);background:#1b2a26;color:#fff;padding:10px 18px;border-radius:12px;z-index:3000;opacity:0;transition:.25s;pointer-events:none;max-width:90vw;text-align:center}
+.irow .x{border:0;background:var(--bg);color:var(--red);border-radius:50%;height:34px;width:34px;cursor:pointer;box-shadow:var(--upS)}
+.sum{border-radius:18px;padding:12px 16px;margin:12px 0;box-shadow:var(--in)}
+.sum div{display:flex;justify-content:space-between;padding:3px 0}.sum .big{font-weight:800;font-size:16px;border-top:1px dashed var(--mu);margin-top:5px;padding-top:7px}
+#toast{position:fixed;bottom:100px;left:50%;transform:translateX(-50%);background:var(--tx);color:var(--bg);padding:11px 20px;border-radius:16px;z-index:3000;opacity:0;transition:.25s;pointer-events:none;max-width:90vw;text-align:center;font-weight:600}
 #toast.on{opacity:1}
-#map{height:62vh;border-radius:var(--r);border:1px solid var(--line);background:#e8eeec;z-index:1}
-.mapbar{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px}
-.leaflet-popup-content{font-family:Vazirmatn,Tahoma;direction:rtl;text-align:right;min-width:190px}
-.pop b{font-size:15px}.pop .row{margin-top:8px}
-.aging{display:flex;height:12px;border-radius:99px;overflow:hidden;background:var(--line);margin:6px 0}
+#map{height:62vh;border-radius:var(--r);box-shadow:var(--in);background:var(--bg);z-index:1;border:6px solid var(--bg)}
+.mapbar{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:14px}
+.leaflet-popup-content{font-family:Vazirmatn,Tahoma;direction:rtl;text-align:right;min-width:200px}
+.leaflet-popup-content-wrapper{border-radius:18px}
+.pop b{font-size:15px}.pop .row{margin-top:8px;gap:6px}.pop .btn{box-shadow:none}
+.aging{display:flex;height:12px;border-radius:99px;overflow:hidden;box-shadow:var(--inS);margin:10px 0 6px}
 .aging i{display:block;height:100%}
 .empty{padding:28px;text-align:center;color:var(--mu)}
 .gps{font-size:12.5px;color:var(--mu)}
-.hint{font-size:12.5px;color:var(--mu);line-height:1.8}
-pre.code{direction:ltr;text-align:left;background:#10201c;color:#bfe;padding:12px;border-radius:10px;overflow:auto;font-size:12px;white-space:pre}
-.fab{display:none}
+.hint{font-size:12.5px;color:var(--mu);line-height:1.9}
+pre.code{direction:ltr;text-align:left;background:#1e2229;color:#bfe;padding:12px;border-radius:14px;overflow:auto;font-size:12px;white-space:pre}
+details summary{cursor:pointer}
+/* hero ring */
+.hero{display:grid;grid-template-columns:260px 1fr;gap:22px;align-items:center}
+.ring{position:relative;width:230px;height:230px;margin:auto;border-radius:50%;box-shadow:var(--up)}
+.ring svg{position:absolute;inset:0;width:100%;height:100%;transform:rotate(-90deg)}
+.ring .in{position:absolute;inset:40px;border-radius:50%;box-shadow:var(--up);display:grid;place-items:center;text-align:center;align-content:center}
+.ring .in b{font-size:34px;font-weight:800;line-height:1}
+.ring .in b small{font-size:18px}
+.ring .in span{font-size:12px;color:var(--mu);margin-top:6px;max-width:120px}
+.hrows{display:grid;gap:12px}
+.hrow{display:flex;align-items:center;gap:14px;padding:10px 14px 10px 18px;border-radius:99px;box-shadow:var(--upS);cursor:pointer}
+.hrow:active{box-shadow:var(--inS)}
+.hrow .ic{width:42px;height:42px;margin:4px}.hrow .ic:after{inset:-5px}
+.hrow .m{flex:1;min-width:0}.hrow .m div{font-size:12.5px;color:var(--mu)}
+.hrow .v{font-weight:800;font-size:17px;white-space:nowrap}
+.steps{display:flex;align-items:center;gap:0;margin:4px 0 14px;overflow-x:auto;padding:10px 4px}
 @media (max-width:860px){
  #app{grid-template-columns:minmax(0,1fr)}
  #side{display:none}
- #view{padding:12px;padding-bottom:110px}
+ #top{padding:12px 14px}
+ #view{padding:8px 14px;padding-bottom:120px}
+ .grid{gap:14px}
  .k4{grid-template-columns:repeat(2,minmax(0,1fr))}.k3{grid-template-columns:repeat(2,minmax(0,1fr))}
- .kpi .v{font-size:17px}
  .k2{grid-template-columns:minmax(0,1fr)}
- #bnav{display:flex;position:fixed;bottom:0;left:0;right:0;background:#fff;border-top:1px solid var(--line);z-index:900;padding:6px 4px calc(6px + env(safe-area-inset-bottom))}
- #bnav a{flex:1;text-align:center;font-size:11px;color:var(--mu);text-decoration:none;cursor:pointer;padding:4px 0}
- #bnav a i{display:block;font-style:normal;font-size:20px}
- #bnav a.on{color:var(--g);font-weight:700}
- #bnav a.plus i{background:var(--g2);color:#fff;width:48px;height:48px;border-radius:16px;display:grid;place-items:center;margin:-22px auto 2px;font-size:28px;box-shadow:0 4px 12px rgba(0,0,0,.2)}
- .irow{grid-template-columns:1fr 64px 80px 26px}.irow .ilt{display:none}
- .irow.adj{grid-template-columns:1fr 80px 26px}
- .sheet{width:100vw;max-height:94vh;border-radius:18px 18px 0 0;position:fixed;bottom:0}
+ .card{padding:15px;border-radius:20px}
+ .kpi{flex-direction:column;align-items:flex-start;gap:8px}
+ .kpi .v{font-size:16px}
+ .ic{width:42px;height:42px}
+ .hero{grid-template-columns:1fr}
+ .ring{width:210px;height:210px}
+ #bnav{display:flex;position:fixed;bottom:0;left:0;right:0;background:var(--bg);z-index:900;padding:8px 6px calc(8px + env(safe-area-inset-bottom));box-shadow:0 -6px 16px var(--sd)}
+ #bnav a{flex:1;text-align:center;font-size:11px;color:var(--mu);text-decoration:none;cursor:pointer;padding:2px 0;display:flex;flex-direction:column;align-items:center;gap:3px}
+ #bnav a b{width:40px;height:40px;border-radius:50%;display:grid;place-items:center}
+ #bnav a.on{color:var(--g2);font-weight:700}
+ #bnav a.on b{box-shadow:var(--inS)}
+ #bnav a.plus b{width:58px;height:58px;margin-top:-30px;color:#fff;background:linear-gradient(145deg,#1bc3a4,#0f8f78);box-shadow:5px 5px 12px var(--sd),-5px -5px 12px var(--sl);position:relative}
+ #bnav a.plus b:after{content:'';position:absolute;inset:-7px;border-radius:50%;border:3px solid transparent;border-top-color:var(--acc1);border-left-color:var(--acc2);transform:rotate(-20deg)}
+ #bnav a.plus svg.i{width:28px;height:28px;stroke-width:2.4}
+ .irow{grid-template-columns:1fr 64px 80px 30px}.irow .ilt{display:none}
+ .irow.adj{grid-template-columns:1fr 80px 30px}
+ .sheet{width:100vw;max-height:94vh;border-radius:26px 26px 0 0;position:fixed;bottom:0}
  #modal{align-items:flex-end}
- .f2{grid-template-columns:1fr 1fr}
  #map{height:55vh}
 }
-@media print{#side,#bnav,#top,.noprint{display:none!important}#app{display:block}}
+@media print{#side,#bnav,#top,.noprint{display:none!important}#app{display:block}.card{box-shadow:none;border:1px solid #ccc}}
 </style>
 </head>
 <body>
@@ -131,7 +184,7 @@ pre.code{direction:ltr;text-align:left;background:#10201c;color:#bfe;padding:12p
 <script id="engine">
 'use strict';
 const LS = 'ebrahimi_acc_v1';
-const VERSION = '1.0';
+const VERSION = '1.1';
 
 /* ---- Chart of accounts (کدینگ حساب‌ها) ----
    nature: A=asset (debit), L=liability (credit), E=equity (credit), E-=contra equity (debit),
@@ -409,21 +462,54 @@ function waLink(phone,text){ let p=String(phone||'').replace(/[^\d۰-۹]/g,'').r
 const gmaps=(lat,lng)=>`https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}`;
 
 /* ---------- navigation ---------- */
-const NAV=[['dash','🏠','داشبورد'],['map','🗺️','نقشهٔ دکان‌ها'],['customers','🏪','مشتریان (دکان‌ها)'],['products','📦','اجناس و گدام'],['suppliers','🚚','عمده‌فروش‌ها'],['txns','📒','دفتر معاملات'],['reports','📊','گزارش‌های مالی'],['settings','⚙️','تنظیمات و پشتیبان']];
+const IC={
+home:'M3 11l9-8 9 8v9a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z',
+map:'M9 3 3 6v15l6-3 6 3 6-3V3l-6 3-6-3zM9 3v15M15 6v15',
+shop:'M3 9l1.6-5h14.8L21 9M3 9v11h18V9M3 9h18M9 20v-6h6v6',
+box:'M21 8 12 3 3 8v8l9 5 9-5zM3 8l9 5 9-5M12 13v8',
+truck:'M1 5h13v11H1zM14 9h4l4 4v3h-8M5.5 20a2 2 0 1 0 0-4 2 2 0 0 0 0 4zM17.5 20a2 2 0 1 0 0-4 2 2 0 0 0 0 4z',
+book:'M4 4h11a3 3 0 0 1 3 3v13H7a3 3 0 0 1-3-3zM4 17a3 3 0 0 1 3-3h11',
+chart:'M4 20V11M10 20V5M16 20v-7M21 20H3',
+gear:'M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6zM19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z',
+wallet:'M3 7h16a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h12v4M16.5 13.5h.01',
+in:'M12 3v12M7 10l5 5 5-5M4 21h16',
+out:'M12 21V9M7 14l5-5 5 5M4 3h16',
+receipt:'M5 3h14v18l-3-2-2 2-2-2-2 2-2-2-3 2zM9 8h6M9 12h6M9 16h3',
+cash:'M2 7h20v10H2zM12 14.5a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5zM6 10v4M18 10v4',
+trend:'M3 17l6-6 4 4 8-8M15 7h6v6',
+bank:'M3 10l9-6 9 6M5 10v8M9.5 10v8M14.5 10v8M19 10v8M3 21h18',
+plus:'M12 5v14M5 12h14',
+menu:'M4 6h16M4 12h16M4 18h16',
+user:'M20 21a8 8 0 0 0-16 0M12 13a5 5 0 1 0 0-10 5 5 0 0 0 0 10z',
+moon:'M21 12.8A9 9 0 1 1 11.2 3 7 7 0 0 0 21 12.8z',
+sun:'M12 17a5 5 0 1 0 0-10 5 5 0 0 0 0 10zM12 1v2M12 21v2M4.2 4.2l1.4 1.4M18.4 18.4l1.4 1.4M1 12h2M21 12h2M4.2 19.8l1.4-1.4M18.4 5.6l1.4-1.4',
+pin:'M12 21s-7-6.2-7-12a7 7 0 0 1 14 0c0 5.8-7 12-7 12zM12 11.5a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5z',
+clock:'M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM12 7v5l3 2',
+alert:'M12 3 2 20h20zM12 10v4M12 17h.01',
+fuel:'M3 21V5a2 2 0 0 1 2-2h7a2 2 0 0 1 2 2v16M2 21h13M3 10h11M14 8h2a2 2 0 0 1 2 2v7a1.5 1.5 0 0 0 3 0V8l-3-3',
+cart:'M3 3h2l2.5 12h11L21 7H6.2M9 20.5h.01M18 20.5h.01',
+chev:'M15 18l-6-6 6-6',
+sync:'M21 12a9 9 0 0 1-15.5 6.2L3 16M3 12a9 9 0 0 1 15.5-6.2L21 8M21 3v5h-5M3 21v-5h5'};
+const I=(n,cls='')=>`<svg class="i ${cls}" viewBox="0 0 24 24"><path d="${IC[n]||''}"/></svg>`;
+const kpi=(ic,c,l,v,s,cls='',on='')=>`<div class="card kpi" ${on?`style="cursor:pointer" onclick="${on}"`:''}><div class="ic" style="--c:${c}">${I(ic)}</div><div class="kt"><div class="l">${l}</div><div class="v ${cls}">${v}</div><div class="s">${s}</div></div></div>`;
+function setTheme(t){ META.theme=t; persist(); document.documentElement.dataset.theme=t; const m=document.querySelector('meta[name=theme-color]'); if(m) m.content=t==='dark'?'#2a2e35':'#e6eaef'; drawTop(); }
+const NAV=[['dash','home','داشبورد'],['map','map','نقشهٔ دکان‌ها'],['customers','shop','مشتریان (دکان‌ها)'],['products','box','اجناس و گدام'],['suppliers','truck','عمده‌فروش‌ها'],['txns','book','دفتر معاملات'],['reports','chart','گزارش‌های مالی'],['settings','gear','تنظیمات و پشتیبان']];
 let R={v:'dash',id:null,tab:null};
 function go(v,id){ R={v,id:id||null,tab:null}; if(location.hash!=='#'+v) history.replaceState(null,'','#'+v); render(); window.scrollTo(0,0); }
 function drawSide(){
- $('#side').innerHTML=`<div class="brand">📘 ${esc(DB.settings.biz||'ابراهیمی اکانتینگ')}</div><div class="sub">سیستم حسابداری توزیع عمده</div>`+
- NAV.map(n=>`<a class="${R.v===n[0]||(R.v==='customer'&&n[0]==='customers')||(R.v==='supplier'&&n[0]==='suppliers')?'on':''}" onclick="go('${n[0]}')">${n[1]} ${n[2]}</a>`).join('')+
- `<div class="qa"><button onclick="saleForm()">➕ فروش جدید</button><button onclick="receiptForm()">💵 دریافت پول</button><button onclick="purchaseForm()">🛒 خرید از عمده‌فروش</button><button onclick="expenseForm()">⛽ ثبت مصرف</button></div>`;
- $('#bnav').innerHTML=`<a class="${R.v==='dash'?'on':''}" onclick="go('dash')"><i>🏠</i>خانه</a><a class="${R.v==='map'?'on':''}" onclick="go('map')"><i>🗺️</i>نقشه</a><a class="plus" onclick="quickMenu()"><i>＋</i>ثبت</a><a class="${['customers','customer'].includes(R.v)?'on':''}" onclick="go('customers')"><i>🏪</i>دکان‌ها</a><a class="${['products','suppliers','txns','reports','settings','supplier','more'].includes(R.v)?'on':''}" onclick="go('more')"><i>☰</i>بیشتر</a>`;
+ $('#side').innerHTML=`<div class="brand"><div class="logo">${I('book')}</div><div>${esc(DB.settings.biz||'ابراهیمی اکانتینگ')}</div></div><div class="sub">حسابداری توزیع عمده</div>`+
+ NAV.map(n=>`<a class="${R.v===n[0]||(R.v==='customer'&&n[0]==='customers')||(R.v==='supplier'&&n[0]==='suppliers')?'on':''}" onclick="go('${n[0]}')">${I(n[1])}<span>${n[2]}</span></a>`).join('')+
+ `<div class="qa"><button onclick="saleForm()">${I('receipt')} فروش جدید</button><button onclick="receiptForm()">${I('cash')} دریافت پول</button><button onclick="purchaseForm()">${I('cart')} خرید از عمده‌فروش</button><button onclick="expenseForm()">${I('fuel')} ثبت مصرف</button></div>`;
+ const B=(v,ic,l,on)=>`<a class="${on?'on':''}" onclick="go('${v}')"><b>${I(ic)}</b>${l}</a>`;
+ $('#bnav').innerHTML=B('dash','home','خانه',R.v==='dash')+B('map','map','نقشه',R.v==='map')+`<a class="plus" onclick="quickMenu()"><b>${I('plus')}</b>ثبت</a>`+B('customers','shop','دکان‌ها',['customers','customer'].includes(R.v))+B('more','menu','بیشتر',['products','suppliers','txns','reports','settings','supplier','more'].includes(R.v));
 }
 function drawTop(){
  const st={off:['','همگام‌سازی خاموش'],ok:['ok','همگام شد'],err:['err','خطای همگام‌سازی'],busy:['busy','در حال همگام‌سازی…']}[syncState]||['',''];
- const pend=META.dirty.length;
+ const pend=META.dirty.length, dark=META.theme==='dark';
  $('#top').innerHTML=`<h1>${esc((NAV.find(n=>n[0]===R.v)||['','',R.v==='customer'?'حساب دکان':R.v==='supplier'?'حساب عمده‌فروش':'بیشتر'])[2])}</h1>
- <button class="chip" onclick="go('settings')" title="${st[1]}"><span class="dot ${st[0]}"></span>${META.sync.url?(pend?fm(pend)+' ثبت در انتظار':st[1]):'فقط همین دستگاه'}</button>
- <button class="chip" onclick="userMenu()">👤 ${esc(META.user)}</button>`;
+ <button class="chip" onclick="go('settings')" title="${st[1]}"><span class="dot ${st[0]}"></span><span class="hm">${META.sync.url?(pend?fm(pend)+' در انتظار':st[1]):'همین دستگاه'}</span></button>
+ <button class="chip" onclick="setTheme('${dark?'light':'dark'}')" title="حالت شب/روز">${I(dark?'sun':'moon')}</button>
+ <button class="chip" onclick="userMenu()">${I('user')} ${esc(META.user)}</button>`;
 }
 function render(){
  drawSide(); drawTop();
@@ -440,8 +526,8 @@ function openModal(title,html){ $('#mTitle').textContent=title; $('#mBody').inne
 function closeModal(){ $('#modal').classList.add('hide'); $('#mBody').innerHTML=''; F={}; }
 function quickMenu(){
  openModal('ثبت سریع',`<div class="grid k2">
- <button class="btn" onclick="saleForm()">🧾 فروش به دکان</button><button class="btn" style="background:var(--gr)" onclick="receiptForm()">💵 دریافت پول</button>
- <button class="btn bl" onclick="purchaseForm()">🛒 خرید عمده</button><button class="btn" style="background:#8e44ad" onclick="paymentForm()">💸 پرداخت به عمده‌فروش</button>
+ <button class="btn" onclick="saleForm()">🧾 فروش به دکان</button><button class="btn" style="--c:var(--gr)" onclick="receiptForm()">💵 دریافت پول</button>
+ <button class="btn bl" onclick="purchaseForm()">🛒 خرید عمده</button><button class="btn" style="--c:#8b5cf6" onclick="paymentForm()">💸 پرداخت به عمده‌فروش</button>
  <button class="btn red" onclick="expenseForm()">⛽ مصرف (تیل، کرایه…)</button><button class="btn or" onclick="adjustForm()">📦 اصلاح موجودی</button>
  <button class="btn alt" onclick="returnForm('sreturn')">↩️ مرجوعی از دکان</button><button class="btn alt" onclick="returnForm('preturn')">↪️ مرجوعی به عمده‌فروش</button>
  <button class="btn alt" onclick="cashForm('capital')">🏦 آوردن سرمایه</button><button class="btn alt" onclick="cashForm('drawing')">🏠 برداشت مالک</button>
@@ -453,7 +539,8 @@ function userMenu(){
  (DB.settings.users||[]).map(u=>`<button class="btn ${u===META.user?'':'alt'}" onclick="META.user='${esc(u).replace(/'/g,'')}';persist();closeModal();render()">👤 ${esc(u)}</button>`).join('')+`</div>`);
 }
 function viewMore(){
- return `<div class="card list">`+NAV.slice(3).map(n=>`<div class="it" onclick="go('${n[0]}')"><div class="av" style="background:var(--g3);font-size:20px">${n[1]}</div><div class="m"><div class="t">${n[2]}</div></div><div>‹</div></div>`).join('')+`</div>`;
+ const col=['#f08c2e','#3b6fd8','#8b5cf6','#13a389','#e5484d'];
+ return `<div class="list">`+NAV.slice(3).map((n,i)=>`<div class="it" onclick="go('${n[0]}')"><div class="ic" style="--c:${col[i]}">${I(n[1])}</div><div class="m"><div class="t">${n[2]}</div></div>${I('chev')}</div>`).join('')+`</div>`;
 }
 
 /* ---------- dashboard ---------- */
@@ -469,30 +556,41 @@ function viewDash(){
  const low=DB.products.filter(p=>!p.deleted&&num(p.minQty)>0&&(c.P[p.id]||{qty:0}).qty<=num(p.minQty));
  const recent=DB.txns.filter(t=>!t.void).sort((a,b)=>(b.date+b.createdAt).localeCompare(a.date+a.createdAt)).slice(0,8);
  const old=debtors.filter(x=>c.CU[x.id].oldest>30).length;
+ const recv30=DB.txns.filter(t=>!t.void&&t.date>=addDays(td,-29)&&t.date<=td).reduce((s,t)=>s+(t.type==='receipt'?num(t.amount):t.type==='sale'?num(t.paid):0),0);
+ const rate=p30.netSales>0?Math.min(100,recv30/p30.netSales*100):0;
  return `
- ${DB.txns.length===0&&DB.customers.length===0?`<div class="card" style="margin-bottom:12px;background:#fffbe9;border-color:#f1dc8b"><b>👋 خوش آمدید!</b><div class="hint">۱) در «اجناس» اجناس‌تان را با موجودی فعلی ثبت کنید. ۲) در «دکان‌ها» مشتریان و طلب قبلی‌شان را بنویسید. ۳) با دکمهٔ «＋» فروش، خرید و دریافت پول را ثبت کنید. برای امتحان می‌توانید از تنظیمات «دادهٔ آزمایشی» را بارگذاری کنید.</div></div>`:''}
- <div class="grid k4">
-  <div class="card kpi"><div class="l">💰 صندوق نقدی</div><div class="v">${money(cash)}</div><div class="s">بانک/حواله: ${money(bank)}</div></div>
-  <div class="card kpi" style="cursor:pointer" onclick="R={v:'reports',tab:'aging'};render()"><div class="l">📥 طلب از دکان‌ها</div><div class="v warn">${money(ar)}</div><div class="s">${fm(debtors.length)} دکان بدهکار${old?` — <span class="neg">${fm(old)} بیش از ۳۰ روز</span>`:''}</div></div>
-  <div class="card kpi" style="cursor:pointer" onclick="go('suppliers')"><div class="l">📤 قرض به عمده‌فروش‌ها</div><div class="v neg">${money(ap)}</div><div class="s">${fm(DB.suppliers.filter(s=>(c.SU[s.id]||{}).bal>0.5).length)} طلبکار</div></div>
-  <div class="card kpi" style="cursor:pointer" onclick="go('products')"><div class="l">📦 ارزش جنس در هنگر</div><div class="v">${money(inv)}</div><div class="s">${low.length?`<span class="neg">${fm(low.length)} جنس کم‌موجود</span>`:'موجودی سالم'}</div></div>
-  <div class="card kpi"><div class="l">🧾 فروش امروز</div><div class="v">${money(salesT)}</div><div class="s">${fd(td)}</div></div>
-  <div class="card kpi"><div class="l">💵 پول جمع‌شدهٔ امروز</div><div class="v pos">${money(recvT)}</div><div class="s">نقد فروش + دریافت طلب</div></div>
-  <div class="card kpi" style="cursor:pointer" onclick="R={v:'reports',tab:'pnl'};render()"><div class="l">📈 سود خالص ۳۰ روز</div><div class="v ${p30.net>=0?'pos':'neg'}">${money(p30.net)}</div><div class="s">حاشیهٔ سود ناخالص ${fm(p30.margin)}٪</div></div>
-  <div class="card kpi"><div class="l">🏦 ارزش خالص کسب‌وکار</div><div class="v">${money(cash+bank+ar+inv+(S['1500']||0)-ap+(S['2200']||0))}</div><div class="s">دارایی منهای قرض</div></div>
+ ${DB.txns.length===0&&DB.customers.length===0?`<div class="card" style="margin-bottom:18px"><b>👋 خوش آمدید!</b><div class="hint">۱) در «اجناس» اجناس‌تان را با موجودی فعلی ثبت کنید. ۲) در «دکان‌ها» مشتریان و طلب قبلی‌شان را بنویسید. ۳) با دکمهٔ «＋» فروش، خرید و دریافت پول را ثبت کنید. برای امتحان می‌توانید از تنظیمات «دادهٔ آزمایشی» را بارگذاری کنید.</div></div>`:''}
+ <div class="card hero">
+  <div class="ring"><svg viewBox="0 0 200 200"><defs><linearGradient id="rg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#ffc24b"/><stop offset="1" stop-color="#ff5a4e"/></linearGradient></defs>
+   <circle cx="100" cy="100" r="84" fill="none" stroke="var(--line)" stroke-width="12"/>
+   <circle cx="100" cy="100" r="84" fill="none" stroke="url(#rg)" stroke-width="12" stroke-linecap="round" stroke-dasharray="${(rate/100*527.8).toFixed(1)} 528"/></svg>
+   <div class="in"><b>${fm(Math.round(rate))}<small>٪</small></b><span>وصول پول در ۳۰ روز<br>${money(recv30)} از ${money(p30.netSales)}</span></div></div>
+  <div class="hrows">
+   <div class="hrow" onclick="R={v:'reports',tab:'daily'};render()"><div class="ic" style="--c:#13a389">${I('wallet')}</div><div class="m"><b>صندوق نقدی</b><div>بانک/حواله: ${money(bank)}</div></div><div class="v">${money(cash)}</div></div>
+   <div class="hrow" onclick="R={v:'reports',tab:'aging'};render()"><div class="ic" style="--c:#f08c2e">${I('in')}</div><div class="m"><b>طلب از دکان‌ها</b><div>${fm(debtors.length)} دکان بدهکار${old?` · <span class="neg">${fm(old)} بیش از ۳۰ روز</span>`:''}</div></div><div class="v warn">${money(ar)}</div></div>
+   <div class="hrow" onclick="go('suppliers')"><div class="ic" style="--c:#e5484d">${I('out')}</div><div class="m"><b>قرض به عمده‌فروش‌ها</b><div>${fm(DB.suppliers.filter(s=>(c.SU[s.id]||{}).bal>0.5).length)} طلبکار</div></div><div class="v neg">${money(ap)}</div></div>
+   <div class="hrow" onclick="go('products')"><div class="ic" style="--c:#3b6fd8">${I('box')}</div><div class="m"><b>ارزش جنس در هنگر</b><div>${low.length?`<span class="neg">${fm(low.length)} جنس کم‌موجود</span>`:'موجودی سالم'}</div></div><div class="v">${money(inv)}</div></div>
+   <div class="hrow" onclick="R={v:'reports',tab:'pnl'};render()"><div class="ic" style="--c:#8b5cf6">${I('trend')}</div><div class="m"><b>سود خالص ۳۰ روز</b><div>حاشیهٔ سود ناخالص ${fm(p30.margin)}٪</div></div><div class="v ${p30.net>=0?'pos':'neg'}">${money(p30.net)}</div></div>
+  </div>
  </div>
- <div class="grid k2" style="margin-top:12px">
-  <div class="card"><h3>🔴 بیشترین طلب‌ها<span class="sp"></span><button class="btn sm alt" onclick="go('map')">🗺️ روی نقشه</button></h3><div class="list">
+ <div class="grid k4" style="margin-top:18px">
+  ${kpi('receipt','#13a389','فروش امروز',money(salesT),fd(td))}
+  ${kpi('cash','#16a37a','پول جمع‌شدهٔ امروز',money(recvT),'نقد فروش + دریافت طلب','pos')}
+  ${kpi('bank','#3b6fd8','ارزش خالص کسب‌وکار',money(cash+bank+ar+inv+(S['1500']||0)-ap+(S['2200']||0)),'دارایی منهای قرض')}
+  ${kpi('fuel','#e5484d','مصارف ۳۰ روز',money(p30.totalExp),'تیل، کرایه، معاش…','neg',"R={v:'reports',tab:'pnl'};render()")}
+ </div>
+ <div class="grid k2" style="margin-top:18px">
+  <div class="card"><h3>${I('alert')} بیشترین طلب‌ها<span class="sp"></span><button class="btn sm alt" onclick="go('map')">🗺️ روی نقشه</button></h3><div class="list">
    ${debtors.slice(0,7).map(x=>custItem(x)).join('')||'<div class="empty">هیچ دکانی بدهکار نیست 🎉</div>'}</div></div>
-  <div class="card"><h3>🕘 آخرین ثبت‌ها<span class="sp"></span><button class="btn sm alt" onclick="go('txns')">همه</button></h3><div class="list">
+  <div class="card"><h3>${I('clock')} آخرین ثبت‌ها<span class="sp"></span><button class="btn sm alt" onclick="go('txns')">همه</button></h3><div class="list">
    ${recent.map(txItem).join('')||'<div class="empty">هنوز چیزی ثبت نشده</div>'}</div></div>
  </div>
- ${low.length?`<div class="card" style="margin-top:12px"><h3>⚠️ اجناس کم‌موجود — وقت خرید از مندوی</h3><div class="tw"><table class="tbl"><tr><th>جنس</th><th>موجودی</th><th>حد اقل</th><th>آخرین قیمت خرید</th></tr>${low.map(p=>`<tr><td>${esc(p.name)}</td><td class="n neg">${fm(c.P[p.id].qty)} ${esc(p.unit||'')}</td><td class="n">${fm(p.minQty)}</td><td class="n">${money(c.P[p.id].lastBuy)}</td></tr>`).join('')}</table></div></div>`:''}`;
+ ${low.length?`<div class="card" style="margin-top:18px"><h3>${I('alert')} اجناس کم‌موجود — وقت خرید از مندوی</h3><div class="tw"><table class="tbl"><tr><th>جنس</th><th>موجودی</th><th>حد اقل</th><th>آخرین قیمت خرید</th></tr>${low.map(p=>`<tr><td>${esc(p.name)}</td><td class="n neg">${fm(c.P[p.id].qty)} ${esc(p.unit||'')}</td><td class="n">${fm(p.minQty)}</td><td class="n">${money(c.P[p.id].lastBuy)}</td></tr>`).join('')}</table></div></div>`:''}`;
 }
 function custItem(x){ const c=C().CU[x.id]||{bal:0,oldest:0}, st=custSt(x.id);
- return `<div class="it" onclick="go('customer','${x.id}')"><div class="av" style="background:${st.col}">${esc((x.name||'؟')[0])}</div><div class="m"><div class="t">${esc(x.name)} ${x.lat?'📍':''}</div><div class="d">${esc([x.owner,x.area].filter(Boolean).join(' — '))}${c.bal>0.5?` · ${fm(c.oldest)} روز`:''}</div></div><div class="a ${st.cls}">${money(c.bal)}</div></div>`; }
+ return `<div class="it" onclick="go('customer','${x.id}')"><div class="av" style="--c:${st.col}">${esc((x.name||'؟')[0])}</div><div class="m"><div class="t">${esc(x.name)} ${x.lat?'📍':''}</div><div class="d">${esc([x.owner,x.area].filter(Boolean).join(' — '))}${c.bal>0.5?` · ${fm(c.oldest)} روز`:''}</div></div><div class="a ${st.cls}">${money(c.bal)}</div></div>`; }
 function txItem(t){ const tt=TT[t.type]||['','','#999'];
- return `<div class="it" onclick="showTxn('${t.id}')"><span class="badge" style="background:${tt[2]}">${tt[0]}</span><div class="m"><div class="t">${esc(partyName(t)||t.note||ACC[t.acc]?.name||'')}</div><div class="d">${esc(t.no)} · ${fd(t.date)} · ${esc(t.by||'')}</div></div><div class="a">${t.type==='adjust'?fm(txnTotal(t)):money(txnTotal(t))}</div></div>`; }
+ return `<div class="it" onclick="showTxn('${t.id}')"><span class="badge" style="--c:${tt[2]}">${tt[0]}</span><div class="m"><div class="t">${esc(partyName(t)||t.note||ACC[t.acc]?.name||'')}</div><div class="d">${esc(t.no)} · ${fd(t.date)} · ${esc(t.by||'')}</div></div><div class="a">${t.type==='adjust'?fm(txnTotal(t)):money(txnTotal(t))}</div></div>`; }
 
 /* ---------- map ---------- */
 let MAP=null, ML=null, MYM=null, PICK=null, MYPOS=null, MAPF='all';
@@ -506,7 +604,7 @@ function viewMap(){
   <button class="btn sm ${MAPF==='old'?'':'alt'}" onclick="MAPF='old';drawMarkers()">بدهی کهنه (+۳۰ روز)</button>
   <button class="btn sm bl" onclick="locateMe()">📍 من کجا هستم؟</button>
  </div>
- ${PICK?`<div class="card" style="margin-bottom:8px;background:#fffbe9">👆 روی نقشه جای دکان «${esc((cust(PICK)||{}).name)}» را لمس کنید. <button class="btn sm alt" onclick="PICK=null;render()">لغو</button></div>`:''}
+ ${PICK?`<div class="card" style="margin-bottom:12px">👆 روی نقشه جای دکان «${esc((cust(PICK)||{}).name)}» را لمس کنید. <button class="btn sm alt" onclick="PICK=null;render()">لغو</button></div>`:''}
  <div id="map"></div>
  <div class="hint" style="margin:6px 2px">🟢 تصفیه · 🟠 بدهکار · 🔴 بدهی کهنه یا بیش از حد اعتبار ${nloc?` · <b>${fm(nloc)}</b> دکان هنوز لوکیشن ندارد`:''}</div>
  <div class="card" style="margin-top:10px"><h3>🚚 مسیر جمع‌آوری پول — بدهکارها به ترتیب نزدیکی<span class="sp"></span></h3><div id="nearList" class="list"></div></div>`;
@@ -543,7 +641,7 @@ function drawNear(){ const el=$('#nearList'); if(!el) return;
  if(MYPOS) arr=arr.map(x=>Object.assign({},x,{_d:x.lat?hav(MYPOS.lat,MYPOS.lng,x.lat,x.lng):1e9})).sort((a,b)=>a._d-b._d);
  else arr.sort((a,b)=>C().CU[b.id].bal-C().CU[a.id].bal);
  el.innerHTML=(MYPOS?'':'<div class="hint">برای مرتب‌سازی بر اساس نزدیکی، «📍 من کجا هستم؟» را بزنید.</div>')+
- arr.slice(0,30).map(x=>{ const c=C().CU[x.id], st=custSt(x.id); return `<div class="it"><div class="av" style="background:${st.col}">${esc(x.name[0]||'؟')}</div><div class="m" onclick="go('customer','${x.id}')"><div class="t">${esc(x.name)}</div><div class="d">${x._d!==undefined&&x._d<1e8?(x._d<1?fm(Math.round(x._d*1000))+' متر':fm(x._d.toFixed(1))+' کیلومتر')+' · ':''}${x.lat?'':'⚠️ بدون لوکیشن · '}${fm(c.oldest)} روز</div></div><div class="a ${st.cls}">${money(c.bal)}</div>${x.lat?`<a class="btn sm bl" href="${gmaps(x.lat,x.lng)}" target="_blank" rel="noopener">🧭</a>`:''}<button class="btn sm" onclick="receiptForm('${x.id}')">💵</button></div>`; }).join('')
+ arr.slice(0,30).map(x=>{ const c=C().CU[x.id], st=custSt(x.id); return `<div class="it"><div class="av" style="--c:${st.col}">${esc(x.name[0]||'؟')}</div><div class="m" onclick="go('customer','${x.id}')"><div class="t">${esc(x.name)}</div><div class="d">${x._d!==undefined&&x._d<1e8?(x._d<1?fm(Math.round(x._d*1000))+' متر':fm(x._d.toFixed(1))+' کیلومتر')+' · ':''}${x.lat?'':'⚠️ بدون لوکیشن · '}${fm(c.oldest)} روز</div></div><div class="a ${st.cls}">${money(c.bal)}</div>${x.lat?`<a class="btn sm bl" href="${gmaps(x.lat,x.lng)}" target="_blank" rel="noopener">🧭</a>`:''}<button class="btn sm" onclick="receiptForm('${x.id}')">💵</button></div>`; }).join('')
  || '<div class="empty">هیچ طلبی نمانده 🎉</div>';
 }
 async function locateMe(){ toast('در حال پیدا کردن موقعیت…'); try{ MYPOS=await getGPS(); showMe(); drawNear(); toast('موقعیت پیدا شد (دقت ~'+fm(MYPOS.acc)+' متر)'); }catch(e){ toast(e.message); } }
@@ -572,12 +670,12 @@ function viewCustomer(){
  const c=C().CU[x.id]||{bal:0,sales:0,recv:0,b:[0,0,0,0],oldest:0,cnt:0}, st=custSt(x.id), b=c.b||[0,0,0,0], tb=b.reduce((s,v)=>s+v,0)||1;
  const rows=stmtRows(x.id);
  return `<div class="row" style="margin-bottom:10px"><button class="btn ghost sm" onclick="go('customers')">→ برگشت</button><span class="sp" style="flex:1"></span>
-  <button class="btn sm" onclick="saleForm('${x.id}')">🧾 فروش</button><button class="btn sm" style="background:var(--gr)" onclick="receiptForm('${x.id}')">💵 دریافت پول</button><button class="btn sm alt" onclick="customerForm('${x.id}')">✏️ ویرایش</button></div>
+  <button class="btn sm" onclick="saleForm('${x.id}')">🧾 فروش</button><button class="btn sm" style="--c:var(--gr)" onclick="receiptForm('${x.id}')">💵 دریافت پول</button><button class="btn sm alt" onclick="customerForm('${x.id}')">✏️ ویرایش</button></div>
  <div class="grid k2">
-  <div class="card"><div class="row"><div class="av" style="background:${st.col};width:52px;height:52px;font-size:22px">${esc(x.name[0]||'؟')}</div><div style="flex:1"><div style="font-weight:800;font-size:18px">${esc(x.name)}</div><div class="mu">${esc(x.code||'')} · ${esc(x.owner||'')} ${x.phone?'· <a href="tel:'+esc(x.phone)+'">'+esc(x.phone)+'</a>':''}</div><div class="mu">${esc(x.area||'')}</div></div></div>
-   <div class="row" style="margin-top:10px">${x.lat?`<a class="btn sm bl" href="${gmaps(x.lat,x.lng)}" target="_blank" rel="noopener">🧭 مسیر تا دکان</a>`:'<span class="badge" style="background:var(--or)">بدون لوکیشن</span>'}
+  <div class="card"><div class="row"><div class="av" style="--c:${st.col};width:52px;height:52px;font-size:22px">${esc(x.name[0]||'؟')}</div><div style="flex:1"><div style="font-weight:800;font-size:18px">${esc(x.name)}</div><div class="mu">${esc(x.code||'')} · ${esc(x.owner||'')} ${x.phone?'· <a href="tel:'+esc(x.phone)+'">'+esc(x.phone)+'</a>':''}</div><div class="mu">${esc(x.area||'')}</div></div></div>
+   <div class="row" style="margin-top:10px">${x.lat?`<a class="btn sm bl" href="${gmaps(x.lat,x.lng)}" target="_blank" rel="noopener">🧭 مسیر تا دکان</a>`:'<span class="badge" style="--c:var(--or)">بدون لوکیشن</span>'}
    <button class="btn sm alt" onclick="captureCustLoc('${x.id}')">📍 ثبت لوکیشن فعلی من</button><button class="btn sm alt" onclick="pickOnMap('${x.id}')">🗺️ انتخاب روی نقشه</button>
-   <a class="btn sm" style="background:#25D366" href="${waLink(x.phone,stmtText(x.id))}" target="_blank" rel="noopener">واتس‌اپ صورت‌حساب</a></div>
+   <a class="btn sm" style="--c:#25D366" href="${waLink(x.phone,stmtText(x.id))}" target="_blank" rel="noopener">واتس‌اپ صورت‌حساب</a></div>
    ${x.note?`<div class="hint" style="margin-top:8px">📝 ${esc(x.note)}</div>`:''}</div>
   <div class="card"><div class="grid k4"><div class="kpi"><div class="l">بدهی فعلی</div><div class="v ${st.cls}">${money(c.bal)}</div><div class="s">${c.bal<-0.5?'پیش‌پرداخت (ما بدهکاریم)':st.lb}${num(x.limit)?' · سقف اعتبار '+money(x.limit):''}</div></div>
    <div class="kpi"><div class="l">قدیمی‌ترین بدهی</div><div class="v">${fm(c.oldest||0)} روز</div><div class="s">${fm(c.cnt)} بل فروش</div></div>
@@ -610,7 +708,7 @@ function customerForm(id){
  <div class="f2">${fl('نام صاحب دکان',inp('owner',x.owner))}${fl('شماره تماس',inp('phone',x.phone,'inputmode="tel" placeholder="07xxxxxxxx"'))}</div>
  ${fl('ساحه / آدرس / نشانی',inp('area',x.area,'placeholder="مثلاً: کارته‌سه، نزدیک مسجد…"'))}
  <div class="f2">${fl('سقف اعتبار (قرض مجاز)',inp('limit',x.limit||'','inputmode="decimal" placeholder="اختیاری"'))}${fl('طلب قبلی (اول دوره)',inp('openBal',x.openBal||'','inputmode="decimal" placeholder="۰"'))}</div>
- <div class="card" style="background:var(--bg)"><b>📍 لوکیشن دکان</b><div class="row" style="margin-top:8px"><button type="button" class="btn sm bl" onclick="formGPS()">📍 گرفتن لوکیشن فعلی (وقتی در دکان هستید)</button>${id?`<button type="button" class="btn sm alt" onclick="pickOnMap('${id}')">🗺️ انتخاب روی نقشه</button>`:''}</div>
+ <div class="card"><b>📍 لوکیشن دکان</b><div class="row" style="margin-top:8px"><button type="button" class="btn sm bl" onclick="formGPS()">📍 گرفتن لوکیشن فعلی (وقتی در دکان هستید)</button>${id?`<button type="button" class="btn sm alt" onclick="pickOnMap('${id}')">🗺️ انتخاب روی نقشه</button>`:''}</div>
  <div class="f2" style="margin-top:8px">${fl('Latitude',inp('lat',x.lat||'','inputmode="decimal"'))}${fl('Longitude',inp('lng',x.lng||'','inputmode="decimal"'))}</div><div class="gps" id="gpsInfo"></div></div>
  ${fl('یادداشت',`<textarea class="in" id="f_note" rows="2">${esc(x.note||'')}</textarea>`)}
  <div class="row"><button class="btn" style="flex:1" onclick="saveCustomer()">💾 ذخیره</button>${id?`<button class="btn red" onclick="confirmBtn(this,()=>{save('customer',Object.assign({},cust('${id}'),{deleted:true}));closeModal();go('customers')})">حذف</button>`:''}</div>`);
@@ -647,7 +745,7 @@ function saveProduct(){ const name=fv('name').trim(); if(!name) return toast('ن
 /* ---------- suppliers ---------- */
 function viewSuppliers(){ const c=C(); const a=DB.suppliers.filter(s=>!s.deleted).sort((x,y)=>((c.SU[y.id]||{}).bal||0)-((c.SU[x.id]||{}).bal||0));
  return `<div class="row" style="margin-bottom:10px"><span style="flex:1" class="hint">عمده‌فروش‌ها در مندوی، شهرنو و… که از آن‌ها جنس می‌خرید.</span><button class="btn" onclick="supplierForm()">＋ عمده‌فروش جدید</button></div>
- <div class="card list">${a.map(s=>{ const b=(c.SU[s.id]||{bal:0}).bal; return `<div class="it" onclick="go('supplier','${s.id}')"><div class="av" style="background:${colorOf(s.name)}">${esc(s.name[0]||'؟')}</div><div class="m"><div class="t">${esc(s.name)}</div><div class="d">${esc([s.owner,s.phone,s.area].filter(Boolean).join(' · '))}</div></div><div class="a ${b>0.5?'neg':'pos'}">${money(b)}</div></div>`; }).join('')||'<div class="empty">عمده‌فروشی ثبت نشده</div>'}</div>`; }
+ <div class="card list">${a.map(s=>{ const b=(c.SU[s.id]||{bal:0}).bal; return `<div class="it" onclick="go('supplier','${s.id}')"><div class="av" style="--c:${colorOf(s.name)}">${esc(s.name[0]||'؟')}</div><div class="m"><div class="t">${esc(s.name)}</div><div class="d">${esc([s.owner,s.phone,s.area].filter(Boolean).join(' · '))}</div></div><div class="a ${b>0.5?'neg':'pos'}">${money(b)}</div></div>`; }).join('')||'<div class="empty">عمده‌فروشی ثبت نشده</div>'}</div>`; }
 function viewSupplier(){ const s=supp(R.id); if(!s) return '<div class="empty">پیدا نشد</div>'; const c=C().SU[s.id]||{bal:0,buys:0,paid:0};
  const tx=DB.txns.filter(t=>!t.void&&t.party===s.id).sort((a,b)=>(a.date+a.createdAt).localeCompare(b.date+b.createdAt)); let bal=num(s.openBal);
  const rows=[]; if(bal) rows.push({d:DB.settings.startDate,desc:'قرض اول دوره',no:'',dr:0,cr:bal,bal});
@@ -655,7 +753,7 @@ function viewSupplier(){ const s=supp(R.id); if(!s) return '<div class="empty">�
   if(t.type==='purchase'){ const owed=tot-num(t.extra); bal+=owed; rows.push({id:t.id,d:t.date,desc:'خرید جنس',no:t.no,dr:0,cr:owed,bal}); if(num(t.paid)){ bal-=num(t.paid); rows.push({id:t.id,d:t.date,desc:'پرداخت هنگام خرید',no:t.no,dr:num(t.paid),cr:0,bal}); } }
   if(t.type==='payment'){ const a=num(t.amount)+num(t.discount); bal-=a; rows.push({id:t.id,d:t.date,desc:'پرداخت پول'+(num(t.discount)?' (تخفیف '+fm(t.discount)+')':''),no:t.no,dr:a,cr:0,bal}); }
   if(t.type==='preturn'){ bal-=tot; rows.push({id:t.id,d:t.date,desc:'مرجوعی جنس',no:t.no,dr:tot,cr:0,bal}); if(num(t.paid)){ bal+=num(t.paid); rows.push({id:t.id,d:t.date,desc:'دریافت پول مرجوعی',no:t.no,dr:0,cr:num(t.paid),bal}); } } }
- return `<div class="row" style="margin-bottom:10px"><button class="btn ghost sm" onclick="go('suppliers')">→ برگشت</button><span style="flex:1"></span><button class="btn sm bl" onclick="purchaseForm('${s.id}')">🛒 خرید</button><button class="btn sm" style="background:#8e44ad" onclick="paymentForm('${s.id}')">💸 پرداخت</button><button class="btn sm alt" onclick="supplierForm('${s.id}')">✏️ ویرایش</button></div>
+ return `<div class="row" style="margin-bottom:10px"><button class="btn ghost sm" onclick="go('suppliers')">→ برگشت</button><span style="flex:1"></span><button class="btn sm bl" onclick="purchaseForm('${s.id}')">🛒 خرید</button><button class="btn sm" style="--c:#8b5cf6" onclick="paymentForm('${s.id}')">💸 پرداخت</button><button class="btn sm alt" onclick="supplierForm('${s.id}')">✏️ ویرایش</button></div>
  <div class="grid k3"><div class="card kpi"><div class="l">${esc(s.name)}</div><div class="v ${c.bal>0.5?'neg':'pos'}">${money(c.bal)}</div><div class="s">${c.bal>0.5?'ما بدهکاریم':'تصفیه'}</div></div><div class="card kpi"><div class="l">مجموع خرید</div><div class="v">${money(c.buys)}</div></div><div class="card kpi"><div class="l">مجموع پرداخت</div><div class="v">${money(c.paid)}</div></div></div>
  <div class="card" style="margin-top:12px"><h3>📄 دفتر معین عمده‌فروش</h3><div class="tw"><table class="tbl"><tr><th>تاریخ</th><th>شرح</th><th>نمبر</th><th class="n">بدهکار (پرداخت)</th><th class="n">بستانکار (خرید)</th><th class="n">مانده قرض</th></tr>${rows.map(r=>`<tr class="${r.id?'click':''}" ${r.id?`onclick="showTxn('${r.id}')"`:''}><td>${fd(r.d)}</td><td>${esc(r.desc)}</td><td class="mu">${esc(r.no)}</td><td class="n pos">${r.dr?fm(r.dr):''}</td><td class="n">${r.cr?fm(r.cr):''}</td><td class="n"><b>${fm(r.bal)}</b></td></tr>`).join('')||'<tr><td colspan="6" class="empty">معامله‌ای نیست</td></tr>'}</table></div></div>`; }
 function supplierForm(id){ const s=id?supp(id):{}; F={type:'supplier',id};
@@ -700,7 +798,7 @@ function calcForm(){
 }
 const newCustFields=()=>`<div id="newParty" style="display:none" class="card"><b>🏪 دکان جدید</b><div class="f2" style="margin-top:8px">${fl('نام دکان *',inp('nc_name'))}${fl('صاحب دکان',inp('nc_owner'))}</div><div class="f2">${fl('شماره',inp('nc_phone','','inputmode="tel"'))}${fl('ساحه',inp('nc_area'))}</div></div>`;
 const newSuppFields=()=>`<div id="newParty" style="display:none" class="card"><b>🚚 عمده‌فروش جدید</b><div class="f2" style="margin-top:8px">${fl('نام *',inp('nc_name'))}${fl('آدرس',inp('nc_area','','placeholder="مندوی…"'))}</div></div>`;
-const gpsBox=()=>`<div class="card" style="background:var(--bg);margin:8px 0"><div class="row"><button type="button" class="btn sm bl" onclick="formGPS()">📍 ثبت لوکیشن همین دکان</button><span class="gps" id="gpsInfo">اگر در دکان هستید بزنید — بعداً روی نقشه پیدایش می‌کنید.</span></div></div>`;
+const gpsBox=()=>`<div class="card" style="margin:8px 0 14px"><div class="row"><button type="button" class="btn sm bl" onclick="formGPS()">📍 ثبت لوکیشن همین دکان</button><span class="gps" id="gpsInfo">اگر در دکان هستید بزنید — بعداً روی نقشه پیدایش می‌کنید.</span></div></div>`;
 
 function saleForm(cid){ F={type:'sale',party:()=>fv('party')||cid,gps:null};
  openModal('🧾 بل فروش به دکان',`${fl('دکان (مشتری)',custSelect(cid,true))}${newCustFields()}${gpsBox()}${itemsBox('sale')}
@@ -715,7 +813,7 @@ function receiptForm(cid){ F={type:'receipt',party:()=>fv('party')||cid,gps:null
  openModal('💵 دریافت پول از دکان',`${fl('دکان',custSelect(cid,false))}${gpsBox()}<div class="f2">${fl('مبلغ دریافتی *',ninp('amount','','۰'))}${fl('تخفیف/بخشش (اختیاری)',ninp('discount','','۰'))}</div>
  <div class="row" style="margin-top:-4px;margin-bottom:8px"><button type="button" class="btn sm alt" onclick="$('#f_amount').value=r2(Math.max(0,(C().CU[fv('party')]||{bal:0}).bal-num(fv('discount'))));calcForm()">💯 تصفیهٔ کامل</button></div>
  <div class="f2">${fl('روش',methodSel())}${dateInp()}</div>${fl('یادداشت',inp('note'))}<div class="sum" id="sum"></div>
- <button class="btn" style="width:100%;padding:13px;background:var(--gr)" onclick="saveTxn('receipt')">💾 ثبت دریافت</button>`); partyChanged();
+ <button class="btn" style="width:100%;padding:13px;--c:var(--gr)" onclick="saveTxn('receipt')">💾 ثبت دریافت</button>`); partyChanged();
  const gi=$('#gpsInfo'); const c=cust(cid); if(gi&&c&&c.lat) gi.textContent='لوکیشن این دکان ثبت است ✓'; }
 function purchaseForm(sid){ F={type:'purchase',party:()=>fv('party')||sid};
  openModal('🛒 خرید عمده (از مندوی / شهرنو…)',`${fl('عمده‌فروش',suppSelect(sid))}${newSuppFields()}${itemsBox('purchase')}
@@ -726,7 +824,7 @@ function purchaseForm(sid){ F={type:'purchase',party:()=>fv('party')||sid};
  <button class="btn bl" style="width:100%;padding:13px" onclick="saveTxn('purchase')">💾 ثبت خرید</button>`); partyChanged(); }
 function paymentForm(sid){ F={type:'payment',party:()=>fv('party')||sid};
  openModal('💸 پرداخت به عمده‌فروش',`${fl('عمده‌فروش',suppSelect(sid))}${newSuppFields()}<div class="f2">${fl('مبلغ *',ninp('amount','','۰'))}${fl('تخفیف گرفته‌شده',ninp('discount','','۰'))}</div><div class="f2">${fl('روش',methodSel())}${dateInp()}</div>${fl('یادداشت',inp('note'))}<div class="sum" id="sum"></div>
- <button class="btn" style="width:100%;padding:13px;background:#8e44ad" onclick="saveTxn('payment')">💾 ثبت پرداخت</button>`); partyChanged(); }
+ <button class="btn" style="width:100%;padding:13px;--c:#8b5cf6" onclick="saveTxn('payment')">💾 ثبت پرداخت</button>`); partyChanged(); }
 function returnForm(type){ F={type,party:()=>fv('party')};
  openModal(TT[type][0],`${fl(type==='sreturn'?'دکان':'عمده‌فروش',type==='sreturn'?custSelect('',false):suppSelect(''))}${type==='preturn'?newSuppFields():''}${itemsBox(type)}<div class="f2" style="margin-top:10px">${fl(type==='sreturn'?'پول نقد پس داده شد':'پول نقد پس گرفته شد',ninp('paid','','۰'))}${fl('روش',methodSel())}</div>${dateInp()}${fl('دلیل مرجوعی',inp('note','','placeholder="خراب، تاریخ‌گذشته، اضافه…"'))}<div class="sum" id="sum"></div><button class="btn" style="width:100%;padding:13px" onclick="saveTxn('${type}')">💾 ثبت مرجوعی</button>`); partyChanged(); }
 function expenseForm(){ F={type:'expense'};
@@ -763,14 +861,14 @@ function showTxn(id,fresh){ const t=DB.txns.find(x=>x.id===id); if(!t) return; c
  const items=t.items||[]; const isC=['sale','sreturn','receipt'].includes(t.type); const party=isC?cust(t.party):supp(t.party);
  const txt=`${DB.settings.biz||'ابراهیمی اکانتینگ'}\n${tt[0]} ${t.no}\nتاریخ: ${fd(t.date)}\n${party?'مشتری: '+party.name+'\n':''}`+items.map(i=>`${pname(i.pid)}: ${fm(i.qty)} × ${fm(i.price)} = ${fm(num(i.qty)*num(i.price))}`).join('\n')+
   (t.discount?`\nتخفیف: ${fm(t.discount)}`:'')+`\nمجموع: ${money(txnTotal(t))}`+(t.type==='sale'?`\nنقد: ${money(t.paid||0)}\nبه حساب: ${money(txnTotal(t)-num(t.paid))}`:'')+(isC&&party?`\nمانده کل حساب شما: ${money((C().CU[party.id]||{bal:0}).bal)}`:'')+`\nتشکر 🌹`;
- openModal(tt[0]+' — '+t.no,`${fresh?'<div class="card" style="background:#e9f7ef;border-color:#b7e2c8;margin-bottom:10px">✅ بل ثبت شد.</div>':''}
- ${t.void?`<div class="card" style="background:#fdecea;margin-bottom:10px">❌ این سند باطل شده — ${esc(t.voidBy||'')} · ${esc(t.voidReason||'')}</div>`:''}
+ openModal(tt[0]+' — '+t.no,`${fresh?'<div class="card" style="margin-bottom:12px;color:var(--gr)">✅ بل ثبت شد.</div>':''}
+ ${t.void?`<div class="card" style="margin-bottom:12px;color:var(--red)">❌ این سند باطل شده — ${esc(t.voidBy||'')} · ${esc(t.voidReason||'')}</div>`:''}
  <div class="grid k2"><div><span class="mu">تاریخ:</span> ${fd(t.date)}</div><div><span class="mu">ثبت‌کننده:</span> ${esc(t.by||'')}</div>${party?`<div><span class="mu">${isC?'دکان':'عمده‌فروش'}:</span> <a href="#" onclick="closeModal();go('${isC?'customer':'supplier'}','${party.id}');return false">${esc(party.name)}</a></div>`:''}<div><span class="mu">روش:</span> ${t.method==='bank'?'بانک/حواله':'نقد'}</div></div>
  ${items.length?`<div class="tw" style="margin-top:10px"><table class="tbl"><tr><th>جنس</th><th class="n">تعداد</th>${t.type==='adjust'?'':'<th class="n">فی</th><th class="n">جمع</th>'}</tr>${items.map(i=>`<tr><td>${esc(pname(i.pid))}</td><td class="n">${fm(i.qty)}</td>${t.type==='adjust'?'':`<td class="n">${fm(i.price)}</td><td class="n">${fm(num(i.qty)*num(i.price))}</td>`}</tr>`).join('')}</table></div>`:''}
  <div class="sum"><div class="big"><span>مجموع</span><b>${t.type==='adjust'?fm(txnTotal(t)):money(txnTotal(t))}</b></div>${t.discount?`<div><span>تخفیف</span><b>${money(t.discount)}</b></div>`:''}${t.paid?`<div><span>نقد</span><b>${money(t.paid)}</b></div>`:''}${t.extra?`<div><span>کرایه/حمالی</span><b>${money(t.extra)}</b></div>`:''}${t.type==='sale'&&C().costs[t.id]!==undefined?`<div><span>سود ناخالص این بل</span><b class="pos">${money(txnTotal(t)-C().costs[t.id])}</b></div>`:''}</div>
  ${t.note?`<div class="hint">📝 ${esc(t.note)}</div>`:''}
  <details style="margin-top:8px"><summary class="mu">📘 سند حسابداری (دوبل‌انتری)</summary><table class="tbl"><tr><th>کد</th><th>حساب</th><th class="n">بدهکار</th><th class="n">بستانکار</th></tr>${js.map(j=>`<tr><td>${j.acc}</td><td>${esc(ACC[j.acc].name)}<div class="mu" style="font-size:12px">${esc(j.memo)}</div></td><td class="n">${j.dr?fm(j.dr):''}</td><td class="n">${j.cr?fm(j.cr):''}</td></tr>`).join('')}</table></details>
- <div class="row" style="margin-top:12px">${party&&party.phone!==undefined?`<a class="btn" style="background:#25D366" href="${waLink(party&&party.phone,txt)}" target="_blank" rel="noopener">ارسال در واتس‌اپ</a>`:''}<button class="btn alt" onclick="copyTxt(this)" data-t="${esc(txt)}">📋 کاپی متن بل</button>
+ <div class="row" style="margin-top:12px">${party&&party.phone!==undefined?`<a class="btn" style="--c:#25D366" href="${waLink(party&&party.phone,txt)}" target="_blank" rel="noopener">ارسال در واتس‌اپ</a>`:''}<button class="btn alt" onclick="copyTxt(this)" data-t="${esc(txt)}">📋 کاپی متن بل</button>
  ${!t.void?`<span style="flex:1"></span><input class="in" id="f_vr" placeholder="دلیل ابطال" style="width:150px"><button class="btn red sm" onclick="confirmBtn(this,()=>voidTxn('${t.id}'))">ابطال سند</button>`:''}</div>`); }
 function copyTxt(b){ navigator.clipboard.writeText(b.dataset.t).then(()=>toast('کاپی شد'),()=>toast('کاپی ممکن نشد')); }
 function voidTxn(id){ const t=DB.txns.find(x=>x.id===id); save('txn',Object.assign({},t,{void:true,voidBy:META.user,voidAt:nowIso(),voidReason:fv('vr')})); closeModal(); toast('سند باطل شد'); render(); }
@@ -904,6 +1002,7 @@ function loadDemo(){
 
 /* ---------- boot ---------- */
 load();
+document.documentElement.dataset.theme=META.theme||'light';
 onSaved=()=>{ clearTimeout(syncTimer); syncTimer=setTimeout(()=>doSync(false),1500); };
 window.addEventListener('hashchange',()=>{ const h=location.hash.slice(1); if(h&&h!==R.v&&NAV.concat([['more']]).some(n=>n[0]===h)){ R={v:h,id:null,tab:null}; render(); } });
 window.addEventListener('online',()=>doSync(false));
