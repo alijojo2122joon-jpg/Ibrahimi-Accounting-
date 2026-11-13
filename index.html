@@ -448,7 +448,7 @@ body.mopen #snack{bottom:auto;top:16px;transform:translate(-50%,-20px)}body.mope
 <script id="engine">
 'use strict';
 const LS = 'ebrahimi_acc_v1';
-const VERSION = '5.8';
+const VERSION = '5.9';
 
 /* ---- Chart of accounts (کدینگ حساب‌ها) ----
    nature: A=asset (debit), L=liability (credit), E=equity (credit), E-=contra equity (debit),
@@ -960,7 +960,7 @@ function viewDash(){
   ${!can('profit')?'':kpi('bank','#3b6fd8','ارزش خالص کسب‌وکار',money(cash+bank+ar+inv+(S['1500']||0)-ap+(S['2200']||0)),'دارایی منهای قرض')}
  </div>
  <div class="card" style="margin-top:18px"><h3>${I('chart')} فروش و پول جمع‌شده — ۱۴ روز اخیر<span class="sp"></span><span class="lg"><i style="background:#13a389"></i>فروش <i style="background:#f08c2e"></i>وصول</span></h3>${chart14()}</div>
- ${fixedCard()}${agendaCard()}
+ ${changesCard()}${fixedCard()}${agendaCard()}
  ${ordersCard()}
  ${todayShopsCard()}
  <div class="grid k2" style="margin-top:18px">
@@ -1638,6 +1638,14 @@ function drawFx(){ const el=$('#fxl'); if(!el) return; const accs=ACCOUNTS.filte
  el.innerHTML=F.list.map((f,i)=>`<div class="card" style="padding:12px;margin-bottom:10px"><div class="f2">${fl('شرح',`<input class="in" value="${esc(f.note||'')}" placeholder="مثلاً کرایه هنگر" oninput="F.list[${i}].note=this.value">`)}${fl('نوع',`<select class="in" onchange="F.list[${i}].acc=this.value">${accs.map(a=>`<option value="${a[0]}" ${f.acc===a[0]?'selected':''}>${a[1]}</option>`).join('')}</select>`)}${fl('مبلغ',`<input class="in" inputmode="decimal" value="${f.amount||''}" oninput="F.list[${i}].amount=num(this.value)">`)}${fl('روز ماه',`<input class="in" inputmode="numeric" value="${f.day||1}" oninput="F.list[${i}].day=Math.min(31,Math.max(1,num(this.value)||1))">`)}</div><button type="button" class="btn sm red" onclick="F.list.splice(${i},1);drawFx()">حذف</button></div>`).join('')||'<div class="empty">هنوز مصرف ثابتی تعریف نشده</div>'; }
 function fxAdd(){ F.list.push({id:uid(),acc:'6300',amount:0,note:'',day:1}); drawFx(); }
 function saveFixed(){ const l=F.list.filter(x=>num(x.amount)>0); save('settings',Object.assign({},DB.settings,{fixedExp:l})); closeModal(); toast('ذخیره شد ✓'); render(); }
+
+function changesCard(){ if(roleOf(META.user)!=='owner') return ''; const since=addDays(today(),-2), me=META.user, ev=[], d=iso=>iso&&iso.slice(0,10)>=since;
+ DB.txns.forEach(t=>{ const nm=(TT[t.type]||[''])[0]+' '+(t.no||'')+(partyName(t)?' — '+partyName(t):'');
+  if(t.void&&d(t.voidAt)&&t.voidBy&&t.voidBy!==me) ev.push({at:t.voidAt,by:t.voidBy,k:'ابطال',c:'#e5484d',txt:nm+(t.voidReason?' ('+t.voidReason+')':''),id:t.id});
+  (t.history||[]).forEach(h=>{ if(d(h.at)&&h.by&&h.by!==me) ev.push({at:h.at,by:h.by,k:'ویرایش',c:'#f08c2e',txt:nm+' — قبلاً '+money(txnTotal(h.prev||{}))+'، حالا '+money(txnTotal(t)),id:t.id}); }); });
+ DB.products.forEach(p=>(p.priceHist||[]).forEach(h=>{ if(d(h.at)&&h.by&&h.by!==me) ev.push({at:h.at,by:h.by,k:'قیمت',c:'#8b5cf6',txt:p.name+': '+fm(h.old)+' ← '+fm(h.new)}); }));
+ if(!ev.length) return ''; ev.sort((a,b)=>b.at.localeCompare(a.at));
+ return `<div class="card" style="margin-bottom:18px"><h3>${I('alert')} تغییرات دیگران (۳ روز اخیر)<span class="sp"></span><button class="btn sm alt" onclick="R={v:'reports',tab:'log'};render()">همه</button></h3><div class="slist">${ev.slice(0,6).map(e=>`<div class="sr" ${e.id?`onclick="showTxn('${e.id}')"`:'style="cursor:default"'}><span class="badge" style="--c:${e.c}">${e.k}</span><div class="m"><b style="font-weight:600">${esc(e.txt)}</b><div class="mu">${who(e.by)} ${new Date(e.at).toLocaleString('fa-AF-u-ca-persian',{month:'long',day:'numeric',hour:'2-digit',minute:'2-digit'})}</div></div></div>`).join('')}</div></div>`; }
 
 /* ---------- text size ---------- */
 function applyFont(){ const z={lg:1.12,xl:1.25}[META.font]||1; document.body.style.zoom=z===1?'':z; }
