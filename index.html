@@ -245,6 +245,7 @@ svg.flip{transform:scaleX(-1)}
 #side .keys{font-size:11px;color:var(--mu);margin-top:14px;text-align:center;direction:rtl}
 /* printable invoice */
 #printArea{display:none}
+.cp.ex input{font-size:12px;padding:8px 0}
 .scanov{position:fixed;inset:0;background:#000;z-index:7000;display:flex;flex-direction:column;align-items:center;justify-content:center}
 .scanov video{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
 .sframe{position:relative;width:70vw;max-width:320px;height:180px;border:3px solid #ffc24b;border-radius:18px;box-shadow:0 0 0 9999px rgba(0,0,0,.45)}
@@ -383,6 +384,7 @@ svg.flip{transform:scaleX(-1)}
  .tw .tbl{min-width:520px}.tw.nmin .tbl{min-width:0}
  .cl{grid-template-columns:auto minmax(0,1fr) auto 32px;row-gap:8px}
  .cn{grid-column:1/-1}
+ .cp.ex{grid-column:1/-1}
  .shl{grid-template-columns:auto auto minmax(0,1fr)}.shl .cn{grid-column:2/-1}
  .pcards{grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:12px}.prc{padding:12px}.prc .ic{display:none}.prow{flex-wrap:wrap}
  .stick{margin:18px -18px -20px}
@@ -438,7 +440,7 @@ svg.flip{transform:scaleX(-1)}
 <script id="engine">
 'use strict';
 const LS = 'ebrahimi_acc_v1';
-const VERSION = '4.7';
+const VERSION = '4.8';
 
 /* ---- Chart of accounts (کدینگ حساب‌ها) ----
    nature: A=asset (debit), L=liability (credit), E=equity (credit), E-=contra equity (debit),
@@ -911,6 +913,7 @@ function viewDash(){
  ${META.sync.url&&(syncState==='err'||(META.dirty.length>0&&META.lastSyncAt&&Date.now()-new Date(META.lastSyncAt).getTime()>3600000))?`<div class="card banner"><div class="ic" style="--c:#e5484d">${I('sync')}</div><div style="flex:1"><b>${fm(META.dirty.length)} ثبت هنوز به دستگاه‌های دیگر نرفته</b><div class="hint">${syncState==='err'?esc(META.lastSyncErr||'خطای همگام‌سازی'):'انترنت را بررسی کنید'}</div></div><button class="btn sm" onclick="doSync(true)">دوباره</button></div>`:''}
  ${can('settings')?budgetAlerts().map(o=>`<div class="card banner"><div class="ic" style="--c:#f08c2e">${I('fuel')}</div><div style="flex:1"><b>${esc(ACC[o.a].name)}: ${money(o.u.used)} از سقف ${money(o.u.lim)}</b><div class="hint">${o.u.pct>=100?'این ماه از سقف بودجه گذشت':'نزدیک به سقف بودجهٔ این ماه'}</div></div></div>`).join(''):''}
  ${(()=>{ const t=DB.settings.truck; if(!t||!(t.log||[]).length) return ''; const km=Math.max(...t.log.map(l=>num(l.km))), o=t.log.filter(l=>l.oil).sort((a,b)=>num(b.km)-num(a.km))[0]; if(!o) return ''; const left=num(o.km)+(num(t.oilEvery)||5000)-km; return left<=300?`<div class="card banner" onclick="go('truck')" style="cursor:pointer"><div class="ic" style="--c:#f08c2e">${I('gear')}</div><div style="flex:1"><b>${left<=0?'وقت تعویض روغن موتر رسیده':'تعویض روغن موتر: '+fm(left)+' کیلومتر مانده'}</b></div></div>`:''; })()}
+ ${can('settings')&&DB.txns.length>20&&daysBetween(monthStart(),today())<7&&!(DB.settings.lockDate&&DB.settings.lockDate>=addDays(monthStart(),-1))?`<div class="card banner" style="cursor:pointer" onclick="monthClose()"><div class="ic" style="--c:#3b6fd8">${I('lock')}</div><div style="flex:1"><b>ماه نو شد — حساب ماه قبل را ببندید</b><div class="hint">۶ قدم کوتاه: شمارش صندوق و هنگر، گزارش، بکاپ و قفل</div></div>${I('chev')}</div>`:''}
  ${typeof deferredInstall!=='undefined'&&deferredInstall?`<div class="card banner"><div class="ic" style="--c:#13a389">${I('in')}</div><div style="flex:1"><b>اپ را روی گوشی نصب کنید</b><div class="hint">مثل یک برنامه باز می‌شود و بدون انترنت هم کار می‌کند.</div></div><button class="btn sm" onclick="installApp()">نصب</button></div>`:''}
  ${setupCard()}
  <div class="qrow dashq">${[['receipt','#13a389','فروش','saleForm()'],['cash','#16a37a','دریافت پول','receiptForm()'],['cart','#3b6fd8','خرید عمده','purchaseForm()'],['fuel','#e5484d','مصرف','expenseForm()'],['map','#f08c2e','نقشه',"go('map')"],['shop','#8b5cf6','دکان جدید','customerForm()'],['wallet','#0f8f78','بستن صندوق','cashCloseForm()']].map(q=>act(q[0],q[1],q[2],q[3])).join('')}</div>
@@ -944,6 +947,7 @@ function viewDash(){
    ${recent.map(txItem).join('')||'<div class="empty">هنوز چیزی ثبت نشده</div>'}</div></div>
  </div>
  ${topProductsCard()}
+ ${expiryCard()}
  ${low.length?`<div class="card" style="margin-top:18px"><h3>${I('alert')} اجناس کم‌موجود — وقت خرید از مندوی<span class="sp"></span><button class="btn sm" style="--c:#f08c2e" onclick="shopList()">${I('cart')} لیست خرید</button></h3><div class="tw"><table class="tbl"><tr><th>جنس</th><th>موجودی</th><th>حد اقل</th><th>آخرین قیمت خرید</th></tr>${low.map(p=>`<tr><td>${esc(p.name)}</td><td class="n neg">${fm(c.P[p.id].qty)} ${esc(p.unit||'')}</td><td class="n">${fm(p.minQty)}</td><td class="n">${money(c.P[p.id].lastBuy)}</td></tr>`).join('')}</table></div></div>`:''}`;
 }
 function chart14(){ const td=today(), days=[...Array(14)].map((_,i)=>addDays(td,i-13)), S={}, Cc={};
@@ -1225,6 +1229,7 @@ function viewProduct(){ const p=prod(R.id); if(!p) return '<div class="empty">پ
  return `<div class="row" style="margin-bottom:16px"><button class="btn alt sm" onclick="go('products')">${I('chev','flip')} همه اجناس</button><span style="flex:1"></span><button class="btn sm alt" onclick="productForm('${p.id}')">${I('edit')} ویرایش</button><button class="btn sm bl" onclick="purchaseForm();setTimeout(()=>addCart('${p.id}'),50)">${I('cart')} خرید</button></div>
  <div class="card">${p.photo?`<img class="cphoto" style="float:left;margin:0" src="${p.photo}" onclick="viewPhoto(this.src)">`:''}<div class="ctt">${esc(p.name)}</div><div class="mu">${esc([p.code,p.cat,p.unit].filter(Boolean).join(' · '))}</div></div>
  <div class="grid k4" style="margin-top:18px">${kpi('box','#3b6fd8','موجودی',fm(s.qty)+' '+esc(p.unit||''),num(p.minQty)?'حد اقل '+fm(p.minQty):'',s.qty<=0?'neg':num(p.minQty)&&s.qty<=num(p.minQty)?'warn':'')}${kpi('trend','#13a389','فروش ۳۰ روز',fm(sold30)+' '+esc(p.unit||''),days!==null?'تقریباً '+fm(days)+' روز دیگر کافی است':'فروش اخیر ندارد')}${kpi('cash','#f08c2e','قیمت فروش',money(p.price),can('cost')?'آخرین خرید '+money(s.lastBuy):'')}${can('cost')?kpi('wallet','#8b5cf6','قیمت تمام‌شده (میانگین)',money(s.avg),'سود تا حالا '+money(s.rev-s.cogs),'',''):''}</div>
+ ${(()=>{ const e=expiringBatches(3650).filter(o=>o.p.id===p.id); return e.length?`<div class="card" style="margin-top:18px"><h3>${I('clock')} تاریخ انقضای موجودی</h3>${e.map(o=>`<div class="tpr"><span class="rk">${I('clock')}</span><div class="m"><div class="row" style="justify-content:space-between;flex-wrap:nowrap"><b>${qtyTxt(p,o.q)}</b><b class="${o.days<0?'neg':o.days<=30?'warn':''}">${fd(o.exp)}</b></div><div class="mu" style="font-size:11.5px">${o.days<0?'تاریخ گذشته':fm(o.days)+' روز مانده'} · ${esc(o.no)}</div></div></div>`).join('')}</div>`:''; })()}
  ${supplierPriceCard(p)}
  ${top.length?`<div class="card" style="margin-top:18px"><h3>${I('shop')} بیشترین خریداران</h3><div class="list">${top.map(([cid,qq])=>{ const x=cust(cid); return x?`<div class="it" onclick="go('customer','${cid}')"><div class="av" style="--c:${colorOf(x.name)}">${esc(x.name[0]||'؟')}</div><div class="m"><div class="t">${esc(x.name)}</div><div class="d">${esc(x.area||'')}</div></div><div class="a">${fm(qq)} ${esc(p.unit||'')}</div></div>`:''; }).join('')}</div></div>`:''}
  <div class="card" style="margin-top:18px"><h3>${I('book')} کاردکس (ورود و خروج جنس)</h3><div class="tw"><table class="tbl"><tr><th>تاریخ</th><th>شرح</th><th class="n">وارده</th><th class="n">صادره</th><th class="n">مانده</th><th class="n">فی</th></tr>
@@ -1343,7 +1348,7 @@ function drawCart(){ const el=$('#cart'); if(!el) return; const adj=F.type==='ad
  el.innerHTML=F.cart.map((it,i)=>{ const p=prod(it.pid)||{}, st=(C().P[it.pid]||{qty:0}).qty, over=F.type==='sale'&&it.qty>st;
   return `<div class="cl"><div class="cn"><b>${esc(p.name)}</b> ${pk(p)>1&&p.unit2?`<button type="button" class="ut" onclick="toggleU(${i})">${it.u2?esc(p.unit2):esc(p.unit||'')} ⇄</button>`:''}<div class="mu ${over?'neg':''}" id="cs${i}">موجود ${qtyTxt(p,st)}${over?' — کافی نیست':''}</div></div>
   <div class="stp"><button type="button" onclick="stepQ(${i},1)">+</button><input inputmode="decimal" value="${it.u2?it.q2:it.qty}" oninput="setQ(${i},this.value)" onfocus="this.select()"><button type="button" onclick="stepQ(${i},-1)">−</button></div>
-  ${adj?'':`<label class="cp"><span class="mu">فی ${it.u2?esc(p.unit2):''}</span><input inputmode="decimal" value="${it.u2?it.p2:it.price}" oninput="setP(${i},this.value)" onfocus="this.select()"></label><div class="ct" id="ct${i}">${fm(it.qty*it.price)}</div>`}${F.type==='sale'?`<div class="bc" id="bc${i}" style="${belowCost(it)?'':'display:none'}">${I('alert')} زیر قیمت خرید${can('cost')?' ('+money((C().P[it.pid]||{}).avg*(it.u2?1/pk(p):1))+')':''}</div>`:''}
+  ${F.type==='purchase'?`<label class="cp ex"><span class="mu">انقضا</span><input type="date" value="${it.exp||''}" onchange="F.cart[${i}].exp=this.value"></label>`:''}${adj?'':`<label class="cp"><span class="mu">فی ${it.u2?esc(p.unit2):''}</span><input inputmode="decimal" value="${it.u2?it.p2:it.price}" oninput="setP(${i},this.value)" onfocus="this.select()"></label><div class="ct" id="ct${i}">${fm(it.qty*it.price)}</div>`}${F.type==='sale'?`<div class="bc" id="bc${i}" style="${belowCost(it)?'':'display:none'}">${I('alert')} زیر قیمت خرید${can('cost')?' ('+money((C().P[it.pid]||{}).avg*(it.u2?1/pk(p):1))+')':''}</div>`:''}
   <button type="button" class="x" onclick="F.cart.splice(${i},1);drawCart();drawGrid();calcForm()">✕</button></div>`; }).join('')||`<div class="hint" style="text-align:center;padding:6px">روی جنس بزنید تا به ${F.type==='adjust'?'لیست':'بل'} اضافه شود</div>`;
  const c=$('#cartCnt'); if(c) c.textContent=F.cart.length?fm(F.cart.length)+' قلم':''; }
 const belowCost=it=>{ const a=(C().P[it.pid]||{avg:0}).avg; return a>0&&num(it.price)>0&&num(it.price)<a-0.01; };
@@ -1357,7 +1362,7 @@ const ip=i=>i.u2?num(i.p2):num(i.price);
 function qtyTxt(p,q){ if(!p||pk(p)<=1||!p.unit2) return fm(r2(q))+' '+(p&&p.unit||''); const n=pk(p), neg=q<0, a=Math.abs(q), c=Math.floor(a+1e-9), r=Math.round((a-c)*n); return (neg?'−':'')+(c?fm(c)+' '+(p.unit||''):'')+(c&&r?' و ':'')+(r?fm(r)+' '+p.unit2:'')+(!c&&!r?'۰':''); }
 function toggleU(i){ const it=F.cart[i], p=prod(it.pid), n=pk(p); if(n<=1) return; if(it.u2){ it.qty=r2(it.q2/n)||1; it.price=r2(it.p2*n); it.u2=false; } else { it.u2=true; it.q2=Math.max(1,Math.round(it.qty*n)); it.p2=num(p.price2)||r2(it.price/n); it.qty=it.q2/n; it.price=it.p2*n; } drawCart(); drawGrid(); calcForm(); }
 const cartGross=()=>(F.cart||[]).reduce((s,i)=>s+num(i.qty)*num(i.price),0);
-function readItems(){ return (F.cart||[]).filter(i=>i.pid&&num(i.qty)).map(i=>Object.assign({pid:i.pid,qty:r2(num(i.qty)*1e6)/1e6,price:F.type==='adjust'?0:r2(num(i.price)*1e4)/1e4},i.u2?{u2:true,q2:num(i.q2),p2:F.type==='adjust'?0:num(i.p2)}:{})); }
+function readItems(){ return (F.cart||[]).filter(i=>i.pid&&num(i.qty)).map(i=>Object.assign({pid:i.pid,qty:r2(num(i.qty)*1e6)/1e6,price:F.type==='adjust'?0:r2(num(i.price)*1e4)/1e4},i.u2?{u2:true,q2:num(i.q2),p2:F.type==='adjust'?0:num(i.p2)}:{},i.exp&&F.type==='purchase'?{exp:i.exp}:{})); }
 function payPct(f){ const net=cartGross()-num(fv('discount')); $('#f_paid').value=f?r2(net*f):''; calcForm(); }
 
 function calcForm(){
@@ -1470,7 +1475,7 @@ function editTxn(id){ const t=DB.txns.find(x=>x.id===id); if(!t||t.void) return;
  if(!open) return; open(); F.editId=id;
  $('#mTitle').textContent='ویرایش '+TT[t.type][0]+' — '+t.no;
  if(t.party&&$('#f_party')){ $('#f_party').value=t.party; drawParty(); }
- if(t.items&&F.cart){ F.cart=t.items.map(i=>Object.assign({pid:i.pid,qty:num(i.qty),price:num(i.price)},i.u2?{u2:true,q2:num(i.q2),p2:num(i.p2)}:{})); }
+ if(t.items&&F.cart){ F.cart=t.items.map(i=>Object.assign({pid:i.pid,qty:num(i.qty),price:num(i.price)},i.u2?{u2:true,q2:num(i.q2),p2:num(i.p2)}:{},i.exp?{exp:i.exp}:{})); }
  const setv=(k,v)=>{ const e=$('#f_'+k); if(e&&v!==undefined&&v!==null&&v!=='') e.value=v; };
  ['paid','discount','extra','amount','note','date'].forEach(k=>setv(k,t[k]));
  if(t.method) setSeg('method',t.method); if(t.acc) setSeg('acc',t.acc); if(t.to) setv('to',t.to);
@@ -1882,6 +1887,26 @@ function savePersonTx(type,id){ const a=num(fv('amount')), d=num(fv('deduct')); 
  const t={type,party:id,amount:a,method:fv('method')||'cash',date,note:fv('note').trim(),no:nextNo({wage:'WG',advance:'ADV',advret:'ADR',borrow:'BRW',repay:'RPY'}[type])}; if(d) t.deduct=d;
  const r=save('txn',t); closeModal(); snack('✓ '+TT[type][0]+' ثبت شد — '+r.no,()=>undoTxn(r.id)); render(); }
 
+/* ---------- expiry tracking (per purchase line) ---------- */
+function expiringBatches(days=60){ const lim=addDays(today(),days), out=[];
+ for(const p of DB.products.filter(p=>!p.deleted)){ let left=(C().P[p.id]||{qty:0}).qty; if(left<=0) continue;
+  const buys=DB.txns.filter(t=>!t.void&&t.type==='purchase'&&(t.items||[]).some(i=>i.pid===p.id)).sort((a,b)=>(b.date+b.createdAt).localeCompare(a.date+a.createdAt));
+  for(const t of buys){ if(left<=0) break; for(const i of t.items.filter(i=>i.pid===p.id)){ if(left<=0) break; const q=Math.min(left,num(i.qty)); left-=q; if(i.exp&&i.exp<=lim) out.push({p,q,exp:i.exp,days:daysBetween(today(),i.exp),no:t.no}); } } }
+ return out.sort((a,b)=>a.exp.localeCompare(b.exp)); }
+function expiryCard(){ const a=expiringBatches(60); if(!a.length) return '';
+ return `<div class="card" style="margin-top:18px"><h3>${I('alert')} نزدیک به تاریخ انقضا — اول این‌ها را بفروشید</h3><div class="list">${a.slice(0,6).map(o=>`<div class="it" onclick="go('product','${o.p.id}')"><div class="ic" style="--c:${o.days<0?'#e5484d':o.days<=30?'#f08c2e':'#f0b429'};width:40px;height:40px">${I('clock')}</div><div class="m"><div class="t">${esc(o.p.name)}</div><div class="d">${qtyTxt(o.p,o.q)} · خرید ${esc(o.no)}</div></div><div class="a ${o.days<0?'neg':o.days<=30?'warn':''}">${o.days<0?'گذشته!':fm(o.days)+' روز'}<div class="mu" style="font-size:11px;font-weight:500">${fd(o.exp)}</div></div></div>`).join('')}</div></div>`; }
+
+/* ---------- month-close wizard ---------- */
+function monthClose(){ const ms=persianMonths(2), prev=ms[0], s=DB.settings, locked=s.lockDate&&s.lockDate>=prev.to;
+ const cc=DB.txns.some(t=>!t.void&&t.type==='cashcount'&&t.date>=prev.to), adj=DB.txns.some(t=>!t.void&&t.type==='adjust'&&t.date>=addDays(prev.to,-5)), bk=META.lastBackup&&META.lastBackup.slice(0,10)>=prev.to;
+ const steps=[[cc,'صندوق را بشمارید','پول نقد واقعی با سیستم برابر شود',"closeModal();cashCloseForm()"],
+  [adj,'هنگر را بشمارید','کسری و ضایعات را با «شمارش / اصلاح گدام» ثبت کنید',"closeModal();adjustForm()"],
+  [false,'بررسی سلامت حساب‌ها','همه سبز باشد',"closeModal();healthCheck()"],
+  [false,'گزارش ماه '+prev.label,'چاپ یا فرستادن برای پدر',"closeModal();R={v:'reports',tab:'month'};MREP=1;render()"],
+  [bk,'بکاپ و Excel','یک نسخه نزد خود نگه دارید',"exportJSON();exportExcel();monthClose()"],
+  [locked,'قفل ماه '+prev.label,'بعد از این، اسناد این ماه دیگر عوض نمی‌شوند',`save('settings',Object.assign({},DB.settings,{lockDate:'${prev.to}'}));toast('ماه ${prev.label} قفل شد');monthClose()`]];
+ openModal('بستن ماه '+prev.label,`<div class="hint" style="margin-bottom:12px">هر ماه یک بار، روزهای اول ماه جدید، این قدم‌ها را انجام دهید تا حساب‌ها تمیز و قابل اعتماد بماند.</div><div class="steps2">${steps.map((x,i)=>`<div class="st" style="cursor:pointer" onclick="${x[3].replace(/"/g,'&quot;')}"><em style="${x[0]?'background:linear-gradient(145deg,#1bc3a4,#0f8f78)':''}">${x[0]?'✓':fm(i+1)}</em><div class="m"><b>${x[1]}</b><div class="mu">${x[2]}</div></div>${I('chev')}</div>`).join('')}</div>`); }
+
 /* ---------- transaction detail ---------- */
 function showTxn(id,fresh){ const t=DB.txns.find(x=>x.id===id); if(!t) return; const tt=TT[t.type]; const js=C().J.filter(j=>j.tx===id);
  const items=t.items||[]; const isC=['sale','sreturn','receipt'].includes(t.type), isP=PTYPES.includes(t.type); const party=isP?(DB.persons||[]).find(p=>p.id===t.party):isC?cust(t.party):supp(t.party);
@@ -2029,7 +2054,7 @@ function viewSettings(){ const s=DB.settings, sc=META.sync;
  return `<div class="grid k2">
  ${usersCard()}
  <div class="card"><h3>${I('sun')} نمایش</h3>${fl('اندازهٔ متن',`<div class="seg">${[['','عادی'],['lg','بزرگ'],['xl','خیلی بزرگ']].map(o=>`<button type="button" class="${(META.font||'')===o[0]?'on':''}" onclick="setFont('${o[0]}')">${o[1]}</button>`).join('')}</div>`)}${fl('حالت',`<div class="seg"><button type="button" class="${META.theme!=='dark'?'on':''}" onclick="setTheme('light');render()">${I('sun')} روز</button><button type="button" class="${META.theme==='dark'?'on':''}" onclick="setTheme('dark');render()">${I('moon')} شب</button></div>`)}
- <button class="btn alt" style="width:100%;margin-bottom:10px" onclick="goalForm()">${I('trend')} هدف ماهانه و بودجهٔ مصارف</button><button class="btn alt" style="width:100%;margin-bottom:10px" onclick="enableNotif()">${I('clock')} ${META.notif?'اعلان قول‌های پرداخت روشن است ✓':'روشن کردن اعلان قول‌های پرداخت'}</button><button class="btn alt" style="width:100%" onclick="healthCheck()">${I('check')} بررسی سلامت حساب‌ها</button>${typeof deferredInstall!=='undefined'&&deferredInstall?`<button class="btn" style="width:100%;margin-top:10px" onclick="installApp()">${I('in')} نصب اپ روی گوشی</button>`:''}</div>
+ <button class="btn alt" style="width:100%;margin-bottom:10px" onclick="monthClose()">${I('lock')} بستن ماه (گام‌به‌گام)</button><button class="btn alt" style="width:100%;margin-bottom:10px" onclick="goalForm()">${I('trend')} هدف ماهانه و بودجهٔ مصارف</button><button class="btn alt" style="width:100%;margin-bottom:10px" onclick="enableNotif()">${I('clock')} ${META.notif?'اعلان قول‌های پرداخت روشن است ✓':'روشن کردن اعلان قول‌های پرداخت'}</button><button class="btn alt" style="width:100%" onclick="healthCheck()">${I('check')} بررسی سلامت حساب‌ها</button>${typeof deferredInstall!=='undefined'&&deferredInstall?`<button class="btn" style="width:100%;margin-top:10px" onclick="installApp()">${I('in')} نصب اپ روی گوشی</button>`:''}</div>
  <div class="card"><h3>${I('shop')} کسب‌وکار</h3>${fl('نام',`<input class="in" id="s_biz" value="${esc(s.biz)}">`)}<div class="f2">${fl('شماره تماس (روی بل چاپی)',`<input class="in" id="s_phone" dir="ltr" value="${esc(s.phone||'')}">`)}${fl('آدرس (روی بل چاپی)',`<input class="in" id="s_addr" value="${esc(s.addr||'')}">`)}</div><div class="f2">${fl('پول نقد در صندوق در روز شروع',`<input class="in" id="s_ocash" inputmode="decimal" value="${s.openCash||''}" placeholder="۰">`)}${fl('پول در بانک/حواله در روز شروع',`<input class="in" id="s_obank" inputmode="decimal" value="${s.openBank||''}" placeholder="۰">`)}</div>${fl('قفل حساب‌ها تا تاریخ (بعد از بستن ماه)',`<input class="in" type="date" id="s_lock" value="${s.lockDate||''}">`)}<div class="hint" style="margin:-6px 0 10px">اسناد تا این تاریخ دیگر قابل ثبت، ویرایش یا ابطال نیستند — برای اینکه حساب ماه‌های بسته‌شده دست نخورد.</div>${fl('تاریخ شروع حساب‌ها (اول دوره)',`<input class="in" type="date" id="s_start" value="${s.startDate}">`)}
  <button class="btn" onclick="saveSettings()">${I('check')} ذخیره</button><div class="hint" style="margin-top:8px">کد این دستگاه: <b>${META.device}</b> (در نمبر بل‌ها می‌آید تا بل‌های گوشی و کامپیوتر قاطی نشوند)</div></div>
  <div class="card"><h3>${I('in')} پشتیبان (بکاپ)</h3><div class="hint">همه اطلاعات در همین مرورگر ذخیره است. هر هفته یک بکاپ بگیرید و در گوگل‌درایو/تلگرام نگه دارید.</div>
