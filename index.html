@@ -448,7 +448,7 @@ body.mopen #snack{bottom:auto;top:16px;transform:translate(-50%,-20px)}body.mope
 <script id="engine">
 'use strict';
 const LS = 'ebrahimi_acc_v1';
-const VERSION = '7.5';
+const VERSION = '7.6';
 
 /* ---- Chart of accounts (کدینگ حساب‌ها) ----
    nature: A=asset (debit), L=liability (credit), E=equity (credit), E-=contra equity (debit),
@@ -966,7 +966,7 @@ function viewDash(){
   ${!can('profit')?'':kpi('bank','#3b6fd8','ارزش خالص کسب‌وکار',money(cash+bank+ar+inv+(S['1500']||0)-ap+(S['2200']||0)),'دارایی منهای قرض')}
  </div>
  <div class="card" style="margin-top:18px"><h3>${I('chart')} فروش و پول جمع‌شده — ۱۴ روز اخیر<span class="sp"></span><span class="lg"><i style="background:#13a389"></i>فروش <i style="background:#f08c2e"></i>وصول</span></h3>${chart14()}</div>
- ${myGoalCard()}${truckCard()}${changesCard()}${payablesCard()}${fixedCard()}${agendaCard()}
+ ${nightCard()}${myGoalCard()}${truckCard()}${changesCard()}${payablesCard()}${fixedCard()}${agendaCard()}
  ${ordersCard()}
  ${todayShopsCard()}
  <div class="grid k2" style="margin-top:18px">
@@ -1807,6 +1807,22 @@ function applyRise(){ const l=F.list.filter(x=>x.on&&x.price>0); batch(()=>l.for
 function myGoalCard(){ const g=(DB.settings.goalsU||{})[META.user]; if(!g) return ''; const ms=monthStart(), v=DB.txns.filter(t=>!t.void&&t.type==='sale'&&t.by===META.user&&t.date>=ms).reduce((s,t)=>s+txnTotal(t),0)-DB.txns.filter(t=>!t.void&&t.type==='sreturn'&&t.by===META.user&&t.date>=ms).reduce((s,t)=>s+txnTotal(t),0);
  const pct=Math.min(100,v/g*100), left=Math.max(0,monthLen()-daysBetween(ms,today())-1);
  return `<div class="card" style="margin-bottom:18px"><h3>${I('trend')} هدف فروش این ماه شما</h3><div class="row" style="justify-content:space-between"><b style="font-size:20px">${money(v)}</b><span class="mu">از ${money(g)}</span></div><div class="hb2" style="margin:10px 0 6px"><i style="width:${pct}%"></i></div><div class="mu" style="font-size:12.5px">${v>=g?'🎉 به هدف رسیدید!':fm(Math.round(pct))+'٪ — باقی '+money(g-v)+(left?'، روزی حدود '+money((g-v)/left)+' در '+fm(left)+' روز باقی‌مانده':'')}</div></div>`; }
+
+/* ---------- end-of-day checklist (owner, evenings) ---------- */
+function nightCard(force){ if(!can('settings')) return ''; const h=new Date().getHours(); if(!force&&h<17) return ''; const d=today(), tx=DB.txns.filter(t=>!t.void&&t.date===d);
+ if(!force&&!tx.length) return '';
+ const loads=loadsOn(d).length, unl=tx.some(t=>t.type==='unload'), cc=tx.some(t=>t.type==='cashcount'), un=unapproved().filter(t=>t.date===d).length;
+ const others=[...new Set(tx.map(t=>t.by).filter(u=>u&&u!==META.user))], hand=new Set(tx.filter(t=>t.type==='handover').map(t=>t.from));
+ const syncOk=!META.sync||!META.sync.url||!META.dirty.length, bk=META.sync&&META.sync.url?true:(META.lastBackup&&daysBetween(META.lastBackup.slice(0,10),d)<7);
+ const items=[
+  loads?[unl,'موتر تطبیق شد',unl?'':'بار صبح با فروش امروز مقایسه شود','unloadForm()']:null,
+  others.length?[others.every(u=>hand.has(u)),'پول فروش دیگران تحویل گرفته شد',others.filter(u=>!hand.has(u)).join('، ')||'','handoverForm()']:null,
+  [!un,'مصارف امروز دیگران تأیید شد',un?fm(un)+' مصرف تأییدنشده':'',"approveAll()"],
+  [cc,'صندوق شمرده و بسته شد',cc?'':'پول نقد را بشمارید','cashCloseForm()'],
+  [syncOk,'همه‌چیز به کامپیوتر/گوشی دیگر رفت',syncOk?'':fm(META.dirty.length)+' ثبت هنوز نرفته — انترنت را وصل کنید','syncNow&&syncNow()'],
+  [!!bk,'بکاپ تازه هست',bk?'':'یک فایل بکاپ بگیرید','exportJSON()']].filter(Boolean);
+ const ok=items.filter(i=>i[0]).length; if(!force&&ok===items.length) return '';
+ return `<div class="card" style="margin-bottom:18px"><h3>${I('moon')} کارهای آخر شب<span class="sp"></span><span class="mu" style="font-size:12.5px">${fm(ok)} از ${fm(items.length)}</span></h3><div class="slist">${items.map(i=>`<div class="sr" ${i[0]?'style="cursor:default"':`onclick="${i[3]}"`}><span class="badge" style="--c:${i[0]?'#16a37a':'#f08c2e'}">${i[0]?'شد':'مانده'}</span><div class="m"><b style="font-weight:600;${i[0]?'opacity:.6':''}">${i[1]}</b>${i[2]?`<div class="mu">${esc(i[2])}</div>`:''}</div>${i[0]?'':I('chev')}</div>`).join('')}</div></div>`; }
 
 /* ---------- text size ---------- */
 function applyFont(){ const z={lg:1.12,xl:1.25}[META.font]||1; document.body.style.zoom=z===1?'':z; }
