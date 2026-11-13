@@ -448,7 +448,7 @@ body.mopen #snack{bottom:auto;top:16px;transform:translate(-50%,-20px)}body.mope
 <script id="engine">
 'use strict';
 const LS = 'ebrahimi_acc_v1';
-const VERSION = '5.5';
+const VERSION = '5.6';
 
 /* ---- Chart of accounts (کدینگ حساب‌ها) ----
    nature: A=asset (debit), L=liability (credit), E=equity (credit), E-=contra equity (debit),
@@ -964,7 +964,7 @@ function viewDash(){
  <div class="grid k2" style="margin-top:18px">
   <div class="card"><h3>${I('alert')} بیشترین طلب‌ها<span class="sp"></span><button class="btn sm alt" onclick="go('map')">روی نقشه</button></h3><div class="list">
    ${debtors.slice(0,7).map(x=>custItem(x)).join('')||'<div class="empty">هیچ دکانی بدهکار نیست 🎉</div>'}</div></div>
-  <div class="card"><h3>${I('clock')} آخرین ثبت‌ها<span class="sp"></span><button class="btn sm alt" onclick="go('txns')">همه</button></h3><div class="list">
+  <div class="card"><h3>${I('clock')} آخرین ثبت‌ها<span class="sp"></span><button class="btn sm alt" onclick="go('txns')">همه</button></h3>${todayByUser()}<div class="list">
    ${recent.map(txItem).join('')||'<div class="empty">هنوز چیزی ثبت نشده</div>'}</div></div>
  </div>
  ${topProductsCard()}
@@ -1006,6 +1006,8 @@ function repShops(){ const from=RP.from, to=RP.to, m={};
 let SHS='profit';
 function custItem(x){ const c=C().CU[x.id]||{bal:0,oldest:0}, st=custSt(x.id);
  return `<div class="it" onclick="go('customer','${x.id}')"><div class="av ${x.photo?'ph':''}" style="--c:${st.col}">${x.photo?`<img src="${x.photo}">`:esc((x.name||'؟')[0])}</div><div class="m"><div class="t">${esc(x.name)} ${x.lat?'📍':''}${x.promiseDate&&c.bal>0.5?` <span class="badge" style="--c:${x.promiseDate<today()?'var(--red)':'var(--g2)'}">قول ${fd(x.promiseDate)}</span>`:''}</div><div class="d">${esc([x.owner,x.area].filter(Boolean).join(' — '))}${c.bal>0.5?`، ${fm(c.oldest)} روز`:''}</div></div><div class="a ${st.cls}">${money(c.bal)}</div></div>`; }
+function todayByUser(){ const td=today(), m={}; DB.txns.forEach(t=>{ if(!t.void&&t.date===td&&t.by) m[t.by]=(m[t.by]||0)+1; }); const e=Object.entries(m); if(!e.length) return '';
+ return `<div class="uchips" style="margin:0 0 10px"><span class="mu" style="align-self:center;font-size:12px">امروز:</span>${e.sort((a,b)=>b[1]-a[1]).map(([u,n])=>`<button style="--c:${colorOf(u)}" data-u="${esc(u)}" onclick="TQ.user=this.dataset.u;TQ.type='';tRange('today');go('txns')">${esc(u)} <i>${fm(n)}</i></button>`).join('')}</div>`; }
 const who=u=>u?`<span class="who" style="--c:${colorOf(u)}">${esc(u)}</span>`:'';
 const hm=iso=>{ try{ return iso?new Date(iso).toLocaleTimeString('fa-AF',{hour:'2-digit',minute:'2-digit'}):''; }catch(e){ return ''; } };
 function txItem(t){ const tt=TT[t.type]||['','','#999'];
