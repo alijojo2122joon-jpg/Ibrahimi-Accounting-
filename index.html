@@ -446,7 +446,7 @@ body.mopen #snack{bottom:auto;top:16px;transform:translate(-50%,-20px)}body.mope
 <script id="engine">
 'use strict';
 const LS = 'ebrahimi_acc_v1';
-const VERSION = '5.1';
+const VERSION = '5.2';
 
 /* ---- Chart of accounts (کدینگ حساب‌ها) ----
    nature: A=asset (debit), L=liability (credit), E=equity (credit), E-=contra equity (debit),
@@ -1141,7 +1141,7 @@ function viewCustomers(){ const c=C(), cs=DB.customers.filter(x=>!x.deleted), de
  return `<div class="grid k4">${kpi('in','#f08c2e','مجموع طلب',money(tot),fm(deb.length)+' دکان بدهکار','warn',"CF='debt';render()")}${kpi('clock','#e5484d','بدهی کهنه',fm(old),'بیش از ۳۰ روز',old?'neg':'',"CF='old';render()")}${kpi('shop','#13a389','همه دکان‌ها',fm(cs.length),'')}${kpi('pin','#3b6fd8','بدون لوکیشن',fm(nl),'روی نقشه نیستند','',"CF='noloc';render()")}</div>
  <div class="row" style="margin:18px 0 12px"><div class="sbox" style="flex:1;min-width:200px;margin:0">${I('search')}<input placeholder="جستجوی نام دکان، صاحب، شماره، ساحه…" value="${esc(CQ)}" oninput="CQ=this.value;drawCList()"></div><button class="btn" onclick="customerForm()">${I('plus')} دکان جدید</button><button class="btn alt" onclick="bulkForm('c')">${I('in')} ورود گروهی</button><button class="btn" style="--c:#25b05a" onclick="bulkRemind()">${I('wa')} یادآوری گروهی</button></div>
  ${top.length>1?`<div class="tabs">${[['','همه ساحه‌ها'],...top.map(t=>[t[0],t[0]+' ('+fm(t[1])+')'])].map(t=>`<button class="${CA===t[0]?'on':''}" onclick="CA='${esc(t[0]).replace(/'/g,'')}';render()">${esc(t[1])}</button>`).join('')}</div>`:''}
- <div class="tabs">${[['all','همه'],['debt','بدهکار'],['old','بدهی +۳۰ روز'],['noloc','بدون لوکیشن'],['credit','پیش‌پرداخت']].map(f=>`<button class="${CF===f[0]?'on':''}" onclick="CF='${f[0]}';render()">${f[1]}</button>`).join('')}
+ <div class="tabs">${[['all','همه'],['debt','بدهکار'],['old','بدهی +۳۰ روز'],['noloc','بدون لوکیشن'],['credit','پیش‌پرداخت'],['sleep','خواب (+۲۱ روز بی‌خرید)']].map(f=>`<button class="${CF===f[0]?'on':''}" onclick="CF='${f[0]}';render()">${f[1]}</button>`).join('')}
  <select class="in" style="width:auto" onchange="CS=this.value;drawCList()">${[['bal','بیشترین بدهی'],['old','قدیمی‌ترین بدهی'],['name','الفبا'],['last','آخرین معامله'],['sales','بیشترین خرید']].map(o=>`<option value="${o[0]}" ${CS===o[0]?'selected':''}>${o[1]}</option>`).join('')}</select></div>
  <div class="list" id="clist"></div>`;
 }
@@ -1149,9 +1149,9 @@ function drawCList(){ const el=$('#clist'); if(!el) return; const c=C(), q=CQ.tr
  let a=DB.customers.filter(x=>!x.deleted); const g=x=>c.CU[x.id]||{bal:0,oldest:0,sales:0,last:''};
  if(q) a=a.filter(x=>[x.name,x.owner,x.phone,x.area,x.code].join(' ').toLowerCase().includes(q));
  if(CA) a=a.filter(x=>(x.area||'').split(/[،,]/)[0].trim()===CA);
- if(CF==='debt') a=a.filter(x=>g(x).bal>0.5); if(CF==='old') a=a.filter(x=>g(x).bal>0.5&&g(x).oldest>30); if(CF==='noloc') a=a.filter(x=>!x.lat); if(CF==='credit') a=a.filter(x=>g(x).bal<-0.5);
+ if(CF==='debt') a=a.filter(x=>g(x).bal>0.5); if(CF==='old') a=a.filter(x=>g(x).bal>0.5&&g(x).oldest>30); if(CF==='noloc') a=a.filter(x=>!x.lat); if(CF==='credit') a=a.filter(x=>g(x).bal<-0.5); if(CF==='sleep') a=a.filter(x=>g(x).last&&g(x).last<addDays(today(),-21)).sort((x,y)=>g(y).sales-g(x).sales);
  const so={bal:(x,y)=>g(y).bal-g(x).bal,old:(x,y)=>g(y).oldest-g(x).oldest,name:(x,y)=>x.name.localeCompare(y.name,'fa'),last:(x,y)=>(g(y).last||'').localeCompare(g(x).last||''),sales:(x,y)=>g(y).sales-g(x).sales}[CS];
- a.sort(so); const tot=a.reduce((s,x)=>s+Math.max(0,g(x).bal),0);
+ if(CF!=='sleep') a.sort(so); const tot=a.reduce((s,x)=>s+Math.max(0,g(x).bal),0);
  el.innerHTML=`<div class="hint" style="padding:0 4px 6px">${fm(a.length)} دکان، مجموع طلب: <b>${money(tot)}</b></div>`+(a.map(custItem).join('')||'<div class="empty">دکانی پیدا نشد</div>');
 }
 function ringSvg(pct,col){ return `<svg viewBox="0 0 200 200"><circle cx="100" cy="100" r="84" fill="none" stroke="var(--line)" stroke-width="12"/><circle cx="100" cy="100" r="84" fill="none" stroke="${col}" stroke-width="12" stroke-linecap="round" stroke-dasharray="${(Math.max(0,Math.min(100,pct))/100*527.8).toFixed(1)} 528" ${pct>0?'':'stroke-opacity="0"'}/></svg>`; }
@@ -2078,8 +2078,15 @@ function repDaily(){ const d=RP.dd||today(); const tx=DB.txns.filter(t=>!t.void&
  <div class="grid k4">${kpi('wallet','#7d8796','صندوق اول روز',money(open),'')}${kpi('in','#16a37a','پول آمد',money(all.cin),fm(all.cnt)+' ثبت','pos')}${kpi('out','#e5484d','پول رفت',money(all.cout),'','neg')}${kpi('cash','#13a389','صندوق آخر روز',money(close),cc?(Math.abs(num(cc.diff))<1?'✓ شمرده شد — برابر':(num(cc.diff)<0?'کسری ':'اضافه ')+money(Math.abs(num(cc.diff)))):'هنوز شمرده نشده',cc&&num(cc.diff)<0?'neg':'')}</div>
  <div class="card" style="margin-top:18px"><h3>${I('user')} پول دست هر نفر<span class="sp"></span><button class="btn sm" onclick="cashCloseForm()">${I('wallet')} بستن صندوق</button></h3>
  ${per.length?`<div class="grid k3">${per.map(({u,o})=>`<div class="ucard"><div class="av" style="--c:${colorOf(u)};width:46px;height:46px">${esc(u[0]||'؟')}</div><div><b>${esc(u)}</b><div class="mu" style="font-size:12px">${fm(o.cnt)} ثبت، فروش ${kfmt(o.sales)}، وصول ${kfmt(o.cashSale+o.recv)}</div><div class="${o.cin-o.cout>=0?'pos':'neg'}" style="font-weight:800;font-size:18px;margin-top:4px">${money(o.cin-o.cout)}</div><div class="mu" style="font-size:11.5px">باید در دست داشته باشد</div></div></div>`).join('')}</div>`:'<div class="empty">امروز هنوز ثبتی نیست</div>'}
- <div class="hint" style="margin-top:10px">هر شب پول دست هر نفر را بشمارید و با عدد بالا مقایسه کنید. تفاوت یعنی اشتباه یا چیزی که ثبت نشده.</div></div>
+ <div class="row" style="margin-top:10px"><button class="btn sm" style="--c:#25b05a" onclick="shareDay('${d}')">${I('wa')} فرستادن خلاصهٔ روز در واتساپ</button></div><div class="hint" style="margin-top:10px">هر شب پول دست هر نفر را بشمارید و با عدد بالا مقایسه کنید. تفاوت یعنی اشتباه یا چیزی که ثبت نشده.</div></div>
  <details class="more" style="margin-top:18px"><summary>${I('book')} جزئیات کامل روز</summary><div class="grid k${Math.min(3,per.length+1)}" style="margin-top:12px"><div><h3>همه</h3>${col(all)}</div>${per.map(({u,o})=>`<div><h3>${esc(u)}</h3>${col(o)}</div>`).join('')}</div></details>`; }
+function shareDay(d){ const tx=DB.txns.filter(t=>!t.void&&t.date===d); let sales=0,cash=0,recv=0,exp=0,buy=0; const shops=new Set();
+ tx.forEach(t=>{ if(t.type==='sale'){ sales+=txnTotal(t); cash+=num(t.paid); shops.add(t.party); } if(t.type==='receipt') recv+=num(t.amount); if(t.type==='expense') exp+=num(t.amount); if(t.type==='purchase') buy+=txnTotal(t); });
+ const prof=tx.filter(t=>t.type==='sale').reduce((s,t)=>s+txnTotal(t)-(C().costs[t.id]||0),0), debt=Object.values(C().CU).reduce((s,x)=>s+Math.max(0,x.bal),0);
+ const L=['📊 خلاصهٔ روز '+fd(d)+' — '+(DB.settings.bizName||'ابراهیمی'),'🛒 فروش: '+money(sales)+' ('+fm(shops.size)+' دکان)','💵 نقد گرفته: '+money(cash),'📥 وصول طلب: '+money(recv)];
+ if(buy) L.push('🚚 خرید: '+money(buy)); if(exp) L.push('🧾 مصارف: '+money(exp)); if(can('profit')) L.push('📈 سود ناخالص: '+money(prof));
+ L.push('💰 صندوق آخر روز: '+money(balOf('1010',d)),'📒 مجموع طلب از دکان‌ها: '+money(debt));
+ window.open(waLink('',L.join('\n')),'_blank'); }
 function repAging(){ const c=C(); const a=DB.customers.filter(x=>!x.deleted&&(c.CU[x.id]||{}).bal>0.5).sort((x,y)=>c.CU[y.id].bal-c.CU[x.id].bal); const T=[0,0,0,0];
  const rows=a.map(x=>{ const b=c.CU[x.id].b; b.forEach((v,i)=>T[i]+=v); return `<tr class="click" onclick="go('customer','${x.id}')"><td>${esc(x.name)}<div class="mu" style="font-size:12px">${esc(x.area||'')}</div></td>${b.map((v,i)=>`<td class="n ${i>=2&&v?'neg':''}">${v?fm(v):'—'}</td>`).join('')}<td class="n"><b>${fm(c.CU[x.id].bal)}</b></td><td class="n">${fm(c.CU[x.id].oldest)}</td></tr>`; }).join('');
  const tot=T.reduce((s,v)=>s+v,0);
