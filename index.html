@@ -247,6 +247,8 @@ svg.flip{transform:scaleX(-1)}
 #printArea{display:none}
 .ctcl{display:flex;gap:12px;align-items:center;flex-wrap:wrap}.ctcl .m{flex:1;min-width:200px}.ctcl.done b{color:var(--g2)}.ctcl .mu{font-size:12.5px;margin-top:3px}
 .ctag>div{display:flex;gap:10px;align-items:baseline;padding:7px 0;border-bottom:1px dashed var(--line)}.ctag span{flex:1;min-width:0}.ctag b{white-space:nowrap}.ctag small{white-space:nowrap;color:var(--mu);min-width:70px;text-align:left}
+.ctlog>div{padding:8px 0;border-bottom:1px dashed var(--line)}.ctch{margin-top:4px;font-size:14px}.ctch s{color:var(--red);opacity:.8}
+.pill{display:inline-block;font-size:11px;padding:1px 8px;border-radius:99px;background:color-mix(in srgb,#f08c2e 18%,transparent);color:#c26a12;font-weight:700}
 .ctlinks{margin-top:10px;font-size:13px}.ctlinks a{cursor:pointer;color:var(--g2);display:inline-flex;gap:6px;align-items:center}.ctlinks svg{width:15px;height:15px}
 .ctop{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:14px}.ctseg{flex:1;min-width:260px}.ctseg button{display:flex;gap:6px;align-items:center;justify-content:center}.ctseg svg{width:18px;height:18px}.ctwho{font-size:13px;display:flex;gap:6px;align-items:center}.ctwho svg{width:16px;height:16px}
 .ctcats{margin:12px 0 0;flex-wrap:nowrap;overflow-x:auto;padding:4px 2px 6px}.ctcats button{flex:none}
@@ -558,7 +560,7 @@ body.mopen #snack{bottom:auto;top:16px;transform:translate(-50%,-20px)}body.mope
 <script id="engine">
 'use strict';
 const LS = 'ebrahimi_acc_v1';
-const VERSION = '9.3';
+const VERSION = '9.4';
 
 /* ---- Chart of accounts (کدینگ حساب‌ها) ----
    nature: A=asset (debit), L=liability (credit), E=equity (credit), E-=contra equity (debit),
@@ -2244,7 +2246,7 @@ function ctLog(){ const td=today(), sale=CT.log==='sale', tx=DB.txns.filter(t=>!
  const lines=tx.flatMap(t=>(t.items||[]).map(i=>({t,i}))), tot=tx.reduce((s,t)=>s+txnTotal(t),0), cash=tx.reduce((s,t)=>s+num(t.paid),0);
  const byU={}; tx.forEach(t=>byU[t.by||'—']=(byU[t.by||'—']||0)+1);
  const cl=ctLastClose(td);
- return `<div class="card ctclose"><div class="ctcl ${cl?'done':''}">${cl?`<div class="m"><b>✓ حساب امروز بسته شد</b><div class="mu">${who(cl.by)} ساعت ${hm(cl.createdAt)} · شمرده: ${money(cl.counted)}${cl.to?' · تحویل به '+esc(cl.to):''}</div></div><button class="btn sm alt" onclick="ctCloseView('${cl.id}')">گزارش</button>`:`<div class="m"><b>آخر روز: بستن حساب امروز</b><div class="mu">پول را بشمارید، جمع فروش و جنس رسیده را ببینید و پول را تحویل بدهید</div></div>`}${ctOpen().bills||!cl?`<button class="btn sm" onclick="ctCloseForm()">${I('lock')} ${cl?'بستن دوباره':'بستن حساب'}</button>`:''}</div><div class="ctlinks"><a onclick="ctHistory()">${I('book')} روزهای بسته‌شدهٔ قبلی</a></div></div>
+ return `<div class="card ctclose"><div class="ctcl ${cl?'done':''}">${cl?`<div class="m"><b>✓ حساب امروز بسته شد</b><div class="mu">${who(cl.by)} ساعت ${hm(cl.createdAt)} · شمرده: ${money(cl.counted)}${(cl.edits||[]).length?' · ویرایش‌شده':''}${cl.to?' · تحویل به '+esc(cl.to):''}</div></div><button class="btn sm alt" onclick="ctCloseView('${cl.id}')">گزارش</button>`:`<div class="m"><b>آخر روز: بستن حساب امروز</b><div class="mu">پول را بشمارید، جمع فروش و جنس رسیده را ببینید و پول را تحویل بدهید</div></div>`}${ctOpen().bills||!cl?`<button class="btn sm" onclick="ctCloseForm()">${I('lock')} ${cl?'بستن دوباره':'بستن حساب'}</button>`:''}</div><div class="ctlinks"><a onclick="ctHistory()">${I('book')} روزهای بسته‌شدهٔ قبلی</a></div></div>
  <div class="card"><h3>${I('clock')} ثبت‌های امروز<span class="sp"></span><div class="seg" style="width:auto"><button class="${sale?'on':''}" onclick="CT.log='sale';render()">فروش</button><button class="${sale?'':'on'}" onclick="CT.log='in';render()">ورود جنس</button></div></h3>
   ${tx.length?`<div class="cttot" style="margin:0 0 10px"><span>${fm(tx.length)} ${sale?'بل':'ورود'} · ${Object.entries(byU).map(([u,n])=>esc(u)+' '+fm(n)).join('، ')}</span>${sale||can('cost')?`<b>${money(sale?cash:tot)}${sale&&tot-cash>0.5?` <small class="mu">+ ${money(tot-cash)} قرض</small>`:''}</b>`:''}</div>`:''}
   <div class="list">${lines.slice(0,80).map(({t,i})=>`<div class="it" onclick="showTxn('${t.id}')"><div class="m"><div class="t">${esc(pname(i.pid))} — ${iq(i)}</div><div class="d">${who(t.by)} ساعت ${hm(t.createdAt)} · ${esc(partyName(t)||'')}</div></div>${sale||can('cost')?`<div class="a">${money(num(i.qty)*num(i.price))}</div>`:''}</div>`).join('')||`<div class="empty">امروز هنوز ${sale?'فروشی':'جنسی'} ثبت نشده</div>`}</div></div>`; }
@@ -2276,9 +2278,9 @@ function ctCloseSave(){ if(fv('counted')==='') return toast('پول شمرده�
  const lock=DB.settings.lockDate; if(lock&&d<=lock) return toast('حساب‌ها قفل است');
  const sm=m=>Object.fromEntries(Object.entries(m).map(([k,v])=>[k,{q:r2(v.q),v:r2(v.v)}]));
  let id; batch(()=>{ const r=save('txn',{type:'dclose',date:d,method:'cash',no:nextNo('DC'),expected:o.cash,counted:c,diff:r2(c-o.cash),amount:c,credit:o.credit,bills:o.bills,ins:o.ins,inVal:r2(o.inVal),sold:sm(o.sold),inn:sm(o.inn),byU:o.byU,since:o.since||null,to:to||null,note:fv('note').trim()}); id=r.id;
-  if(to&&c>0) save('txn',{type:'handover',date:d,method:'cash',from:META.user,to,amount:c,no:nextNo('HND'),note:'تحویل پول هنگر — '+r.no}); });
+  if(to&&c>0){ const h=save('txn',{type:'handover',date:d,method:'cash',from:META.user,to,amount:c,no:nextNo('HND'),note:'تحویل پول هنگر — '+r.no,dc:r.id}); save('txn',Object.assign({},r,{hid:h.id})); } });
  closeModal(); render(); toast('✓ حساب امروز بسته شد'); ctCloseView(id); }
-function ctCloseText(t){ return `📋 حساب هنگر — ${fd(t.date)}\nبسته‌کننده: ${t.by||''} ساعت ${hm(t.createdAt)}\n\n💵 فروش نقد: ${money(t.expected)}\n🧾 فروش قرض: ${money(t.credit)}\n🔢 تعداد بل: ${fm(t.bills)}\n✋ پول شمرده‌شده: ${money(t.counted)}${Math.abs(num(t.diff))>=0.5?(t.diff>0?' (اضافه '+money(t.diff)+')':' (کم '+money(-t.diff)+')'):' ✓'}${t.to?'\n➡️ تحویل به: '+t.to:''}\n\n🛒 فروخته شد:\n`+Object.entries(t.sold||{}).map(([p,o])=>`• ${pname(p)}: ${qtyTxt(prod(p),o.q)}`).join('\n')+(Object.keys(t.inn||{}).length?`\n\n📦 وارد هنگر شد:\n`+Object.entries(t.inn).map(([p,o])=>`• ${pname(p)}: ${qtyTxt(prod(p),o.q)}`).join('\n'):'')+(t.note?`\n\n📝 ${t.note}`:''); }
+function ctCloseText(t){ return `📋 حساب هنگر — ${fd(t.date)}\nبسته‌کننده: ${t.by||''} ساعت ${hm(t.createdAt)}\n\n💵 فروش نقد: ${money(t.expected)}\n🧾 فروش قرض: ${money(t.credit)}\n🔢 تعداد بل: ${fm(t.bills)}\n✋ پول شمرده‌شده: ${money(t.counted)}${Math.abs(num(t.diff))>=0.5?(t.diff>0?' (اضافه '+money(t.diff)+')':' (کم '+money(-t.diff)+')'):' ✓'}${t.to?'\n➡️ تحویل به: '+t.to:''}\n\n🛒 فروخته شد:\n`+Object.entries(t.sold||{}).map(([p,o])=>`• ${pname(p)}: ${qtyTxt(prod(p),o.q)}`).join('\n')+(Object.keys(t.inn||{}).length?`\n\n📦 وارد هنگر شد:\n`+Object.entries(t.inn).map(([p,o])=>`• ${pname(p)}: ${qtyTxt(prod(p),o.q)}`).join('\n'):'')+(t.note?`\n\n📝 ${t.note}`:'')+((t.edits||[]).length?'\n\n✏️ ویرایش‌ها:\n'+t.edits.map(e=>e.ch.map(c=>`• ${DCF[c.f]||c.f}: ${c.f==='counted'?money(c.o):(c.o||'—')} ← ${c.f==='counted'?money(c.n):(c.n||'—')} (${e.by}، ${hm(e.at)}${e.why?'، '+e.why:''})`).join('\n')).join('\n'):''); }
 function ctCloseView(id){ const t=DB.txns.find(x=>x.id===id); if(!t) return; const own=roleOf(META.user)==='owner', d=num(t.diff), txt=ctCloseText(t);
  const toA=m=>Object.fromEntries(Object.entries(m||{}).map(([k,v])=>[k,{q:v.q,v:v.v}]));
  openModal('حساب هنگر — '+fd(t.date),`<div class="mu" style="margin-bottom:10px">${who(t.by)} ساعت ${hm(t.createdAt)} بست${t.since?' (بستن دوم روز)':''} · ${esc(t.no||'')}${t.okBy?` · <span class="pos">دیده شد توسط ${esc(t.okBy)} ✓</span>`:''}</div>
@@ -2286,9 +2288,35 @@ function ctCloseView(id){ const t=DB.txns.find(x=>x.id===id); if(!t) return; con
  <div class="sum"><div><span>پول شمرده‌شده</span><b>${money(t.counted)}</b></div><div><span>تفاوت</span><b class="${Math.abs(d)<0.5?'pos':d>0?'pos':'neg'}">${Math.abs(d)<0.5?'✓ درست':d>0?money(d)+' اضافه':money(-d)+' کم'}</b></div>${t.to?`<div><span>تحویل به</span><b>${esc(t.to)}</b></div>`:''}</div>
  ${sec('receipt','فروخته شد',ctAggTable(toA(t.sold),true))}${sec('in','وارد هنگر شد',ctAggTable(toA(t.inn),can('cost')))}
  ${t.note?`<div class="hint">📝 ${esc(t.note)}</div>`:''}
- <div class="qrow" style="justify-content:center;margin-top:14px"><button class="btn" style="--c:#25b05a" onclick="window.open('https://wa.me/?text='+encodeURIComponent(ctCloseText(DB.txns.find(x=>x.id==='${t.id}'))),'_blank')">${I('wa')} فرستادن در واتس‌اپ</button><button class="btn alt" onclick="navigator.clipboard.writeText(ctCloseText(DB.txns.find(x=>x.id==='${t.id}'))).then(()=>toast('کاپی شد'))">کاپی</button>${own&&!t.okBy&&t.by!==META.user?`<button class="btn alt" onclick="approveTxn('${t.id}');closeModal()">${I('check')} دیدم، درست است</button>`:''}${can('void')?`<button class="btn alt" onclick="confirmBtn(this,()=>{undoTxn('${t.id}');closeModal();render();})">ابطال</button>`:''}</div>`); }
+ ${ctEditLog(t)}
+ <div class="qrow" style="justify-content:center;margin-top:14px">${ctCanEdit(t)?`<button class="btn alt" onclick="ctCloseEdit('${t.id}')">${I('edit')} ویرایش</button>`:''}<button class="btn" style="--c:#25b05a" onclick="window.open('https://wa.me/?text='+encodeURIComponent(ctCloseText(DB.txns.find(x=>x.id==='${t.id}'))),'_blank')">${I('wa')} فرستادن در واتس‌اپ</button><button class="btn alt" onclick="navigator.clipboard.writeText(ctCloseText(DB.txns.find(x=>x.id==='${t.id}'))).then(()=>toast('کاپی شد'))">کاپی</button>${own&&!t.okBy&&t.by!==META.user?`<button class="btn alt" onclick="approveTxn('${t.id}');closeModal()">${I('check')} دیدم، درست است</button>`:''}${can('void')?`<button class="btn alt" onclick="confirmBtn(this,()=>{undoTxn('${t.id}');closeModal();render();})">ابطال</button>`:''}</div>`); }
 function ctHistory(){ const a=DB.txns.filter(t=>!t.void&&t.type==='dclose').sort((x,y)=>(y.createdAt||'').localeCompare(x.createdAt||'')).slice(0,60);
- openModal('روزهای بسته‌شدهٔ هنگر',a.length?`<div class="list">${a.map(t=>`<div class="it" onclick="ctCloseView('${t.id}')"><div class="m"><div class="t">${fd(t.date)} — ${fm(t.bills)} بل</div><div class="d">${who(t.by)} ساعت ${hm(t.createdAt)}${t.to?' · تحویل به '+esc(t.to):''}${Math.abs(num(t.diff))>=0.5?` · <span class="${t.diff>0?'pos':'neg'}">${t.diff>0?'اضافه':'کم'} ${money(Math.abs(t.diff))}</span>`:''}</div></div><div class="a">${money(t.counted)}</div></div>`).join('')}</div>`:'<div class="empty">هنوز هیچ روزی بسته نشده</div>'); }
+ openModal('روزهای بسته‌شدهٔ هنگر',a.length?`<div class="list">${a.map(t=>`<div class="it" onclick="ctCloseView('${t.id}')"><div class="m"><div class="t">${fd(t.date)} — ${fm(t.bills)} بل${(t.edits||[]).length?' <span class="pill warn">ویرایش‌شده</span>':''}</div><div class="d">${who(t.by)} ساعت ${hm(t.createdAt)}${t.to?' · تحویل به '+esc(t.to):''}${Math.abs(num(t.diff))>=0.5?` · <span class="${t.diff>0?'pos':'neg'}">${t.diff>0?'اضافه':'کم'} ${money(Math.abs(t.diff))}</span>`:''}</div></div><div class="a">${money(t.counted)}</div></div>`).join('')}</div>`:'<div class="empty">هنوز هیچ روزی بسته نشده</div>'); }
+
+/* edit a day close — every change is kept: what it was, what it became, who and when */
+const DCF={counted:'پول شمرده‌شده',to:'تحویل به',note:'یادداشت'};
+function ctCanEdit(t){ return !t.void&&(can('edit')||(t.by===META.user&&t.date===today())); }
+function ctEditLog(t){ const e=t.edits||[]; if(!e.length) return '';
+ const v=(f,x)=>f==='counted'?money(x):(x?esc(x):'<span class="mu">— خالی —</span>');
+ return sec('edit','تاریخچهٔ ویرایش',`<div class="ctlog">${e.slice().reverse().map(x=>`<div><div class="mu">${who(x.by)} — ${fd((x.at||'').slice(0,10))} ساعت ${hm(x.at)}</div>${x.ch.map(c=>`<div class="ctch"><b>${DCF[c.f]||c.f}:</b> <s>${v(c.f,c.o)}</s> ← <b>${v(c.f,c.n)}</b></div>`).join('')}${x.why?`<div class="hint">دلیل: ${esc(x.why)}</div>`:''}</div>`).join('')}</div>`); }
+function ctCloseEdit(id){ const t=DB.txns.find(x=>x.id===id); if(!t||!ctCanEdit(t)) return toast('ویرایش این بستن فقط برای مالک یا همان کسی است که امروز بسته');
+ const others=(DB.settings.users||[]).filter(u=>u!==t.by); F={type:'dcedit',id};
+ openModal('ویرایش بستن حساب — '+fd(t.date),`<div class="hint" style="margin-bottom:12px">هر تغییر با نام شما و ساعت در «تاریخچهٔ ویرایش» می‌ماند و مالک آن را می‌بیند.</div>
+  ${fl('پول شمرده‌شده',`<input class="in big" id="f_counted" inputmode="decimal" value="${r2(t.counted)}" oninput="F.o={cash:${num(t.expected)}};ctDiff()">`)}<div id="cdiff" class="cdiff"></div>
+  ${fl('تحویل به',`<select class="in" id="f_to"><option value="">پیش خودم می‌ماند</option>${others.map(u=>`<option ${t.to===u?'selected':''}>${esc(u)}</option>`).join('')}</select>`)}
+  ${fl('یادداشت',inp('note',t.note||''))}
+  ${fl('دلیل ویرایش *',inp('why','','placeholder="مثلاً: اشتباه نوشتم، ۸۲۰۰ بود"'))}
+  <button class="btn big" style="width:100%" onclick="ctCloseEditSave()">${I('check')} ذخیرهٔ ویرایش</button>`); F.o={cash:num(t.expected)}; ctDiff(); }
+function ctCloseEditSave(){ const t=DB.txns.find(x=>x.id===F.id); if(!t) return; if(fv('counted')==='') return toast('پول شمرده‌شده را بنویسید');
+ const why=fv('why').trim(); if(!why) return toast('دلیل ویرایش را بنویسید');
+ const n={counted:num(fv('counted')),to:fv('to')||null,note:fv('note').trim()}, ch=Object.keys(n).filter(k=>String(t[k]??'')!==String(n[k]??'')).map(k=>({f:k,o:t[k]??null,n:n[k]}));
+ if(!ch.length) return toast('چیزی تغییر نکرد');
+ const by=t.by, d=t.date; let hid=t.hid||((DB.txns.find(x=>!x.void&&x.type==='handover'&&(x.dc===t.id||(t.no&&(x.note||'').includes(t.no))))||{}).id)||null;
+ batch(()=>{ const h=hid&&DB.txns.find(x=>x.id===hid);
+  if(n.to&&n.counted>0){ if(h) save('txn',Object.assign({},h,{to:n.to,amount:n.counted,editedBy:META.user,editedAt:nowIso()})); else hid=save('txn',{type:'handover',date:d,method:'cash',from:by,to:n.to,amount:n.counted,no:nextNo('HND'),note:'تحویل پول هنگر — '+t.no,dc:t.id}).id; }
+  else if(h){ save('txn',Object.assign({},h,{void:true,voidBy:META.user,voidAt:nowIso()})); hid=null; }
+  save('txn',Object.assign({},t,n,{amount:n.counted,diff:r2(n.counted-num(t.expected)),hid,okBy:null,okAt:null,editedBy:META.user,editedAt:nowIso(),edits:[...(t.edits||[]),{at:nowIso(),by:META.user,why,ch}]})); });
+ closeModal(); render(); toast('✓ ویرایش ذخیره شد'); ctCloseView(t.id); }
 
 /* ---------- text size ---------- */
 function applyFont(){ const z={lg:1.12,xl:1.25}[META.font]||1; document.body.style.zoom=z===1?'':z; }
