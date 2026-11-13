@@ -245,6 +245,7 @@ svg.flip{transform:scaleX(-1)}
 #side .keys{font-size:11px;color:var(--mu);margin-top:14px;text-align:center;direction:rtl}
 /* printable invoice */
 #printArea{display:none}
+.qrbox{display:grid;place-items:center;padding:20px;border-radius:22px;box-shadow:var(--in);min-height:280px}.qrbox img,.qrbox canvas{background:#fff;padding:12px;border-radius:14px}
 .hb2 i,.sbar i,.hb i{margin-left:auto;margin-right:0}
 .tpr{display:flex;gap:12px;align-items:center;padding:8px 4px;cursor:pointer}
 .tpr .rk{width:28px;height:28px;border-radius:50%;box-shadow:var(--inS);display:grid;place-items:center;font-weight:800;color:var(--g2);flex:none;font-size:13px}
@@ -404,7 +405,7 @@ svg.flip{transform:scaleX(-1)}
 <script id="engine">
 'use strict';
 const LS = 'ebrahimi_acc_v1';
-const VERSION = '3.0';
+const VERSION = '3.1';
 
 /* ---- Chart of accounts (کدینگ حساب‌ها) ----
    nature: A=asset (debit), L=liability (credit), E=equity (credit), E-=contra equity (debit),
@@ -1524,6 +1525,29 @@ function viewHelp(){ const G=[
   ['گوشی و کامپیوتر با هم','با همگام‌سازی (تنظیمات) هر چیزی که در گوشی ثبت شود روی کامپیوتر هم می‌آید. بدون انترنت هم ثبت کنید؛ وقتی انترنت آمد خودش می‌فرستد.']]]];
  return G.map(([ic,col,t,items],k)=>`<div class="card" style="margin-bottom:18px"><h3><span class="ic" style="--c:${col};width:40px;height:40px;margin:4px">${I(ic)}</span> ${t}</h3>${items.map(([q,a],i)=>`<details class="more" style="margin-top:10px" ${k===0&&i===0?'open':''}><summary>${esc(q)}</summary><div class="hint" style="margin-top:8px;color:var(--tx);font-size:13.5px">${esc(a)}</div></details>`).join('')}</div>`).join(''); }
 
+/* ---------- connect a second device with a link / QR ---------- */
+const b64u=s=>btoa(unescape(encodeURIComponent(s))).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'');
+const ub64u=s=>decodeURIComponent(escape(atob(s.replace(/-/g,'+').replace(/_/g,'/'))));
+function joinLink(){ const sc=META.sync; const base=location.origin+location.pathname; return base+'?join='+b64u(JSON.stringify({u:sc.url,k:sc.key,s:sc.secret,b:DB.settings.biz||''})); }
+function loadQR(){ return new Promise((res,rej)=>{ if(window.QRCode) return res(); const sc=document.createElement('script'); sc.src='https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js'; sc.onload=()=>res(); sc.onerror=()=>rej(); document.head.appendChild(sc); }); }
+async function joinForm(){ if(!META.sync.url||!META.sync.key) return toast('اول همگام‌سازی همین دستگاه را تنظیم کنید');
+ const link=joinLink();
+ openModal('وصل کردن دستگاه دوم',`<div class="hint" style="margin-bottom:12px">با دوربین گوشی دوم این کد را اسکن کنید، یا لینک را برای خودتان بفرستید و روی گوشی دوم باز کنید. همان لحظه وصل می‌شود و همهٔ حساب‌ها می‌آید.</div>
+ <div id="qrbox" class="qrbox"><div class="mu">در حال ساختن کد…</div></div>
+ <div class="row" style="margin-top:14px"><button class="btn alt" onclick="navigator.clipboard.writeText(joinLink()).then(()=>toast('لینک کاپی شد'))">کاپی لینک</button><a class="btn" style="--c:#25b05a" target="_blank" rel="noopener" href="https://wa.me/?text=${encodeURIComponent('لینک وصل شدن به ابراهیمی اکانتینگ (فقط برای دستگاه‌های خودمان):\n'+link)}">${I('wa')} فرستادن برای خودم</a></div>
+ <div class="hint" style="margin-top:12px;color:var(--red)">${I('alert')} این لینک رمز همگام‌سازی را دارد — فقط روی دستگاه‌های خودتان باز کنید و برای دیگران نفرستید.</div>`);
+ try{ await loadQR(); const el=$('#qrbox'); if(!el) return; el.innerHTML=''; new QRCode(el,{text:link,width:240,height:240,correctLevel:QRCode.CorrectLevel.M}); }
+ catch(e){ const el=$('#qrbox'); if(el) el.innerHTML='<div class="mu">کد QR بدون انترنت ساخته نشد — از لینک استفاده کنید.</div>'; } }
+function checkJoin(){ let q; try{ q=new URLSearchParams(location.search).get('join'); }catch(e){} if(!q) return;
+ let cfg; try{ cfg=JSON.parse(ub64u(q)); }catch(e){ return toast('لینک وصل شدن خراب است'); }
+ history.replaceState(null,'',location.pathname+location.hash);
+ openModal('وصل شدن به حساب‌ها',`<div class="banner" style="margin-bottom:14px"><div class="ic" style="--c:#13a389">${I('sync')}</div><div><b>${esc(cfg.b||'ابراهیمی اکانتینگ')}</b><div class="hint">این دستگاه به همگام‌سازی وصل شود؟ بعد از وصل شدن همهٔ دکان‌ها، اجناس و بل‌ها اینجا هم می‌آید.</div></div></div>
+ ${DB.txns.length?`<div class="hint" style="color:var(--or);margin-bottom:12px">این دستگاه از قبل ${fm(DB.txns.length)} سند دارد — آن‌ها هم با بقیه یکجا می‌شوند.</div>`:''}
+ <div class="stick"><button class="btn alt" onclick="closeModal()">نه</button><button class="btn" onclick="doJoin('${b64u(JSON.stringify(cfg))}')">${I('check')} وصل شو</button></div>`); }
+async function doJoin(enc){ const cfg=JSON.parse(ub64u(enc)); const L22='ABCDEFGHJKMNPRSTUVWXYZ'; META.device=L22[Math.floor(Math.random()*22)]+L22[Math.floor(Math.random()*22)]+L22[Math.floor(Math.random()*22)];
+ META.sync={url:cfg.u,key:cfg.k,secret:cfg.s}; META.lastPull=''; META.dirty=DB.txns.length||DB.customers.length?allRecords().map(r=>r.id):[]; META.setupDone=1; persist(); closeModal(); toast('در حال آوردن حساب‌ها…');
+ const r=await syncNow(); invalidate(); render(); toast(r==='err'?'❌ وصل نشد: '+(META.lastSyncErr||''):'✅ وصل شد — '+fm(DB.txns.length)+' سند آمد'); }
+
 /* ---------- transaction detail ---------- */
 function showTxn(id,fresh){ const t=DB.txns.find(x=>x.id===id); if(!t) return; const tt=TT[t.type]; const js=C().J.filter(j=>j.tx===id);
  const items=t.items||[]; const isC=['sale','sreturn','receipt'].includes(t.type); const party=isC?cust(t.party):supp(t.party);
@@ -1679,7 +1703,7 @@ function viewSettings(){ const s=DB.settings, sc=META.sync;
  <div class="hint">با این بخش، هر چیزی که با گوشی در دکان ثبت می‌شود، شب روی کامپیوتر هم دیده می‌شود (و برعکس). بدون انترنت هم کار می‌کند و وقتی انترنت آمد خودش همگام می‌کند.<br>
  ۱) در supabase.com یک پروژهٔ رایگان بسازید. ۲) یک «رمز همگام‌سازی» دلخواه پایین بنویسید. ۳) کد SQL زیر را کاپی کرده در SQL Editor اجرا کنید. ۴) Project URL و anon key را از Settings › API اینجا بگذارید. ۵) روی همهٔ دستگاه‌ها همین سه مقدار را وارد کنید.</div>
  <div class="grid k3" style="margin-top:10px">${fl('Project URL',`<input class="in" id="s_url" dir="ltr" value="${esc(sc.url||'')}" placeholder="https://xxxx.supabase.co">`)}${fl('anon / publishable key',`<input class="in" id="s_key" dir="ltr" value="${esc(sc.key||'')}">`)}${fl('رمز همگام‌سازی (طولانی و مخفی)',`<input class="in" id="s_secret" dir="ltr" value="${esc(sc.secret||'')}" oninput="$('#sqlBox').textContent=syncSQL(this.value)">`)}</div>
- <div class="row"><button class="btn" onclick="saveSync()">${I('check')} ذخیره و همگام‌سازی</button><button class="btn alt" onclick="doSync(true)">${I('sync')} همین حالا همگام کن</button><button class="btn alt sm" onclick="navigator.clipboard.writeText($('#sqlBox').textContent).then(()=>toast('SQL کاپی شد'))">کاپی SQL</button></div>
+ <div class="row"><button class="btn" onclick="saveSync()">${I('check')} ذخیره و همگام‌سازی</button><button class="btn alt" onclick="doSync(true)">${I('sync')} همین حالا همگام کن</button><button class="btn alt sm" onclick="navigator.clipboard.writeText($('#sqlBox').textContent).then(()=>toast('SQL کاپی شد'))">کاپی SQL</button>${sc.url?`<button class="btn" style="--c:#3b6fd8" onclick="joinForm()">${I('sync')} وصل کردن دستگاه دوم (QR)</button>`:''}</div>
  <div class="hint" style="margin-top:6px">وضعیت: ${syncState==='ok'?'✅ همگام':syncState==='err'?'❌ '+esc(META.lastSyncErr||''):syncState==='off'?'خاموش':'…'} ${META.lastSyncAt?' · آخرین همگام‌سازی: '+new Date(META.lastSyncAt).toLocaleString('fa-AF'):''} · ${fm(META.dirty.length)} ثبت ارسال‌نشده</div>
  <details style="margin-top:8px"><summary class="mu">نمایش کد SQL</summary><pre class="code" id="sqlBox">${esc(syncSQL(sc.secret))}</pre></details></div>
  </div><div class="hint" style="margin-top:10px;text-align:center">ابراهیمی اکانتینگ نسخهٔ ${VERSION}</div>`; }
@@ -1748,6 +1772,7 @@ document.addEventListener('visibilitychange',()=>{ if(!document.hidden) doSync(f
 setInterval(()=>doSync(false),60000);
 { const h=location.hash.slice(1); if(NAV.some(n=>n[0]===h)||h==='more') R.v=h; }
 render(); doSync(false);
+setTimeout(checkJoin,300);
 loadIDB().then(ch=>{ if(ch) render(); });
 try{ navigator.storage&&navigator.storage.persist&&navigator.storage.persist(); }catch(e){}
 if(needUnlock()){ LK={user:META.user,pin:'',mode:'unlock'}; drawLock(); }
