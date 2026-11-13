@@ -1162,7 +1162,7 @@ function drawRouteLine(){ if(!MAP||!ROUTE||typeof L==='undefined') return; const
 let MAP=null, ML=null, MYM=null, PICK=null, MYPOS=null, MAPF='all';
 function getGPS(){ return new Promise((res,rej)=>{ if(!navigator.geolocation) return rej(new Error('GPS در این مرورگر نیست'));
  navigator.geolocation.getCurrentPosition(p=>res({lat:+p.coords.latitude.toFixed(6),lng:+p.coords.longitude.toFixed(6),acc:Math.round(p.coords.accuracy)}),e=>rej(new Error(e.code===1?'اجازهٔ لوکیشن داده نشد':'لوکیشن پیدا نشد — GPS را روشن کنید')),{enableHighAccuracy:true,timeout:20000,maximumAge:0}); }); }
-let MAPA='', MAPQ='', MK={}, MAPLAYER=null, MYACC=null, WATCH=null, TILEOK=0, TILEERR=0;
+let MAPMOVED=false, MAPA='', MAPQ='', MK={}, MAPLAYER=null, MYACC=null, WATCH=null, TILEOK=0, TILEERR=0;
 const MAP_LAYERS={street:['خیابان','https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png','© OpenStreetMap',19],
  sat:['ماهواره','https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}','© Esri',19],
  light:['ساده','https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}.png','© OpenStreetMap © CARTO',19]};
@@ -1202,10 +1202,11 @@ function initMap(){
  MAP.on('zoomend',()=>{ const m=$('#map'); m&&m.classList.toggle('lbl',MAP.getZoom()>=15); });
  MAP.on('click',e=>{ if(!PICK) return; const c=cust(PICK); if(c){ save('customer',Object.assign({},c,{lat:+e.latlng.lat.toFixed(6),lng:+e.latlng.lng.toFixed(6),gpsAt:nowIso()})); toast('📍 لوکیشن «'+c.name+'» ثبت شد'); } PICK=null; render(); });
  MAP.on('contextmenu',e=>{ const ll=e.latlng; L.popup().setLatLng(ll).setContent(`<div class="pop"><b>اینجا</b><div class="mu">${ll.lat.toFixed(5)}, ${ll.lng.toFixed(5)}${MYPOS?' — '+distTxt(hav(MYPOS.lat,MYPOS.lng,ll.lat,ll.lng))+' از شما':''}</div><div class="row"><button class="btn sm" onclick="newShopAt(${ll.lat.toFixed(6)},${ll.lng.toFixed(6)})">＋ دکان جدید اینجا</button>${(()=>{ const nl=DB.customers.filter(x=>!x.deleted&&!x.lat&&!x.walkin); return nl.length?`<button class="btn sm alt" onclick="setLocPick(${ll.lat.toFixed(6)},${ll.lng.toFixed(6)})">جای یک دکان ثبت‌شده</button>`:''; })()}</div></div>`).openOn(MAP); });
- drawMarkers(!ROUTE&&!MYPOS);
+ const wantFit=!ROUTE&&!MYPOS; drawMarkers(wantFit);
  if(MYPOS) showMe(!ROUTE);
  drawRouteLine();
- setTimeout(()=>{ try{ MAP.invalidateSize(); }catch(e){} },200);
+ [150,600].forEach(ms=>setTimeout(()=>{ if(!MAP) return; try{ MAP.invalidateSize(); if(wantFit&&!MAPMOVED) fitAll(); }catch(e){} },ms));
+ MAPMOVED=false; MAP.on('dragstart zoomstart',()=>{ if(MAP._loaded) MAPMOVED=true; });
 }
 function setMapLayer(k,init){ if(!MAP_LAYERS[k]) k='street'; META.mapLayer=k; persist(); const d=MAP_LAYERS[k]; if(MAPLAYER) try{ MAP.removeLayer(MAPLAYER); }catch(e){}
  TILEOK=0; TILEERR=0; MAPLAYER=L.tileLayer(d[1],{maxZoom:d[3],attribution:d[2],crossOrigin:false}).addTo(MAP);
@@ -1231,8 +1232,9 @@ function drawMarkers(fit){
   m.bindTooltip(esc(x.name)+(c.bal>0.5?' — '+kfmt(c.bal):''),{direction:'top',permanent:true,className:'mlbl',offset:[0,-12]});
   m.bindPopup(()=>shopPopup(x),{maxWidth:280}); MK[x.id]=m; pts.push([x.lat,x.lng]); n++; debt+=Math.max(0,c.bal); }
  const ms=$('#mstat'); if(ms) ms.innerHTML=`<b>${fm(n)}</b> دکان${debt>0.5?` — طلب <b>${kfmt(debt)}</b>`:''}`;
- if(fit&&pts.length){ try{ MAP.fitBounds(pts,{padding:[40,40],maxZoom:16}); }catch(e){} }
+ if(fit&&pts.length) fitAll();
 }
+function fitAll(){ if(!MAP) return; const pts=Object.values(MK).map(m=>m.getLatLng()); if(!pts.length) return; try{ MAP.fitBounds(L.latLngBounds(pts),{padding:[50,50],maxZoom:16,animate:false}); }catch(e){} }
 function mapSearch(){ const el=$('#mres'); if(!el) return; const q=MAPQ.trim().toLowerCase(); if(!q){ el.innerHTML=''; return; }
  const a=DB.customers.filter(x=>!x.deleted&&!x.walkin&&[x.name,x.owner,x.area,x.phone].join(' ').toLowerCase().includes(q)).slice(0,8);
  el.innerHTML=`<div class="mresl">${a.map(x=>`<div onclick="mapGo('${x.id}')"><b>${esc(x.name)}</b> <span class="mu">${esc(x.area||'')}${x.lat?'':' — بدون لوکیشن'}</span></div>`).join('')||'<div class="mu">پیدا نشد</div>'}</div>`; }
