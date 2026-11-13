@@ -375,7 +375,7 @@ svg.flip{transform:scaleX(-1)}
 <script id="engine">
 'use strict';
 const LS = 'ebrahimi_acc_v1';
-const VERSION = '2.2';
+const VERSION = '2.3';
 
 /* ---- Chart of accounts (کدینگ حساب‌ها) ----
    nature: A=asset (debit), L=liability (credit), E=equity (credit), E-=contra equity (debit),
@@ -1404,6 +1404,33 @@ function healthCheck(){ const c=C(), out=[]; let d=0,cr=0; c.J.forEach(j=>{ d+=j
  const dup={}; DB.txns.forEach(t=>{ if(t.no) dup[t.no]=(dup[t.no]||0)+1; }); const dn=Object.values(dup).filter(v=>v>1).length; out.push([!dn,dn?fm(dn)+' نمبر سند تکراری':'نمبرهای سند یکتا هستند','']);
  openModal('بررسی سلامت حساب‌ها',`<div class="list">${out.map(o=>`<div class="it" style="cursor:default"><div class="ic" style="--c:${o[0]?'#16a37a':'#e5484d'};width:38px;height:38px">${I(o[0]?'check':'alert')}</div><div class="m"><div class="t" style="font-weight:600">${esc(o[1])}</div>${o[2]?`<div class="d">${esc(o[2])}</div>`:''}</div></div>`).join('')}</div>`); }
 
+/* ---------- invoice as an image (share to WhatsApp) ---------- */
+async function txnImage(id){ const t=DB.txns.find(x=>x.id===id); if(!t) return; const s=DB.settings, isC=['sale','sreturn','receipt'].includes(t.type), party=isC?cust(t.party):supp(t.party), items=t.items||[];
+ try{ await document.fonts.load('700 30px Vazirmatn'); await document.fonts.load('400 26px Vazirmatn'); }catch(e){}
+ const W=1080, P=60, rowH=74, st=isC&&party?stmtRows(t.party).filter(r=>r.id===t.id):[], before=st.length?st[0].bal-st[0].dr+st[0].cr:0, after=st.length?st[st.length-1].bal:0;
+ const tot=[]; const g=items.reduce((a,i)=>a+num(i.qty)*num(i.price),0);
+ if(t.type==='sale'){ tot.push(['جمع اجناس',g]); if(t.discount) tot.push(['تخفیف',-num(t.discount)]); tot.push(['خالص بل',txnTotal(t),1],['نقد دریافت شد',num(t.paid)],['بدهی قبلی',before],['مجموع بدهی شما',after,1]); }
+ else if(t.type==='receipt'){ tot.push(['بدهی قبلی',before],['مبلغ دریافت شده',num(t.amount),1]); if(t.discount) tot.push(['تخفیف',num(t.discount)]); tot.push(['باقی‌مانده',after,1]); }
+ else tot.push(['مجموع',txnTotal(t),1]);
+ const H=360+(party?110:0)+(items.length?90+items.length*rowH:0)+tot.length*62+220;
+ const cv=document.createElement('canvas'); cv.width=W; cv.height=H; const x=cv.getContext('2d'); x.direction='rtl';
+ const F=(w,sz)=>`${w} ${sz}px Vazirmatn, Tahoma, sans-serif`, txt=(t2,X,Y,f,col,al='right')=>{ x.font=f; x.fillStyle=col; x.textAlign=al; x.fillText(t2,X,Y); };
+ x.fillStyle='#eef1f4'; x.fillRect(0,0,W,H);
+ const gr=x.createLinearGradient(0,0,W,260); gr.addColorStop(0,'#1bc3a4'); gr.addColorStop(1,'#0f8f78'); x.fillStyle=gr; x.fillRect(0,0,W,250);
+ x.strokeStyle='rgba(255,255,255,.35)'; x.lineWidth=10; x.beginPath(); x.arc(150,125,80,Math.PI*0.9,Math.PI*1.9); x.stroke();
+ txt(s.biz||'ابراهیمی اکانتینگ',W-P,105,F(800,58),'#fff'); txt([s.phone,s.addr].filter(Boolean).join('  ·  ')||'حسابداری توزیع عمده',W-P,170,F(400,30),'rgba(255,255,255,.9)');
+ let y=330; txt(TT[t.type][0],W-P,y,F(800,44),'#18211f'); txt(t.no,P,y-4,F(700,30),'#0f8f78','left'); y+=48; txt('تاریخ: '+fd(t.date),W-P,y,F(400,28),'#6b7a76');
+ if(party){ y+=40; x.fillStyle='#fff'; rr(x,P,y,W-2*P,86,22); x.fill(); txt((isC?'مشتری: ':'عمده‌فروش: ')+party.name,W-P-28,y+55,F(700,32),'#18211f'); if(party.area) txt(party.area,P+28,y+55,F(400,26),'#6b7a76','left'); y+=86; }
+ if(items.length){ y+=50; txt('جنس',W-P,y,F(700,26),'#6b7a76'); txt('تعداد × فی',W/2,y,F(700,26),'#6b7a76','center'); txt('جمع',P,y,F(700,26),'#6b7a76','left'); y+=20;
+  items.forEach((i,k)=>{ x.fillStyle=k%2?'#eef1f4':'#fff'; x.fillRect(P-10,y,W-2*P+20,rowH); const yy=y+48;
+   txt(pname(i.pid),W-P,yy,F(700,30),'#18211f'); txt(fm(i.qty)+' '+((prod(i.pid)||{}).unit||'')+' × '+fm(i.price),W/2,yy,F(400,28),'#18211f','center'); txt(fm(num(i.qty)*num(i.price)),P,yy,F(700,30),'#18211f','left'); y+=rowH; }); }
+ y+=30; tot.forEach(([l,v,b])=>{ y+=62; if(b){ x.fillStyle='rgba(19,163,137,.12)'; rr(x,P-10,y-44,W-2*P+20,60,14); x.fill(); } txt(l,W-P,y,F(b?800:400,b?34:30),'#18211f'); txt(money(v),P,y,F(b?800:600,b?36:30),b?'#0f8f78':'#18211f','left'); });
+ y+=90; txt('تشکر از اعتماد شما 🌹',W/2,y,F(700,32),'#0f8f78','center'); txt('ساخته‌شده با ابراهیمی اکانتینگ',W/2,y+46,F(400,22),'#9aa5a1','center');
+ const blob=await new Promise(r=>cv.toBlob(r,'image/png')); const file=new File([blob],(t.no||'bill')+'.png',{type:'image/png'});
+ try{ if(navigator.canShare&&navigator.canShare({files:[file]})){ await navigator.share({files:[file],title:TT[t.type][0]+' '+t.no}); return; } }catch(e){ if(e&&e.name==='AbortError') return; }
+ const u=URL.createObjectURL(blob); openModal('عکس بل',`<img src="${u}" style="width:100%;border-radius:16px;box-shadow:var(--up)"><div class="hint" style="margin-top:10px">روی عکس انگشت نگه دارید و «ذخیره» یا «اشتراک» را بزنید، یا دکمهٔ زیر را بزنید.</div><a class="btn" style="width:100%;margin-top:10px" href="${u}" download="${esc(file.name)}">${I('in')} ذخیرهٔ عکس</a>`); }
+function rr(x,X,Y,w,h,r){ x.beginPath(); x.moveTo(X+r,Y); x.arcTo(X+w,Y,X+w,Y+h,r); x.arcTo(X+w,Y+h,X,Y+h,r); x.arcTo(X,Y+h,X,Y,r); x.arcTo(X,Y,X+w,Y,r); x.closePath(); }
+
 /* ---------- transaction detail ---------- */
 function showTxn(id,fresh){ const t=DB.txns.find(x=>x.id===id); if(!t) return; const tt=TT[t.type]; const js=C().J.filter(j=>j.tx===id);
  const items=t.items||[]; const isC=['sale','sreturn','receipt'].includes(t.type); const party=isC?cust(t.party):supp(t.party);
@@ -1418,7 +1445,7 @@ function showTxn(id,fresh){ const t=DB.txns.find(x=>x.id===id); if(!t) return; c
  ${t.note?`<div class="hint">📝 ${esc(t.note)}</div>`:''}
  ${(t.history||[]).length?`<details class="more" style="margin:10px 0"><summary>${I('clock')} ${fm(t.history.length)} بار ویرایش شده — آخرین بار ${esc(t.editedBy||'')}</summary><div style="margin-top:10px">${t.history.slice().reverse().map(h=>`<div class="hint">• ${new Date(h.at).toLocaleString('fa-AF')} — ${esc(h.by||'')}: قبلاً ${t.type==='adjust'?'':money(txnTotal(h.prev))}${h.prev.paid?' · نقد '+money(h.prev.paid):''} · ${fd(h.prev.date)}${(h.prev.items||[]).length?' · '+(h.prev.items||[]).map(i=>pname(i.pid)+' ×'+fm(i.qty)).join('، '):''}</div>`).join('')}</div></details>`:''}
  <details style="margin-top:8px"><summary class="mu">📘 سند حسابداری (دوبل‌انتری)</summary><table class="tbl"><tr><th>کد</th><th>حساب</th><th class="n">بدهکار</th><th class="n">بستانکار</th></tr>${js.map(j=>`<tr><td>${j.acc}</td><td>${esc(ACC[j.acc].name)}<div class="mu" style="font-size:12px">${esc(j.memo)}</div></td><td class="n">${j.dr?fm(j.dr):''}</td><td class="n">${j.cr?fm(j.cr):''}</td></tr>`).join('')}</table></details>
- <div class="row" style="margin-top:12px">${party&&party.phone!==undefined?`<a class="btn" style="--c:#25b05a" href="${waLink(party&&party.phone,txt)}" target="_blank" rel="noopener">${I('wa')} واتس‌اپ</a>`:''}<button class="btn alt" onclick="printTxn('${t.id}')">${I('print')} چاپ بل</button><button class="btn alt" onclick="copyTxt(this)" data-t="${esc(txt)}">📋 کاپی متن بل</button>
+ <div class="row" style="margin-top:12px">${party&&party.phone!==undefined?`<a class="btn" style="--c:#25b05a" href="${waLink(party&&party.phone,txt)}" target="_blank" rel="noopener">${I('wa')} واتس‌اپ</a>`:''}${['sale','receipt','sreturn','purchase'].includes(t.type)?`<button class="btn" style="--c:#25b05a" onclick="txnImage('${t.id}')">${I('wa')} عکس بل</button>`:''}<button class="btn alt" onclick="printTxn('${t.id}')">${I('print')} چاپ بل</button><button class="btn alt" onclick="copyTxt(this)" data-t="${esc(txt)}">📋 کاپی متن بل</button>
  ${!t.void&&can('edit')&&t.type!=='cashcount'?`<button class="btn alt" onclick="editTxn('${t.id}')">${I('edit')} ویرایش</button>`:''}${!t.void&&can('void')?`<span style="flex:1"></span><input class="in" id="f_vr" placeholder="دلیل ابطال" style="width:150px"><button class="btn red sm" onclick="confirmBtn(this,()=>voidTxn('${t.id}'))">ابطال سند</button>`:''}</div>`); }
 function copyTxt(b){ navigator.clipboard.writeText(b.dataset.t).then(()=>toast('کاپی شد'),()=>toast('کاپی ممکن نشد')); }
 function voidTxn(id){ const t=DB.txns.find(x=>x.id===id); save('txn',Object.assign({},t,{void:true,voidBy:META.user,voidAt:nowIso(),voidReason:fv('vr')})); closeModal(); toast('سند باطل شد'); render(); }
