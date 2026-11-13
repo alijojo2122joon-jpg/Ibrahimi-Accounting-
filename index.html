@@ -448,7 +448,7 @@ body.mopen #snack{bottom:auto;top:16px;transform:translate(-50%,-20px)}body.mope
 <script id="engine">
 'use strict';
 const LS = 'ebrahimi_acc_v1';
-const VERSION = '6.0';
+const VERSION = '6.1';
 
 /* ---- Chart of accounts (کدینگ حساب‌ها) ----
    nature: A=asset (debit), L=liability (credit), E=equity (credit), E-=contra equity (debit),
@@ -882,7 +882,7 @@ function needUnlock(){ if(!hasPins()) return false; try{ return sessionStorage.g
 setInterval(()=>{ const m=num(DB.settings.autoLock); if(m>0&&hasPins()&&$('#lock').classList.contains('hide')&&Date.now()-lastAct>m*60000){ try{ sessionStorage.removeItem('ia_unlock'); }catch(e){} LK={user:META.user,pin:'',mode:'unlock'}; drawLock(); } },15000);
 function usersCard(){ const s=DB.settings, me=META.user;
  return `<div class="card"><h3>${I('user')} کاربران، نقش و رمز</h3><div class="list">${(s.users||[]).map(u=>`<div class="urow"><div class="uh"><div class="av" style="--c:${colorOf(u)}">${esc(u[0]||'؟')}</div><div class="m"><div class="t">${esc(u)} ${u===me?'<span class="badge" style="--c:var(--g2)">شما</span>':''}</div>
-  <div class="d">${(s.pins||{})[u]?'🔒 رمز دارد':'بدون رمز'}</div></div></div><div class="uc">
+  <div class="d">${(s.pins||{})[u]?'🔒 رمز دارد':'<span class="warn">بدون رمز — هر کسی می‌تواند به نام او ثبت کند</span>'}${(()=>{ const ms=monthStart(); let last='',n=0; for(const t of DB.txns){ if(t.by!==u) continue; if((t.createdAt||'')>last) last=t.createdAt; if(t.date>=ms) n++; } return last?`<br><a href="javascript:void 0" onclick="TQ.user=this.dataset.u;TQ.type='';tRange('month');go('txns')" data-u="${esc(u)}">${fm(n)} ثبت در این ماه، آخرین: ${new Date(last).toLocaleString('fa-AF-u-ca-persian',{month:'long',day:'numeric',hour:'2-digit',minute:'2-digit'})}</a>`:'<br>هنوز ثبتی ندارد'; })()}</div></div></div><div class="uc">
   <select class="in" style="width:auto;padding:8px" onchange="setRole('${esc(u).replace(/'/g,'')}',this.value)">${Object.entries(ROLE_N).map(([k,v])=>`<option value="${k}" ${roleOf(u)===k?'selected':''}>${v}</option>`).join('')}</select>
   <button class="btn sm ${(s.simple||{})[u]?'':'alt'}" onclick="setSimple('${esc(u).replace(/'/g,'')}',${!(s.simple||{})[u]})">${(s.simple||{})[u]?'حالت ساده ✓':'حالت ساده'}</button><button class="btn sm alt" onclick="setPin('${esc(u).replace(/'/g,'')}')">${(s.pins||{})[u]?'تغییر رمز':'گذاشتن رمز'}</button>${(s.pins||{})[u]?`<button class="btn sm alt" onclick="confirmBtn(this,()=>removePin('${esc(u).replace(/'/g,'')}'))">✕</button>`:''}</div></div>`).join('')}</div>
   <div class="row" style="margin-top:6px"><input class="in" id="s_newuser" placeholder="نام کاربر جدید" style="flex:1;min-width:140px"><button class="btn sm" onclick="addUser()">＋ افزودن</button></div>
