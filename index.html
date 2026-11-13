@@ -1016,7 +1016,7 @@ function todayByUser(){ const td=today(), m={}; DB.txns.forEach(t=>{ if(!t.void&
 const who=u=>u?`<span class="who" style="--c:${colorOf(u)}">${esc(u)}</span>`:'';
 const hm=iso=>{ try{ return iso?new Date(iso).toLocaleTimeString('fa-AF',{hour:'2-digit',minute:'2-digit'}):''; }catch(e){ return ''; } };
 function txItem(t){ const tt=TT[t.type]||['','','#999'];
- return `<div class="it" onclick="showTxn('${t.id}')"><span class="badge" style="--c:${tt[2]}">${tt[0]}</span><div class="m"><div class="t">${esc(partyName(t)||t.note||ACC[t.acc]?.name||'')}</div><div class="d">${who(t.by)} ${t.createdAt?'ساعت '+hm(t.createdAt)+'، ':''}${fd(t.date)}، ${esc(t.no)}${t.editedBy?' — ویرایش: '+esc(t.editedBy):''}</div></div><div class="a ${t.type==='cashcount'&&num(t.diff)<0?'neg':''}">${t.type==='adjust'?fm(txnTotal(t)):money(txnTotal(t))}</div></div>`; }
+ return `<div class="it" onclick="showTxn('${t.id}')"><span class="badge" style="--c:${tt[2]}">${tt[0]}</span><div class="m"><div class="t">${esc(partyName(t)||t.note||ACC[t.acc]?.name||'')}</div><div class="d">${who(t.by)} ${t.createdAt?'ساعت '+hm(t.createdAt)+'، ':''}${fd(t.date)}، ${esc(t.no)}${t.editedBy?' — ویرایش: '+esc(t.editedBy):''}</div></div><div class="a ${t.type==='cashcount'&&num(t.diff)<0?'neg':''}">${t.type==='adjust'||t.type==='load'?fm(txnTotal(t))+(t.type==='load'?' عدد':''):money(txnTotal(t))}</div></div>`; }
 /* ---------- payment promises, reminders & collection agenda ---------- */
 function promiseForm(id){ const x=cust(id), b=(C().CU[id]||{bal:0}).bal; F={type:'promise'};
  const d=(n)=>addDays(today(),n);
@@ -2168,7 +2168,7 @@ function voidTxn(id){ const t=DB.txns.find(x=>x.id===id); if(DB.settings.lockDat
 /* ---------- transactions list ---------- */
 let TQ={type:'',from:'',to:'',q:'',user:'',rng:'all'};
 function tRange(k){ const td=today(); TQ.rng=k; if(k==='today'){TQ.from=td;TQ.to=td;} else if(k==='yday'){TQ.from=addDays(td,-1);TQ.to=addDays(td,-1);} else if(k==='7'){TQ.from=addDays(td,-6);TQ.to=td;} else if(k==='month'){TQ.from=monthStart();TQ.to=td;} else {TQ.from='';TQ.to='';} render(); }
-function viewTxns(){ const types=[['','همه'],['sale','فروش'],['receipt','دریافت'],['purchase','خرید'],['payment','پرداخت'],['expense','مصرف'],['sreturn','مرجوعی'],['adjust','گدام'],['cashcount','صندوق'],['void','باطل‌شده']];
+function viewTxns(){ const types=[['','همه'],['sale','فروش'],['receipt','دریافت'],['purchase','خرید'],['payment','پرداخت'],['expense','مصرف'],['sreturn','مرجوعی'],['adjust','گدام'],['cashcount','صندوق'],['load','موتر'],['void','باطل‌شده']];
  return `<div class="sbox">${I('search')}<input placeholder="جستجو در نمبر بل، نام دکان، جنس، یادداشت…" value="${esc(TQ.q)}" oninput="TQ.q=this.value;drawTList()"></div>
  <div class="tabs">${[['all','همه وقت'],['today','امروز'],['yday','دیروز'],['7','۷ روز'],['month','این ماه']].map(r=>`<button class="${TQ.rng===r[0]?'on':''}" onclick="tRange('${r[0]}')">${r[1]}</button>`).join('')}
  </div>
@@ -2178,7 +2178,7 @@ function viewTxns(){ const types=[['','همه'],['sale','فروش'],['receipt','
  <div id="tlist"></div>`; }
 let WD; try{ WD=new Intl.DateTimeFormat('fa-AF',{weekday:'long'}); }catch(e){}
 function drawTList(){ const el=$('#tlist'); if(!el) return; const q=TQ.q.trim().toLowerCase();
- let a=DB.txns.filter(t=>TQ.type==='void'?t.void:(!t.void&&(!TQ.type||t.type===TQ.type||(TQ.type==='sreturn'&&t.type==='preturn'))));
+ let a=DB.txns.filter(t=>TQ.type==='void'?t.void:(!t.void&&(!TQ.type||t.type===TQ.type||(TQ.type==='sreturn'&&t.type==='preturn')||(TQ.type==='load'&&t.type==='unload'))));
  if(TQ.from) a=a.filter(t=>t.date>=TQ.from); if(TQ.to) a=a.filter(t=>t.date<=TQ.to);
  { const cnt={}; a.forEach(t=>{ if(t.by) cnt[t.by]=(cnt[t.by]||0)+1; }); const us=[...new Set([...(DB.settings.users||[]),...Object.keys(cnt)])]; const uc=$('#uchips');
    if(uc) uc.innerHTML=`<span class="mu" style="align-self:center;font-size:12px">ثبت‌کننده:</span><button class="${!TQ.user?'on':''}" style="--c:var(--g)" onclick="TQ.user='';drawTList()">همه <i>${fm(a.length)}</i></button>`+us.map(u=>`<button class="${TQ.user===u?'on':''}" style="--c:${colorOf(u)}" onclick="TQ.user=this.dataset.u;drawTList()" data-u="${esc(u)}">${esc(u)} <i>${fm(cnt[u]||0)}</i></button>`).join(''); }
@@ -2187,7 +2187,7 @@ function drawTList(){ const el=$('#tlist'); if(!el) return; const q=TQ.q.trim().
  a.sort((x,y)=>(y.date+y.createdAt).localeCompare(x.date+x.createdAt));
  if(!a.length){ el.innerHTML='<div class="card empty">سندی پیدا نشد</div>'; return; }
  const days={}; a.slice(0,400).forEach(t=>(days[t.date]=days[t.date]||[]).push(t));
- el.innerHTML=`<div class="hint" style="padding:0 4px 10px">${fm(a.length)} سند${TQ.type&&TQ.type!=='void'&&TQ.type!=='adjust'?'، مجموع: <b>'+money(a.reduce((s,t)=>s+txnTotal(t),0))+'</b>':''}${TQ.user?' — ثبت '+who(TQ.user):''}${a.length>400?' — ۴۰۰ سند آخر نشان داده شده':''}</div>`+Object.entries(days).map(([d,list])=>{ const sale=list.filter(t=>t.type==='sale').reduce((s,t)=>s+txnTotal(t),0), col=list.reduce((s,t)=>s+(t.type==='receipt'?num(t.amount):t.type==='sale'?num(t.paid):0),0), exp=list.filter(t=>t.type==='expense').reduce((s,t)=>s+num(t.amount),0);
+ el.innerHTML=`<div class="hint" style="padding:0 4px 10px">${fm(a.length)} سند${TQ.type&&!['void','adjust','load'].includes(TQ.type)?'، مجموع: <b>'+money(a.reduce((s,t)=>s+txnTotal(t),0))+'</b>':''}${TQ.user?' — ثبت '+who(TQ.user):''}${a.length>400?' — ۴۰۰ سند آخر نشان داده شده':''}</div>`+Object.entries(days).map(([d,list])=>{ const sale=list.filter(t=>t.type==='sale').reduce((s,t)=>s+txnTotal(t),0), col=list.reduce((s,t)=>s+(t.type==='receipt'?num(t.amount):t.type==='sale'?num(t.paid):0),0), exp=list.filter(t=>t.type==='expense').reduce((s,t)=>s+num(t.amount),0);
   return `<div class="dayh"><div><b>${fd(d)}</b> <span class="mu">${WD?WD.format(new Date(d+'T12:00:00')):''}${d===today()?'، امروز':''}</span></div><div class="dsum">${sale?`<span>فروش <b>${kfmt(sale)}</b></span>`:''}${col?`<span class="pos">وصول <b>${kfmt(col)}</b></span>`:''}${exp?`<span class="neg">مصرف <b>${kfmt(exp)}</b></span>`:''}</div></div><div class="list">${list.map(txItem).join('')}</div>`; }).join(''); }
 
 /* ---------- global search ---------- */
