@@ -264,7 +264,6 @@ svg.flip{transform:scaleX(-1)}
 .ctbtns{display:grid;grid-template-columns:1.3fr 1fr;gap:10px}.ctbtns .btn{justify-content:center}
 @media(min-width:900px){.ctcart{bottom:12px}}
 /* ---- smooth motion + rotating saber light around the selected option ---- */
-@property --sa{syntax:'<angle>';inherits:false;initial-value:0deg}
 :root{--ease:cubic-bezier(.22,1,.36,1);--saber1:#22d3ee;--saber2:#a78bfa}
 button,a,.item,.card,.qa,.chip,.hrow,.dtoday>div{transition:transform .35s var(--ease),box-shadow .35s var(--ease),background-color .35s var(--ease),color .3s var(--ease),opacity .3s var(--ease)}
 button:active,.qa:active,.item:active,.dtoday>div:active,.dsum .card:active{transform:scale(.965)}
@@ -272,15 +271,13 @@ button:active,.qa:active,.item:active,.dtoday>div:active,.dsum .card:active{tran
 @keyframes vin{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
 #modal:not(.hide) .sheet{animation:min .4s var(--ease) both}
 @keyframes min{from{opacity:0;transform:translateY(24px) scale(.98)}to{opacity:1;transform:none}}
-#side a.on,#bnav a.on,.tabs button.on,.seg button.on,.chips button.on,.chipf.on,.rpk.on,.days button.on,.uchips button.on,.lusers button.on,.etiles button.on,.pc.on,.mctl button.on{position:relative;isolation:isolate;outline:none}
-#side a.on::before,#bnav a.on::before,.tabs button.on::before,.seg button.on::before,.chips button.on::before,.chipf.on::before,.rpk.on::before,.days button.on::before,.uchips button.on::before,.lusers button.on::before,.etiles button.on::before,.pc.on::before,.mctl button.on::before{
- content:"";position:absolute;inset:-2px;border-radius:inherit;padding:2px;pointer-events:none;z-index:1;
- background:conic-gradient(from var(--sa),transparent 0deg,transparent 250deg,color-mix(in srgb,var(--saber2) 70%,transparent) 300deg,var(--saber1) 345deg,#fff 352deg,transparent 360deg);
- -webkit-mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);-webkit-mask-composite:xor;mask-composite:exclude;
- filter:drop-shadow(0 0 4px var(--saber1)) drop-shadow(0 0 8px color-mix(in srgb,var(--saber2) 60%,transparent));
- animation:saber 3.2s cubic-bezier(.65,0,.35,1) infinite}
-#bnav a.on::before{inset:2px 6px;border-radius:14px}
-@keyframes saber{0%{--sa:0deg}45%{--sa:200deg}60%{--sa:235deg}100%{--sa:360deg}}
+#side a.on,#bnav a.on,#bnav a.on b,.tabs button.on,.seg button.on,.chips button.on,.chipf.on,.rpk.on,.days button.on,.uchips button.on,.lusers button.on,.etiles button.on,.pc.on,.mctl button.on{position:relative;isolation:isolate;outline:none}
+.sb{position:absolute;left:-3px;top:-3px;pointer-events:none;overflow:visible;z-index:2;filter:drop-shadow(0 0 3px var(--saber1)) drop-shadow(0 0 7px color-mix(in srgb,var(--saber2) 55%,transparent))}
+.sb rect{fill:none;stroke-linecap:round;animation-duration:var(--sbd,3.6s);animation-timing-function:cubic-bezier(.33,.12,.67,.88);animation-iteration-count:infinite;animation-delay:var(--sbdel,0s)}
+.sb .t1{stroke:var(--saber2);stroke-width:2.2;opacity:.35;stroke-dasharray:30 70;animation-name:sb1}
+.sb .t2{stroke:var(--saber1);stroke-width:2.4;opacity:.8;stroke-dasharray:14 86;animation-name:sb2}
+.sb .t3{stroke:#fff;stroke-width:2.6;stroke-dasharray:4 96;animation-name:sb3}
+@keyframes sb1{from{stroke-dashoffset:0}to{stroke-dashoffset:-100}}@keyframes sb2{from{stroke-dashoffset:-16}to{stroke-dashoffset:-116}}@keyframes sb3{from{stroke-dashoffset:-26}to{stroke-dashoffset:-126}}
 [data-theme=dark]{--saber1:#5eead4;--saber2:#c084fc}
 @media (prefers-reduced-motion:reduce){*{animation-duration:.01s!important;transition-duration:.01s!important}}
 .dtoday{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
@@ -560,7 +557,7 @@ body.mopen #snack{bottom:auto;top:16px;transform:translate(-50%,-20px)}body.mope
 <script id="engine">
 'use strict';
 const LS = 'ebrahimi_acc_v1';
-const VERSION = '9.4';
+const VERSION = '9.5';
 
 /* ---- Chart of accounts (کدینگ حساب‌ها) ----
    nature: A=asset (debit), L=liability (credit), E=equity (credit), E-=contra equity (debit),
@@ -2317,6 +2314,22 @@ function ctCloseEditSave(){ const t=DB.txns.find(x=>x.id===F.id); if(!t) return;
   else if(h){ save('txn',Object.assign({},h,{void:true,voidBy:META.user,voidAt:nowIso()})); hid=null; }
   save('txn',Object.assign({},t,n,{amount:n.counted,diff:r2(n.counted-num(t.expected)),hid,okBy:null,okAt:null,editedBy:META.user,editedAt:nowIso(),edits:[...(t.edits||[]),{at:nowIso(),by:META.user,why,ch}]})); });
  closeModal(); render(); toast('✓ ویرایش ذخیره شد'); ctCloseView(t.id); }
+
+/* rotating saber light: SVG stroke so it moves at an even pace along the edge, synced to one clock so re-renders never jump */
+const SB_SEL='#side a.on,#bnav a.on b,.tabs button.on,.seg button.on,.chips button.on,.chipf.on,.rpk.on,.days button.on,.uchips button.on,.lusers button.on,.etiles button.on,.pc.on,.mctl button.on';
+const SB_MS=3600; let SBQ=0;
+function sbFit(el,sv){ const w=el.offsetWidth, h=el.offsetHeight; if(!w||!h) return; const W=w+6, H=h+6, r=Math.min(parseFloat(getComputedStyle(el).borderTopLeftRadius)||12,h/2)+3;
+ if(sv._w===W&&sv._h===H) return; sv._w=W; sv._h=H; sv.setAttribute('width',W); sv.setAttribute('height',H);
+ sv.querySelectorAll('rect').forEach(x=>{ x.setAttribute('x',1.5); x.setAttribute('y',1.5); x.setAttribute('width',W-3); x.setAttribute('height',H-3); x.setAttribute('rx',Math.min(r,(H-3)/2)); }); }
+function saberize(){ SBQ=0; const del=-(performance.now()%SB_MS)+'ms';
+ document.querySelectorAll('svg.sb').forEach(sv=>{ const el=sv.parentNode; if(!el||!el.matches||!el.matches(SB_SEL)) sv.remove(); else sbFit(el,sv); });
+ document.querySelectorAll(SB_SEL).forEach(el=>{ if(el.querySelector(':scope>svg.sb')) return;
+  const sv=document.createElementNS('http://www.w3.org/2000/svg','svg'); sv.setAttribute('class','sb'); sv.setAttribute('aria-hidden','true'); sv.style.setProperty('--sbdel',del); sv.style.setProperty('--sbd',SB_MS+'ms');
+  sv.innerHTML='<rect class="t1" pathLength="100"/><rect class="t2" pathLength="100"/><rect class="t3" pathLength="100"/>'; el.appendChild(sv); sbFit(el,sv); }); }
+function sbQueue(){ if(!SBQ) SBQ=requestAnimationFrame(saberize); }
+const sbMine=n=>n.nodeType!==1||(n.classList&&n.classList.contains('sb'));
+try{ new MutationObserver(ms=>{ for(const m of ms){ if(m.type==='attributes'&&!(m.target.closest&&m.target.closest('svg.sb'))){ sbQueue(); return; } if([...m.addedNodes].some(n=>!sbMine(n))||[...m.removedNodes].some(n=>!sbMine(n))){ sbQueue(); return; } } }).observe(document.documentElement,{subtree:true,childList:true,attributes:true,attributeFilter:['class']}); }catch(e){}
+addEventListener('resize',()=>{ document.querySelectorAll('svg.sb').forEach(sv=>sv._w=0); sbQueue(); }); addEventListener('load',sbQueue);
 
 /* ---------- text size ---------- */
 function applyFont(){ const z={lg:1.12,xl:1.25}[META.font]||1; document.body.style.zoom=z===1?'':z; }
