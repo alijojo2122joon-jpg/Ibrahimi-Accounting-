@@ -443,7 +443,8 @@ function load(){
  ['products','customers','suppliers','txns'].forEach(k=>{ if(!Array.isArray(DB[k])) DB[k]=[]; });
  if(!DB.settings) DB.settings=defaultDB().settings;
  try{ META=JSON.parse(localStorage.getItem(LS+'_meta')); }catch(e){ META=null; }
- if(!META) META={device:'ABCDEFGHJKMNPRSTUVWXYZ'[Math.floor(Math.random()*22)], user:DB.settings.users[0], dirty:[], lastPull:'', sync:{}};
+ const L22='ABCDEFGHJKMNPRSTUVWXYZ', rl=()=>L22[Math.floor(Math.random()*22)];
+ if(!META) META={device:rl()+rl(), user:DB.settings.users[0], dirty:[], lastPull:'', sync:{}};
  if(!Array.isArray(META.dirty)) META.dirty=[];
  if(!META.sync) META.sync={};
 }
@@ -1588,7 +1589,8 @@ function viewSettings(){ const s=DB.settings, sc=META.sync;
  </div><div class="hint" style="margin-top:10px;text-align:center">ابراهیمی اکانتینگ نسخهٔ ${VERSION}</div>`; }
 function saveSettings(){ const users=DB.settings.users||[]; if(!users.length) return toast('حد اقل یک کاربر لازم است');
  save('settings',Object.assign({},DB.settings,{biz:$('#s_biz').value.trim()||'ابراهیمی اکانتینگ',users,phone:$('#s_phone').value.trim(),addr:$('#s_addr').value.trim(),startDate:$('#s_start').value||today(),openCash:num($('#s_ocash').value),openBank:num($('#s_obank').value)})); if(!users.includes(META.user)){ META.user=users[0]; persist(); } toast('ذخیره شد ✓'); render(); }
-function saveSync(){ META.sync={url:$('#s_url').value.trim(),key:$('#s_key').value.trim(),secret:$('#s_secret').value.trim()};
+function saveSync(){ if(String(META.device).length<2) META.device=META.device+'ABCDEFGHJKMNPRSTUVWXYZ'[Math.floor(Math.random()*22)];
+ META.sync={url:$('#s_url').value.trim(),key:$('#s_key').value.trim(),secret:$('#s_secret').value.trim()};
  if(META.sync.url&&!META.dirty.length){ META.dirty=allRecords().map(r=>r.id); } persist(); doSync(true); }
 async function doSync(manual){ const r=await syncNow(); drawTop(); if(r==='changed') render(); else if(manual&&R.v==='settings') render();
  if(manual) toast(r==='err'?'❌ همگام‌سازی نشد: '+(META.lastSyncErr||''):r==='off'?'همگام‌سازی تنظیم نشده':'✅ همگام شد'); }
