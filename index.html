@@ -448,7 +448,7 @@ body.mopen #snack{bottom:auto;top:16px;transform:translate(-50%,-20px)}body.mope
 <script id="engine">
 'use strict';
 const LS = 'ebrahimi_acc_v1';
-const VERSION = '6.7';
+const VERSION = '6.8';
 
 /* ---- Chart of accounts (کدینگ حساب‌ها) ----
    nature: A=asset (debit), L=liability (credit), E=equity (credit), E-=contra equity (debit),
@@ -1690,6 +1690,27 @@ function printYear(){ const ys=yearData(), cp=can('profit'); let T={s:0,g:0,e:0,
  $('#printArea').innerHTML=`<div class="inv">${pHead('گزارش ۱۲ ماه اخیر',fd(ys[0].m.from)+' تا '+fd(today()))}<table class="itbl"><thead><tr><th>ماه</th><th>فروش خالص</th><th>پول جمع‌شده</th>${cp?'<th>سود ناخالص</th>':''}<th>مصارف</th>${cp?'<th>سود خالص</th>':''}</tr></thead><tbody>${ys.map(y=>{ T.s+=y.p.netSales; T.g+=y.p.gross; T.e+=y.p.totalExp; T.n+=y.p.net; T.c+=y.coll; return `<tr><td>${esc(y.m.label)}</td><td>${fm(Math.round(y.p.netSales))}</td><td>${fm(Math.round(y.coll))}</td>${cp?`<td>${fm(Math.round(y.p.gross))}</td>`:''}<td>${fm(Math.round(y.p.totalExp))}</td>${cp?`<td>${fm(Math.round(y.p.net))}</td>`:''}</tr>`; }).join('')}<tr><td><b>جمع</b></td><td><b>${fm(Math.round(T.s))}</b></td><td><b>${fm(Math.round(T.c))}</b></td>${cp?`<td><b>${fm(Math.round(T.g))}</b></td>`:''}<td><b>${fm(Math.round(T.e))}</b></td>${cp?`<td><b>${fm(Math.round(T.n))}</b></td>`:''}</tr></tbody></table><div class="ifoot">تهیه‌شده با ابراهیمی اکانتینگ — ${fd(today())}</div></div>`;
  try{ window.print(); }catch(e){} }
 
+/* ---------- 14-day cash forecast ---------- */
+let FCD=14;
+function pDay(d){ try{ return parseInt(new Intl.DateTimeFormat('en-u-ca-persian',{day:'numeric'}).format(new Date(d+'T12:00:00')),10); }catch(e){ return +d.slice(8); } }
+function repForecast(){ const td=today(), N=FCD, c=C(), start=balOf('1010')+balOf('1020');
+ const past=DB.txns.filter(t=>!t.void&&t.date>addDays(td,-30)&&t.date<=td);
+ const avgIn=past.reduce((s,t)=>s+(t.type==='receipt'?num(t.amount):t.type==='sale'?num(t.paid):0),0)/30;
+ const avgVar=past.filter(t=>t.type==='expense'&&!t.fixed).reduce((s,t)=>s+num(t.amount),0)/30;
+ const days=[]; for(let i=1;i<=N;i++) days.push({d:addDays(td,i),ins:[],outs:[]});
+ const at=d=>days.find(x=>x.d===d)||(d<=days[0].d?days[0]:null);
+ DB.customers.forEach(x=>{ if(x.deleted||!x.promiseDate) return; const b=(c.CU[x.id]||{bal:0}).bal; if(b<=0.5) return; const day=at(x.promiseDate<td?addDays(td,1):x.promiseDate); if(day) day.ins.push({l:'قول '+x.name,v:Math.min(b,num(x.promiseAmt)||b)}); });
+ DB.suppliers.forEach(x=>{ if(x.deleted) return; const b=(c.SU[x.id]||{bal:0}).bal, d=suppDue(x.id); if(b<=0.5||!d) return; const day=at(d<td?addDays(td,1):d); if(day) day.outs.push({l:'وعدهٔ '+x.name,v:b}); });
+ const paidThis=id=>DB.txns.some(t=>!t.void&&t.type==='expense'&&t.fixed===id&&t.date>=monthStart());
+ const nextM=addDays(monthStart(),monthLen()); days.forEach(o=>{ const pd=pDay(o.d); FX().forEach(f=>{ if(num(f.day||1)===pd&&!(o.d<nextM&&paidThis(f.id))) o.outs.push({l:f.note||ACC[f.acc].name,v:num(f.amount)}); }); });
+ let bal=start, low=start, lowD=null; const rows=days.map(o=>{ const i=o.ins.reduce((s,x)=>s+x.v,0)+avgIn, out=o.outs.reduce((s,x)=>s+x.v,0)+avgVar; bal+=i-out; if(bal<low){ low=bal; lowD=o.d; } return Object.assign(o,{i,out,bal}); });
+ return `<div class="row noprint" style="margin-bottom:14px"><div class="tabs" style="margin:0">${[7,14,30].map(n=>`<button class="${FCD===n?'on':''}" onclick="FCD=${n};render()">${fm(n)} روز</button>`).join('')}</div></div>
+ <div class="grid k3" style="margin-bottom:18px">${kpi('wallet','#13a389','پول امروز (صندوق + بانک)',money(start),'')}${kpi('trend',bal>=start?'#16a37a':'#e5484d','تخمین بعد از '+fm(N)+' روز',money(bal),(bal>=start?'▲ ':'▼ ')+money(Math.abs(bal-start)),bal>=start?'pos':'neg')}${kpi('alert',low<0?'#e5484d':'#f08c2e','کمترین موجودی',money(low),lowD?fd(lowD):'—',low<0?'neg':'')}</div>
+ ${low<0?`<div class="card banner" style="margin-bottom:18px"><div class="ic" style="--c:#e5484d">${I('alert')}</div><div style="flex:1"><b>در ${fd(lowD)} پول کم می‌آید</b><div class="mu">وصول طلب‌ها را جلو بیندازید یا وعدهٔ پرداخت به عمده‌فروش را عقب بیندازید.</div></div></div>`:''}
+ ${barChart(rows.map(r=>fm(pDay(r.d))),[{name:'موجودی تخمینی',color:'#13a389',values:rows.map(r=>Math.round(r.bal))}],200)}
+ <div class="tw" style="margin-top:14px"><table class="tbl"><tr><th>روز</th><th>آمد (قول‌ها)</th><th>رفت (وعده‌ها، مصارف ثابت)</th><th class="n">آمد</th><th class="n">رفت</th><th class="n">موجودی</th></tr>${rows.filter((r,i)=>r.ins.length||r.outs.length||i===rows.length-1).map(r=>`<tr><td>${fd(r.d)}<div class="mu" style="font-size:11px">${WD?WD.format(new Date(r.d+'T12:00:00')):''}</div></td><td style="font-size:12px">${r.ins.map(x=>esc(x.l)+' '+kfmt(x.v)).join('<br>')||'<span class="mu">—</span>'}</td><td style="font-size:12px">${r.outs.map(x=>esc(x.l)+' '+kfmt(x.v)).join('<br>')||'<span class="mu">—</span>'}</td><td class="n pos">${kfmt(r.i)}</td><td class="n neg">${kfmt(r.out)}</td><td class="n ${r.bal<0?'neg':''}"><b>${money(r.bal)}</b></td></tr>`).join('')}</table></div>
+ <div class="hint" style="margin-top:10px">این تخمین است: قول‌های دکان‌ها، وعده‌های پرداخت به عمده‌فروش‌ها و مصارف ثابت ماهانه، به‌اضافهٔ میانگین روزانهٔ ۳۰ روز گذشته (وصول ${kfmt(avgIn)} و مصارف متغیر ${kfmt(avgVar)} در روز). خرید تازه از مندوی در آن حساب نشده.</div>`; }
+
 /* ---------- text size ---------- */
 function applyFont(){ const z={lg:1.12,xl:1.25}[META.font]||1; document.body.style.zoom=z===1?'':z; }
 function setFont(v){ META.font=v; persist(); applyFont(); render(); }
@@ -2139,10 +2160,10 @@ function drawSearch(){ const el=$('#gsr'); if(!el) return; const q=(fv('gsq')||$
 function monthStart(){ const t=today(); try{ const p=new Intl.DateTimeFormat('en-u-ca-persian',{day:'numeric'}).format(new Date(t+'T12:00:00')); const d=parseInt(p,10); if(d>0&&d<32) return addDays(t,-(d-1)); }catch(e){} return t.slice(0,8)+'01'; }
 let RP={from:'',to:''};
 function viewReports(){ const tab=R.tab||'month'; if(!RP.from){ RP.from=monthStart(); RP.to=today(); }
- const tabs=[['month','گزارش ماه'],['pnl','سود و زیان'],['cash','جریان نقدی'],['stock','گزارش گدام'],['users','کارکرد هر نفر'],['shops','سود و ریسک دکان‌ها'],['areas','فروش ساحه‌ها'],['cats','کتگوری‌ها'],['year','گزارش سالانه'],['bs','بیلانس‌شیت'],['daily','گزارش روزانه / شبانه'],['aging','طلب‌ها و کهنگی'],['sales','فروش اجناس'],['custs','بهترین مشتری‌ها'],['tb','میزان (تراز آزمایشی)'],['gl','دفتر روزنامه'],['coa','کدینگ حساب‌ها'],['log','فعالیت کاربران']];
+ const tabs=[['month','گزارش ماه'],['pnl','سود و زیان'],['cash','جریان نقدی'],['stock','گزارش گدام'],['users','کارکرد هر نفر'],['shops','سود و ریسک دکان‌ها'],['areas','فروش ساحه‌ها'],['cats','کتگوری‌ها'],['year','گزارش سالانه'],['fc','پیش‌بینی پول'],['bs','بیلانس‌شیت'],['daily','گزارش روزانه / شبانه'],['aging','طلب‌ها و کهنگی'],['sales','فروش اجناس'],['custs','بهترین مشتری‌ها'],['tb','میزان (تراز آزمایشی)'],['gl','دفتر روزنامه'],['coa','کدینگ حساب‌ها'],['log','فعالیت کاربران']];
  const range=`<div class="row noprint" style="margin-bottom:10px"><span class="mu">از</span><input class="in" type="date" style="width:auto" value="${RP.from}" onchange="RP.from=this.value;render()"><span class="mu">تا</span><input class="in" type="date" style="width:auto" value="${RP.to}" onchange="RP.to=this.value;render()">
  <button class="btn sm alt" onclick="RP.from=today();RP.to=today();render()">امروز</button><button class="btn sm alt" onclick="RP.from=monthStart();RP.to=today();render()">این ماه</button><button class="btn sm alt" onclick="RP.from=addDays(today(),-29);RP.to=today();render()">۳۰ روز</button><button class="btn sm alt" onclick="RP.from=DB.settings.startDate;RP.to=today();render()">از ابتدا</button></div><div class="hint" style="margin-bottom:8px">${fd(RP.from)} تا ${fd(RP.to)}</div>`;
- const body={pnl:()=>range+repPnl(),bs:()=>repBS(),daily:()=>repDaily(),aging:()=>repAging(),sales:()=>range+repSales(),custs:()=>range+repCusts(),tb:()=>range+repTB(),gl:()=>range+repGL(),coa:()=>repCOA(),log:()=>repLog(),month:()=>repMonth(),cash:()=>range+repCash(),stock:()=>range+repStock(),users:()=>range+repUsers(),shops:()=>range+repShops(),areas:()=>range+repAreas(),cats:()=>range+repCats(),year:()=>repYear()}[tab]();
+ const body={pnl:()=>range+repPnl(),bs:()=>repBS(),daily:()=>repDaily(),aging:()=>repAging(),sales:()=>range+repSales(),custs:()=>range+repCusts(),tb:()=>range+repTB(),gl:()=>range+repGL(),coa:()=>repCOA(),log:()=>repLog(),month:()=>repMonth(),cash:()=>range+repCash(),stock:()=>range+repStock(),users:()=>range+repUsers(),shops:()=>range+repShops(),areas:()=>range+repAreas(),cats:()=>range+repCats(),year:()=>repYear(),fc:()=>repForecast()}[tab]();
  return `<div class="tabs noprint">${tabs.map(t=>`<button class="${tab===t[0]?'on':''}" onclick="R.tab='${t[0]}';render()">${t[1]}</button>`).join('')}</div>${tab==='pnl'||tab==='daily'||tab==='aging'||tab==='month'?body:`<div class="card">${body}</div>`}`; }
 const trow=(l,v,cls='',b)=>`<tr><td>${b?'<b>'+l+'</b>':l}</td><td class="n ${cls}">${b?'<b>'+money(v)+'</b>':money(v)}</td></tr>`;
 /* ---------- chart helpers ---------- */
