@@ -404,7 +404,7 @@ svg.flip{transform:scaleX(-1)}
 <script id="engine">
 'use strict';
 const LS = 'ebrahimi_acc_v1';
-const VERSION = '2.9';
+const VERSION = '3.0';
 
 /* ---- Chart of accounts (کدینگ حساب‌ها) ----
    nature: A=asset (debit), L=liability (credit), E=equity (credit), E-=contra equity (debit),
@@ -1365,7 +1365,7 @@ function editTxn(id){ const t=DB.txns.find(x=>x.id===id); if(!t||t.void) return;
 
 /* ---------- nightly cash closing (شمارش و بستن صندوق) ---------- */
 const NOTES=[1000,500,100,50,20,10,5,2,1];
-function cashCloseForm(){ if(!can('cashclose')) return; F={type:'cashcount',notes:{}};
+function cashCloseForm(){ if(!can('cashclose')) return toast('بستن صندوق فقط برای مالک است'); F={type:'cashcount',notes:{}};
  const td=today(), exp=balOf('1010',td);
  const tx=DB.txns.filter(t=>!t.void&&t.date===td&&t.method!=='bank'); let cin=0,cout=0;
  tx.forEach(t=>{ if(t.type==='sale') cin+=num(t.paid); if(t.type==='receipt') cin+=num(t.amount); if(t.type==='capital') cin+=num(t.amount); if(t.type==='preturn') cin+=num(t.paid);
