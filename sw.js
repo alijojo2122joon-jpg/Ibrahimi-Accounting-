@@ -1,5 +1,5 @@
 /* Ibrahimi Accounting — offline service worker */
-const VER = 'ia-v9.7';
+const VER = 'ia-v9.8';
 const SHELL = ['./', './index.html', './manifest.json', './icons/icon-192.png', './icons/icon-512.png', './icons/icon.svg'];
 const RUNTIME = 'ia-runtime';
 const TILES = 'ia-tiles';

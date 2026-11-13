@@ -245,6 +245,8 @@ svg.flip{transform:scaleX(-1)}
 #side .keys{font-size:11px;color:var(--mu);margin-top:14px;text-align:center;direction:rtl}
 /* printable invoice */
 #printArea{display:none}
+.clrow{display:flex;gap:12px;align-items:center;cursor:pointer;padding:14px 16px}.clrow .m{flex:1;min-width:0}.clrow.cur{box-shadow:var(--up),inset 0 0 0 2px color-mix(in srgb,var(--g2) 45%,transparent)}.clrow.open{border:2px dashed color-mix(in srgb,var(--g2) 50%,transparent)}
+.clnums{display:flex;flex-wrap:wrap;gap:4px 12px;margin-top:6px;font-size:12.5px;color:var(--mu)}.cla{text-align:left;display:flex;flex-direction:column;gap:2px}.cla b{font-size:16px;white-space:nowrap}.cla small{font-size:12px;font-weight:700;white-space:nowrap}
 .ctcl{display:flex;gap:12px;align-items:center;flex-wrap:wrap}.ctcl .m{flex:1;min-width:200px}.ctcl.done b{color:var(--g2)}.ctcl .mu{font-size:12.5px;margin-top:3px}
 .ctag>div{display:flex;gap:10px;align-items:baseline;padding:7px 0;border-bottom:1px dashed var(--line)}.ctag span{flex:1;min-width:0}.ctag b{white-space:nowrap}.ctag small{white-space:nowrap;color:var(--mu);min-width:70px;text-align:left}
 .ctlog>div{padding:8px 0;border-bottom:1px dashed var(--line)}.ctch{margin-top:4px;font-size:14px}.ctch s{color:var(--red);opacity:.8}
@@ -559,7 +561,7 @@ body.mopen #snack{bottom:auto;top:16px;transform:translate(-50%,-20px)}body.mope
 <script id="engine">
 'use strict';
 const LS = 'ebrahimi_acc_v1';
-const VERSION = '9.7';
+const VERSION = '9.8';
 
 /* ---- Chart of accounts (کدینگ حساب‌ها) ----
    nature: A=asset (debit), L=liability (credit), E=equity (credit), E-=contra equity (debit),
@@ -989,12 +991,12 @@ function drawSide(){
  NAV.filter(n=>can(n[0])).map(n=>`<a class="${R.v===n[0]||(R.v==='customer'&&n[0]==='customers')||(R.v==='supplier'&&n[0]==='suppliers')||(R.v==='product'&&n[0]==='products')?'on':''}" onclick="go('${n[0]}')">${I(n[1])}<span>${n[2]}</span></a>`).join('')+
  `<div class="qa"><button onclick="saleForm()">${I('receipt')} فروش جدید</button><button onclick="receiptForm()">${I('cash')} دریافت پول</button><button onclick="purchaseForm()">${I('cart')} خرید از عمده‌فروش</button><button onclick="expenseForm()">${I('fuel')} ثبت مصرف</button></div><a onclick="go('help')" class="${R.v==='help'?'on':''}">${I('book')}<span>راهنما</span></a><div class="keys">F2 فروش، F3 دریافت، F4 خرید، F8 مصرف</div>`;
  const B=(v,ic,l,on)=>`<a class="${on?'on':''}" onclick="go('${v}')"><b>${I(ic)}</b>${l}</a>`;
- $('#bnav').innerHTML=(isCounterU()?B('counter','cart','هنگر',R.v==='counter'):B('dash','home','خانه',R.v==='dash'))+B('map','map','نقشه',R.v==='map')+`<a class="plus" onclick="quickMenu()"><b>${I('plus')}</b>ثبت</a>`+B('customers','shop','دکان‌ها',['customers','customer'].includes(R.v))+B('more','menu','بیشتر',[...(isCounterU()?['dash']:[]),'products','product','suppliers','txns','reports','settings','supplier','more','help','truck','persons','person'].includes(R.v));
+ $('#bnav').innerHTML=(isCounterU()?B('counter','cart','هنگر',R.v==='counter'):B('dash','home','خانه',R.v==='dash'))+B('map','map','نقشه',R.v==='map')+`<a class="plus" onclick="quickMenu()"><b>${I('plus')}</b>ثبت</a>`+B('customers','shop','دکان‌ها',['customers','customer'].includes(R.v))+B('more','menu','بیشتر',[...(isCounterU()?['dash']:[]),'closes','products','product','suppliers','txns','reports','settings','supplier','more','help','truck','persons','person'].includes(R.v));
 }
 function drawTop(){
  const st={off:['','همگام‌سازی خاموش'],ok:['ok','همگام شد'],err:['err','خطای همگام‌سازی'],busy:['busy','در حال همگام‌سازی…']}[syncState]||['',''];
  const pend=META.dirty.length, dark=META.theme==='dark';
- $('#top').innerHTML=`<h1>${esc((NAV.find(n=>n[0]===R.v)||['','',R.v==='persons'?'کارگرها و اشخاص':R.v==='person'?'حساب شخص':R.v==='help'?'راهنما':R.v==='truck'?'دفتر موتر':R.v==='customer'?'حساب دکان':R.v==='product'?'کاردکس جنس':R.v==='supplier'?'حساب عمده‌فروش':'بیشتر'])[2])}</h1>
+ $('#top').innerHTML=`<h1>${esc((NAV.find(n=>n[0]===R.v)||['','',R.v==='closes'?'حساب‌های بسته‌شده':R.v==='persons'?'کارگرها و اشخاص':R.v==='person'?'حساب شخص':R.v==='help'?'راهنما':R.v==='truck'?'دفتر موتر':R.v==='customer'?'حساب دکان':R.v==='product'?'کاردکس جنس':R.v==='supplier'?'حساب عمده‌فروش':'بیشتر'])[2])}</h1>
  <button class="chip" onclick="go('settings')" title="${st[1]}"><span class="dot ${st[0]}"></span><span class="hm">${META.sync.url?(pend?fm(pend)+' در انتظار':st[1]):'همین دستگاه'}</span></button>
  <button class="chip" onclick="setTheme('${dark?'light':'dark'}')" title="حالت شب/روز">${I(dark?'sun':'moon')}</button>
  <button class="chip" onclick="searchAll()" title="جستجو">${I('search')}</button>${hasPins()?`<button class="chip" onclick="lockNow()" title="قفل">${I('lock')}</button>`:''}<button class="chip" onclick="userMenu()">${I('user')} ${esc(META.user)}</button>`;
@@ -1007,7 +1009,7 @@ function render(){
  drawSide(); drawTop();
  if(MAP&&R.v!=='map'){ try{MAP.remove();}catch(e){} MAP=null; }
  const v=$('#view'); if(v&&R.v!==LASTV){ v.style.animation='none'; void v.offsetWidth; v.style.animation=''; } LASTV=R.v;
- const views={counter:viewCounter,dash:viewDash,map:viewMap,customers:viewCustomers,customer:viewCustomer,products:viewProducts,product:viewProduct,suppliers:viewSuppliers,supplier:viewSupplier,txns:viewTxns,reports:viewReports,settings:viewSettings,more:viewMore,help:viewHelp,truck:truckView,persons:viewPersons,person:viewPerson};
+ const views={closes:viewCloses,counter:viewCounter,dash:viewDash,map:viewMap,customers:viewCustomers,customer:viewCustomer,products:viewProducts,product:viewProduct,suppliers:viewSuppliers,supplier:viewSupplier,txns:viewTxns,reports:viewReports,settings:viewSettings,more:viewMore,help:viewHelp,truck:truckView,persons:viewPersons,person:viewPerson};
  try{ v.innerHTML=(views[R.v]||viewDash)();
   if(R.v==='map') setTimeout(initMap,30);
   if(R.v==='customers') drawCList();
@@ -1092,7 +1094,7 @@ function userMenu(){
 }
 function viewMore(){
  const col=['#f08c2e','#3b6fd8','#8b5cf6','#13a389','#e5484d'];
- return `<div class="list">`+(isCounterU()?`<div class="it" onclick="R={v:'dash',id:null,tab:null,dash:true};render()"><div class="ic" style="--c:#13a389">${I('home')}</div><div class="m"><div class="t">داشبورد</div></div>${I('chev')}</div>`:`<div class="it" onclick="go('counter')"><div class="ic" style="--c:#13a389">${I('cart')}</div><div class="m"><div class="t">فروش هنگر (پیشخوان)</div><div class="d">ثبت سریع فروش و ورود جنس با کیلو، متر، دانه…</div></div>${I('chev')}</div>`)+NAV.slice(4).filter(n=>can(n[0])).map((n,i)=>`<div class="it" onclick="go('${n[0]}')"><div class="ic" style="--c:${col[i]}">${I(n[1])}</div><div class="m"><div class="t">${n[2]}</div></div>${I('chev')}</div>`).join('')+`<div class="it" onclick="go('persons')"><div class="ic" style="--c:#8b5cf6">${I('user')}</div><div class="m"><div class="t">کارگرها، معاش و قرض اشخاص</div></div>${I('chev')}</div><div class="it" onclick="go('truck')"><div class="ic" style="--c:#3b6fd8">${I('truck')}</div><div class="m"><div class="t">دفتر موتر (کیلومتر، تیل، روغن)</div></div>${I('chev')}</div><div class="it" onclick="go('help')"><div class="ic" style="--c:#f0b429">${I('book')}</div><div class="m"><div class="t">راهنمای استفاده</div></div>${I('chev')}</div><div class="it" onclick="priceList()"><div class="ic" style="--c:#25b05a">${I('wa')}</div><div class="m"><div class="t">لیست قیمت برای دکان‌ها</div></div>${I('chev')}</div></div>`;
+ return `<div class="list">`+(isCounterU()?`<div class="it" onclick="R={v:'dash',id:null,tab:null,dash:true};render()"><div class="ic" style="--c:#13a389">${I('home')}</div><div class="m"><div class="t">داشبورد</div></div>${I('chev')}</div>`:`<div class="it" onclick="go('counter')"><div class="ic" style="--c:#13a389">${I('cart')}</div><div class="m"><div class="t">فروش هنگر (پیشخوان)</div><div class="d">ثبت سریع فروش و ورود جنس با کیلو، متر، دانه…</div></div>${I('chev')}</div>`)+`<div class="it" onclick="go('closes')"><div class="ic" style="--c:#0f8f78">${I('lock')}</div><div class="m"><div class="t">حساب‌های بسته‌شدهٔ هنگر</div><div class="d">امروز، دیروز، هفته‌وار، ماهوار</div></div>${I('chev')}</div>`+NAV.slice(4).filter(n=>can(n[0])).map((n,i)=>`<div class="it" onclick="go('${n[0]}')"><div class="ic" style="--c:${col[i]}">${I(n[1])}</div><div class="m"><div class="t">${n[2]}</div></div>${I('chev')}</div>`).join('')+`<div class="it" onclick="go('persons')"><div class="ic" style="--c:#8b5cf6">${I('user')}</div><div class="m"><div class="t">کارگرها، معاش و قرض اشخاص</div></div>${I('chev')}</div><div class="it" onclick="go('truck')"><div class="ic" style="--c:#3b6fd8">${I('truck')}</div><div class="m"><div class="t">دفتر موتر (کیلومتر، تیل، روغن)</div></div>${I('chev')}</div><div class="it" onclick="go('help')"><div class="ic" style="--c:#f0b429">${I('book')}</div><div class="m"><div class="t">راهنمای استفاده</div></div>${I('chev')}</div><div class="it" onclick="priceList()"><div class="ic" style="--c:#25b05a">${I('wa')}</div><div class="m"><div class="t">لیست قیمت برای دکان‌ها</div></div>${I('chev')}</div></div>`;
 }
 
 /* ---------- dashboard ---------- */
@@ -2245,7 +2247,7 @@ function ctLog(){ const td=today(), sale=CT.log==='sale', tx=DB.txns.filter(t=>!
  const lines=tx.flatMap(t=>(t.items||[]).map(i=>({t,i}))), tot=tx.reduce((s,t)=>s+txnTotal(t),0), cash=tx.reduce((s,t)=>s+num(t.paid),0);
  const byU={}; tx.forEach(t=>byU[t.by||'—']=(byU[t.by||'—']||0)+1);
  const cl=ctLastClose(td);
- return `<div class="card ctclose"><div class="ctcl ${cl?'done':''}">${cl?`<div class="m"><b>✓ حساب امروز بسته شد</b><div class="mu">${who(cl.by)} ساعت ${hm(cl.createdAt)} · شمرده: ${money(cl.counted)}${(cl.edits||[]).length?' · ویرایش‌شده':''}${cl.to?' · تحویل به '+esc(cl.to):''}</div></div><button class="btn sm alt" onclick="ctCloseView('${cl.id}')">گزارش</button>`:`<div class="m"><b>آخر روز: بستن حساب امروز</b><div class="mu">پول را بشمارید، جمع فروش و جنس رسیده را ببینید و پول را تحویل بدهید</div></div>`}${ctOpen().bills||!cl?`<button class="btn sm" onclick="ctCloseForm()">${I('lock')} ${cl?'بستن دوباره':'بستن حساب'}</button>`:''}</div><div class="ctlinks"><a onclick="ctHistory()">${I('book')} روزهای بسته‌شدهٔ قبلی</a></div></div>
+ return `<div class="card ctclose"><div class="ctcl ${cl?'done':''}">${cl?`<div class="m"><b>✓ حساب امروز بسته شد</b><div class="mu">${who(cl.by)} ساعت ${hm(cl.createdAt)} · شمرده: ${money(cl.counted)}${(cl.edits||[]).length?' · ویرایش‌شده':''}${cl.to?' · تحویل به '+esc(cl.to):''}</div></div><button class="btn sm alt" onclick="ctCloseView('${cl.id}')">گزارش</button>`:`<div class="m"><b>آخر روز: بستن حساب امروز</b><div class="mu">پول را بشمارید، جمع فروش و جنس رسیده را ببینید و پول را تحویل بدهید</div></div>`}${ctOpen().bills||!cl?`<button class="btn sm" onclick="ctCloseForm()">${I('lock')} ${cl?'بستن دوباره':'بستن حساب'}</button>`:''}</div><div class="ctlinks"><a onclick="go('closes')">${I('book')} همهٔ حساب‌های بسته‌شده — روزانه، هفته‌وار، ماهوار</a></div></div>
  <div class="card"><h3>${I('clock')} ثبت‌های امروز<span class="sp"></span><div class="seg" style="width:auto"><button class="${sale?'on':''}" onclick="CT.log='sale';render()">فروش</button><button class="${sale?'':'on'}" onclick="CT.log='in';render()">ورود جنس</button></div></h3>
   ${tx.length?`<div class="cttot" style="margin:0 0 10px"><span>${fm(tx.length)} ${sale?'بل':'ورود'} · ${Object.entries(byU).map(([u,n])=>esc(u)+' '+fm(n)).join('، ')}</span>${sale||can('cost')?`<b>${money(sale?cash:tot)}${sale&&tot-cash>0.5?` <small class="mu">+ ${money(tot-cash)} قرض</small>`:''}</b>`:''}</div>`:''}
   <div class="list">${lines.slice(0,80).map(({t,i})=>`<div class="it" onclick="showTxn('${t.id}')"><div class="m"><div class="t">${esc(pname(i.pid))} — ${iq(i)}</div><div class="d">${who(t.by)} ساعت ${hm(t.createdAt)} · ${esc(partyName(t)||'')}</div></div>${sale||can('cost')?`<div class="a">${money(num(i.qty)*num(i.price))}</div>`:''}</div>`).join('')||`<div class="empty">امروز هنوز ${sale?'فروشی':'جنسی'} ثبت نشده</div>`}</div></div>`; }
@@ -2327,6 +2329,45 @@ function sbQueue(){ if(!SBQ) SBQ=requestAnimationFrame(saberize); }
 const sbMine=n=>n.nodeType!==1||(n.classList&&n.classList.contains('sbx'));
 try{ new MutationObserver(ms=>{ for(const m of ms){ if(m.type==='attributes'&&!(m.target.classList&&m.target.classList.contains('sbx'))){ sbQueue(); return; } if([...m.addedNodes].some(n=>!sbMine(n))||[...m.removedNodes].some(n=>!sbMine(n))){ sbQueue(); return; } } }).observe(document.documentElement,{subtree:true,childList:true,attributes:true,attributeFilter:['class']}); }catch(e){}
 addEventListener('load',sbQueue);
+
+/* ---------- closed counter accounts: daily / weekly / monthly ---------- */
+let CLT='day';
+const wkStart=d=>addDays(d,-((new Date(d+'T12:00:00').getDay()+1)%7));
+function pMonth(d){ try{ const ps=new Intl.DateTimeFormat('en-u-ca-persian',{year:'numeric',month:'numeric'}).formatToParts(new Date(d+'T12:00:00')); const y=ps.find(x=>x.type==='year').value, m=ps.find(x=>x.type==='month').value; return y+'-'+String(m).padStart(2,'0'); }catch(e){ return d.slice(0,7); } }
+function pMonthName(d){ try{ return new Intl.DateTimeFormat('fa-AF-u-ca-persian',{year:'numeric',month:'long'}).format(new Date(d+'T12:00:00')); }catch(e){ return d.slice(0,7); } }
+function dayLabel(d){ const t=today(); if(d===t) return 'امروز'; if(d===addDays(t,-1)) return 'دیروز'; return WDN[new Date(d+'T12:00:00').getDay()]; }
+function clGroups(kind){ const a=DB.txns.filter(t=>!t.void&&t.type==='dclose'), g={};
+ a.forEach(t=>{ const k=kind==='day'?t.date:kind==='week'?wkStart(t.date):pMonth(t.date); const o=g[k]||(g[k]={k,list:[],cash:0,credit:0,bills:0,counted:0,diff:0,days:new Set(),sold:{},inn:{},edited:0,first:t.date,last:t.date});
+  o.list.push(t); o.cash+=num(t.expected); o.credit+=num(t.credit); o.bills+=num(t.bills); o.counted+=num(t.counted); o.diff+=num(t.diff); o.days.add(t.date); if((t.edits||[]).length) o.edited++;
+  if(t.date<o.first) o.first=t.date; if(t.date>o.last) o.last=t.date;
+  [['sold',t.sold],['inn',t.inn]].forEach(([f,m])=>Object.entries(m||{}).forEach(([pid,x])=>{ const y=o[f][pid]||(o[f][pid]={q:0,v:0}); y.q+=num(x.q); y.v+=num(x.v); })); });
+ return Object.values(g).sort((x,y)=>y.k.localeCompare(x.k)); }
+function clTitle(kind,o){ const t=today();
+ if(kind==='day') return `<b>${dayLabel(o.k)}</b> <span class="mu">${fd(o.k)}</span>`;
+ if(kind==='week'){ const w=wkStart(t), l=o.k===w?'این هفته':o.k===addDays(w,-7)?'هفتهٔ گذشته':'هفته'; return `<b>${l}</b> <span class="mu">${fd(o.k)} تا ${fd(addDays(o.k,6))}</span>`; }
+ const l=o.k===pMonth(t)?'این ماه':o.k===pMonth(addDays(monthStart(),-1))?'ماه گذشته':''; return `<b>${l||pMonthName(o.first)}</b>${l?` <span class="mu">${pMonthName(o.first)}</span>`:''}`; }
+function viewCloses(){ const g=clGroups(CLT), now=CLT==='day'?today():CLT==='week'?wkStart(today()):pMonth(today()), open=ctOpen();
+ const tabs=[['day','روزانه'],['week','هفته‌وار'],['month','ماهوار']];
+ const tot=g.reduce((s,o)=>s+o.cash,0);
+ return `<div class="seg" style="margin-bottom:16px">${tabs.map(([k,l])=>`<button class="${CLT===k?'on':''}" onclick="CLT='${k}';render()">${l}</button>`).join('')}</div>
+ ${CLT==='day'&&!g.some(o=>o.k===today())?`<div class="card clrow open" onclick="${open.bills?'ctCloseForm()':"go('counter')"}"><div class="m"><b>امروز</b> <span class="mu">${fd(today())}</span><div class="mu">${open.bills?`${fm(open.bills)} بل — هنوز بسته نشده`:'هنوز بسته نشده'}</div></div><span class="btn sm">${I('lock')} ${open.bills?'بستن':'هنگر'}</span></div>`:''}
+ ${g.length?g.map((o,i)=>`<div class="card clrow ${o.k===now?'cur':''}" onclick="clOpen('${CLT}','${o.k}')">
+   <div class="m"><div>${clTitle(CLT,o)}${o.edited?' <span class="pill">ویرایش‌شده</span>':''}</div>
+    <div class="clnums"><span>نقد <b class="pos">${money(o.cash)}</b></span><span>قرض <b class="warn">${money(o.credit)}</b></span><span>${fm(o.bills)} بل</span>${CLT!=='day'?`<span>${fm(o.days.size)} روز بسته شد</span>`:o.list.length>1?`<span>${fm(o.list.length)} بار بسته شد</span>`:`<span>${who(o.list[0].by)}</span>`}</div></div>
+   <div class="cla"><b>${money(o.counted)}</b><small class="${Math.abs(o.diff)<0.5?'pos':o.diff>0?'pos':'neg'}">${Math.abs(o.diff)<0.5?'✓ درست':(o.diff>0?'+':'−')+money(Math.abs(o.diff))}</small></div></div>`).join(''):'<div class="card"><div class="empty">هنوز هیچ حسابی بسته نشده. آخر روز در صفحهٔ هنگر «بستن حساب» را بزنید.</div></div>'}`; }
+function clOpen(kind,k){ const o=clGroups(kind).find(x=>x.k===k); if(!o) return;
+ if(kind==='day'&&o.list.length===1) return ctCloseView(o.list[0].id);
+ const title=kind==='day'?dayLabel(k)+' — '+fd(k):kind==='week'?'هفته: '+fd(k)+' تا '+fd(addDays(k,6)):pMonthName(o.first);
+ const rows=kind==='day'?o.list.slice().sort((a,b)=>(a.createdAt||'').localeCompare(b.createdAt||'')).map(t=>`<div class="it" onclick="ctCloseView('${t.id}')"><div class="m"><div class="t">ساعت ${hm(t.createdAt)} — ${fm(t.bills)} بل</div><div class="d">${who(t.by)}${t.to?' · تحویل به '+esc(t.to):''}</div></div><div class="a">${money(t.counted)}</div></div>`)
+  :[...o.days].sort().reverse().map(d=>{ const l=o.list.filter(t=>t.date===d), c=l.reduce((s,t)=>s+num(t.counted),0), df=l.reduce((s,t)=>s+num(t.diff),0), b=l.reduce((s,t)=>s+num(t.bills),0);
+   return `<div class="it" onclick="${l.length===1?`ctCloseView('${l[0].id}')`:`clOpen('day','${d}')`}"><div class="m"><div class="t">${dayLabel(d)} ${fd(d)}</div><div class="d">${fm(b)} بل · نقد ${money(l.reduce((s,t)=>s+num(t.expected),0))}${Math.abs(df)>=0.5?` · <span class="${df>0?'pos':'neg'}">${df>0?'اضافه':'کم'} ${money(Math.abs(df))}</span>`:''}</div></div><div class="a">${money(c)}</div></div>`; });
+ const txt=`📋 حساب هنگر — ${title}\n💵 فروش نقد: ${money(o.cash)}\n🧾 فروش قرض: ${money(o.credit)}\n🔢 تعداد بل: ${fm(o.bills)}\n✋ پول شمرده‌شده: ${money(o.counted)}${Math.abs(o.diff)>=0.5?' ('+(o.diff>0?'اضافه ':'کم ')+money(Math.abs(o.diff))+')':' ✓'}\n\n🛒 فروخته شد:\n`+Object.entries(o.sold).sort((a,b)=>b[1].v-a[1].v).map(([p,x])=>`• ${pname(p)}: ${qtyTxt(prod(p),r2(x.q))}`).join('\n');
+ window._clTxt=txt;
+ openModal(title,`<div class="grid k3 mini" style="margin-bottom:14px"><div><span class="mu">فروش نقد</span><b class="pos">${money(o.cash)}</b></div><div><span class="mu">فروش قرض</span><b class="warn">${money(o.credit)}</b></div><div><span class="mu">تعداد بل</span><b>${fm(o.bills)}</b></div></div>
+  <div class="sum"><div><span>پول شمرده‌شده</span><b>${money(o.counted)}</b></div><div><span>تفاوت</span><b class="${Math.abs(o.diff)<0.5||o.diff>0?'pos':'neg'}">${Math.abs(o.diff)<0.5?'✓ درست':o.diff>0?money(o.diff)+' اضافه':money(-o.diff)+' کم'}</b></div></div>
+  ${sec('clock',kind==='day'?'بستن‌های این روز':'روزها',`<div class="list">${rows.join('')}</div>`)}
+  ${sec('receipt','فروخته شد',ctAggTable(o.sold,true))}${sec('in','وارد هنگر شد',ctAggTable(o.inn,can('cost')))}
+  <div class="qrow" style="justify-content:center;margin-top:14px"><button class="btn" style="--c:#25b05a" onclick="window.open('https://wa.me/?text='+encodeURIComponent(window._clTxt),'_blank')">${I('wa')} فرستادن در واتس‌اپ</button><button class="btn alt" onclick="navigator.clipboard.writeText(window._clTxt).then(()=>toast('کاپی شد'))">کاپی</button></div>`); }
 
 /* ---------- text size ---------- */
 function applyFont(){ const z={lg:1.12,xl:1.25}[META.font]||1; document.body.style.zoom=z===1?'':z; }
