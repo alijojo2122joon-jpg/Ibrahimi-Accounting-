@@ -450,7 +450,7 @@ body.mopen #snack{bottom:auto;top:16px;transform:translate(-50%,-20px)}body.mope
 <script id="engine">
 'use strict';
 const LS = 'ebrahimi_acc_v1';
-const VERSION = '8.0';
+const VERSION = '8.1';
 
 /* ---- Chart of accounts (کدینگ حساب‌ها) ----
    nature: A=asset (debit), L=liability (credit), E=equity (credit), E-=contra equity (debit),
@@ -895,6 +895,7 @@ function usersCard(){ const s=DB.settings, me=META.user;
   <button class="btn sm ${(s.simple||{})[u]?'':'alt'}" onclick="setSimple('${esc(u).replace(/'/g,'')}',${!(s.simple||{})[u]})">${(s.simple||{})[u]?'حالت ساده ✓':'حالت ساده'}</button><button class="btn sm alt" onclick="setPin('${esc(u).replace(/'/g,'')}')">${(s.pins||{})[u]?'تغییر رمز':'گذاشتن رمز'}</button>${(s.pins||{})[u]?`<button class="btn sm alt" onclick="confirmBtn(this,()=>removePin('${esc(u).replace(/'/g,'')}'))">✕</button>`:''}</div></div>`).join('')}</div>
   <div class="row" style="margin-top:6px"><input class="in" id="s_newuser" placeholder="نام کاربر جدید" style="flex:1;min-width:140px"><button class="btn sm" onclick="addUser()">＋ افزودن</button></div>
   ${fl('قفل خودکار بعد از بی‌کاری',`<select class="in" id="s_autolock" onchange="save('settings',Object.assign({},DB.settings,{autoLock:num(this.value)}));toast('ذخیره شد')">${[[0,'هرگز'],[2,'۲ دقیقه'],[5,'۵ دقیقه'],[15,'۱۵ دقیقه'],[30,'۳۰ دقیقه']].map(o=>`<option value="${o[0]}" ${num(s.autoLock)===o[0]?'selected':''}>${o[1]}</option>`).join('')}</select>`)}
+  <label class="chk" style="margin:6px 0 10px"><input type="checkbox" ${s.geoStamp?'checked':''} onchange="save('settings',Object.assign({},DB.settings,{geoStamp:this.checked}));toast(this.checked?'روشن شد — گوشی یک بار اجازهٔ لوکیشن می‌خواهد':'خاموش شد')"> <b>جای ثبت فروش و دریافت پول را ذخیره کن (GPS)</b> — معلوم می‌شود بل سر دکان ثبت شده یا جای دیگر</label>
   <div class="hint">«فروشنده» می‌تواند بل، دریافت، خرید و مصرف ثبت کند؛ ولی ویرایش و ابطال سند، گزارش‌های سود و زیان، قیمت تمام‌شده و تنظیمات را نمی‌بیند. با رمز، گوشی را اگر کسی دیگر بردارد حساب‌ها را نمی‌بیند.</div></div>`; }
 function setRole(u,r){ if(u===META.user&&r!=='owner'&&!(DB.settings.users||[]).some(x=>x!==u&&roleOf(x)==='owner')) { toast('حد اقل یک مالک لازم است'); return render(); }
  save('settings',Object.assign({},DB.settings,{roles:Object.assign({},DB.settings.roles||{},{[u]:r})})); toast('نقش ذخیره شد'); render(); }
@@ -1525,7 +1526,7 @@ function saveTxn(type){
   Object.assign(t,{id:o.id,no:o.no,createdAt:o.createdAt,by:o.by,editedBy:META.user,editedAt:nowIso(),history:[...(o.history||[]),{at:nowIso(),by:META.user,prev:snap}]}); }
  else t.no=nextNo(TT[type][1]);
  const oldLB=type==='purchase'&&!editing?Object.fromEntries((t.items||[]).map(i=>[i.pid,(C().P[i.pid]||{}).lastBuy||0])):null;
- const r=save('txn',t); closeModal(); if(editing) toast('✓ تغییرات ذخیره شد — '+r.no); else snack('✓ '+TT[type][0]+' ثبت شد — '+r.no,()=>undoTxn(r.id)); render(); if(oldLB&&can('edit')) priceRiseCheck(oldLB);
+ const r=save('txn',t); closeModal(); if(editing) toast('✓ تغییرات ذخیره شد — '+r.no); else snack('✓ '+TT[type][0]+' ثبت شد — '+r.no,()=>undoTxn(r.id)); render(); if(oldLB&&can('edit')) priceRiseCheck(oldLB); if(!editing&&(type==='sale'||type==='receipt')) stampGeo(r.id);
  if(editing){ showTxn(r.id); return; }
  if(fromOrder){ const o=(DB.orders||[]).find(x=>x.id===fromOrder); if(o) save('order',Object.assign({},o,{status:'done',txn:r.id,doneBy:META.user,doneAt:nowIso()})); }
  if(type==='sale') showTxn(r.id,true);
@@ -1676,6 +1677,7 @@ function changesCard(){ if(roleOf(META.user)!=='owner') return ''; const since=a
  DB.txns.forEach(t=>{ const nm=(TT[t.type]||[''])[0]+' '+(t.no||'')+(partyName(t)?' — '+partyName(t):'');
   if(t.void&&d(t.voidAt)&&t.voidBy&&t.voidBy!==me) ev.push({at:t.voidAt,by:t.voidBy,k:'ابطال',c:'#e5484d',txt:nm+(t.voidReason?' ('+t.voidReason+')':''),id:t.id});
   (t.history||[]).forEach(h=>{ if(d(h.at)&&h.by&&h.by!==me) ev.push({at:h.at,by:h.by,k:'ویرایش',c:'#f08c2e',txt:nm+' — قبلاً '+money(txnTotal(h.prev||{}))+'، حالا '+money(txnTotal(t)),id:t.id}); }); });
+ farEntries(3).forEach(t=>{ if(t.by&&t.by!==me) ev.push({at:t.createdAt,by:t.by,k:'دور از دکان',c:'#0369a1',txt:(TT[t.type]||[''])[0]+' '+(t.no||'')+' — '+partyName(t)+'، '+geoTxt(t),id:t.id}); });
  DB.products.forEach(p=>(p.priceHist||[]).forEach(h=>{ if(d(h.at)&&h.by&&h.by!==me) ev.push({at:h.at,by:h.by,k:'قیمت',c:'#8b5cf6',txt:p.name+': '+fm(h.old)+' ← '+fm(h.new)}); }));
  const un=unapproved(); if(!ev.length&&!un.length) return ''; ev.sort((a,b)=>b.at.localeCompare(a.at));
  const us=[...new Set(un.map(t=>t.by))], ut=un.reduce((s,t)=>s+num(t.amount),0);
@@ -1863,6 +1865,13 @@ function drawPlan(){ const el=$('#plv'); if(!el) return; el.innerHTML=`<div clas
 function savePlan(){ if(!(F.total>0)) return toast('مبلغ را بنویسید'); const x=cust(F.id); save('customer',Object.assign({},x,{plan:{at:nowIso(),total:F.total,n:F.n,every:F.every,items:planItems(),by:META.user},promiseDate:null,promiseAmt:null})); closeModal(); toast('✓ قسط‌بندی ثبت شد'); render(); }
 function planCard(x){ if(!x.plan) return ''; const ps=planStatus(x);
  return `<div class="card" style="margin-top:18px"><h3>${I('book')} قسط‌ها<span class="sp"></span><span class="mu" style="font-size:12.5px">پرداخت‌شده ${money(ps.paid)} از ${money(x.plan.total)}</span></h3>${ps.done?'<div class="hint pos">🎉 همهٔ قسط‌ها پرداخت شد</div>':ps.behind>0.5?`<div class="hint neg">${money(ps.behind)} عقب است${ps.lateDays?' — '+fm(ps.lateDays)+' روز':''}</div>`:''}<div class="hb2" style="margin:8px 0 12px"><i style="width:${Math.min(100,ps.paid/x.plan.total*100)}%"></i></div><div class="slist">${ps.items.map((it,i)=>`<div class="sr" style="cursor:default"><span class="badge" style="--c:${it.ok?'#16a37a':it.d<today()?'#e5484d':'#7d8796'}">${it.ok?'پرداخت شد':it.d<today()?'عقب':'مانده'}</span><div class="m"><b>قسط ${fm(i+1)}</b><div class="mu">${fd(it.d)}</div></div><b>${money(it.amt)}</b></div>`).join('')}</div></div>`; }
+
+/* ---------- where was this entry made? (optional) ---------- */
+function stampGeo(id){ if(!DB.settings.geoStamp||!navigator.geolocation) return;
+ navigator.geolocation.getCurrentPosition(p=>{ const t=DB.txns.find(x=>x.id===id); if(!t||t.geo) return; const g={lat:+p.coords.latitude.toFixed(5),lng:+p.coords.longitude.toFixed(5),acc:Math.round(p.coords.accuracy)}; const x=cust(t.party);
+  if(x&&x.lat) g.m=Math.round(hav(g.lat,g.lng,x.lat,x.lng)*1000); save('txn',Object.assign({},t,{geo:g})); },()=>{}, {enableHighAccuracy:false,timeout:15000,maximumAge:180000}); }
+const geoTxt=t=>!t.geo?'':t.geo.m===undefined?'جای ثبت ذخیره شد':t.geo.m<=Math.max(150,t.geo.acc||0)?'سر دکان ثبت شد':'ثبت در '+(t.geo.m>=1000?fm(Math.round(t.geo.m/100)/10)+' کیلومتری':fm(t.geo.m)+' متری')+' دکان';
+function farEntries(days){ const since=addDays(today(),-days); return DB.txns.filter(t=>!t.void&&t.date>=since&&t.geo&&t.geo.m!==undefined&&t.geo.m>Math.max(500,(t.geo.acc||0)*2)); }
 
 /* ---------- text size ---------- */
 function applyFont(){ const z={lg:1.12,xl:1.25}[META.font]||1; document.body.style.zoom=z===1?'':z; }
@@ -2265,7 +2274,7 @@ function showTxn(id,fresh){ const t=DB.txns.find(x=>x.id===id); if(!t) return; c
  openModal(tt[0]+' — '+t.no,`${fresh?`<div class="okbar">${I('check')} ثبت شد — می‌توانید عکس بل را برای دکان‌دار بفرستید</div>`:''}
  ${t.void?`<div class="card" style="margin-bottom:12px;color:var(--red)">❌ این سند باطل شده — ${esc(t.voidBy||'')}، ${esc(t.voidReason||'')}</div>`:''}
  <div class="thero"><div class="ic" style="--c:${tt[2]}">${I(({sale:'receipt',sreturn:'in',purchase:'cart',preturn:'out',receipt:'cash',payment:'out',expense:'fuel',capital:'bank',drawing:'home',transfer:'sync',adjust:'box',cashcount:'wallet'})[t.type]||'book')}</div><div class="m"><div class="mu">${tt[0]}، ${esc(t.no)}</div>${party?`<a href="#" class="tp" onclick="closeModal();go('${isP?'person':isC?'customer':'supplier'}','${party.id}');return false">${esc(party.name)}</a>`:`<b class="tp">${esc(t.type==='expense'?ACC[t.acc||'6900'].name:tt[0])}</b>`}</div><div class="tv"><b>${t.type==='adjust'?fm(txnTotal(t)):money(txnTotal(t))}</b></div></div>
- <div class="tchips"><span>${I('clock')} ${fd(t.date)}</span><span>${I('user')} ${esc(t.by||'')}${t.createdAt?' — '+hm(t.createdAt):''}</span>${t.okBy?`<span class="pos">${I('check')} تأیید ${esc(t.okBy)}</span>`:''}${t.ref?(()=>{ const r=DB.txns.find(x=>x.id===t.ref); return r?`<span style="cursor:pointer" onclick="showTxn('${r.id}')">${I('receipt')} از بل ${esc(r.no)}</span>`:''; })():''}<span>${I(t.method==='bank'?'bank':'cash')} ${t.method==='bank'?'بانک/حواله':'نقد'}</span>${t.editedAt?`<span>${I('edit')} ویرایش‌شده</span>`:''}</div>
+ <div class="tchips"><span>${I('clock')} ${fd(t.date)}</span><span>${I('user')} ${esc(t.by||'')}${t.createdAt?' — '+hm(t.createdAt):''}</span>${t.okBy?`<span class="pos">${I('check')} تأیید ${esc(t.okBy)}</span>`:''}${t.geo?`<span ${t.geo.lat?`style="cursor:pointer;${t.geo.m>Math.max(500,(t.geo.acc||0)*2)?'color:var(--red)':''}" onclick="window.open(gmaps(${t.geo.lat},${t.geo.lng}),'_blank')"`:''}>${I('pin')} ${geoTxt(t)}</span>`:''}${t.ref?(()=>{ const r=DB.txns.find(x=>x.id===t.ref); return r?`<span style="cursor:pointer" onclick="showTxn('${r.id}')">${I('receipt')} از بل ${esc(r.no)}</span>`:''; })():''}<span>${I(t.method==='bank'?'bank':'cash')} ${t.method==='bank'?'بانک/حواله':'نقد'}</span>${t.editedAt?`<span>${I('edit')} ویرایش‌شده</span>`:''}</div>
  ${items.length?`<div class="tw nmin" style="margin-top:10px"><table class="tbl"><tr><th>جنس</th><th class="n">تعداد</th>${t.type==='adjust'?'':'<th class="n">فی</th><th class="n">جمع</th>'}</tr>${items.map(i=>`<tr><td>${esc(pname(i.pid))}</td><td class="n"><span dir="rtl">${t.type==='adjust'?fm(i.qty):iq(i)}</span></td>${t.type==='adjust'?'':`<td class="n">${fm(ip(i))}</td><td class="n">${fm(num(i.qty)*num(i.price))}</td>`}</tr>`).join('')}</table></div>`:''}
  <div class="sum"><div class="big"><span>مجموع</span><b>${t.type==='adjust'?fm(txnTotal(t)):money(txnTotal(t))}</b></div>${t.discount?`<div><span>تخفیف</span><b>${money(t.discount)}</b></div>`:''}${t.paid?`<div><span>نقد</span><b>${money(t.paid)}</b></div>`:''}${t.extra?`<div><span>کرایه/حمالی</span><b>${money(t.extra)}</b></div>`:''}${t.type==='sale'&&can('profit')&&C().costs[t.id]!==undefined?`<div><span>سود ناخالص این بل</span><b class="pos">${money(txnTotal(t)-C().costs[t.id])}</b></div>`:''}</div>
  ${t.type==='cashcount'?`<div class="sum"><div><span>باید می‌بود</span><b>${money(t.expected)}</b></div><div><span>شمرده شد</span><b>${money(t.counted)}</b></div><div class="big"><span>${num(t.diff)<0?'کسری':num(t.diff)>0?'اضافه':'برابر'}</span><b class="${num(t.diff)<0?'neg':'pos'}">${money(Math.abs(num(t.diff)))}</b></div></div>`:''}
