@@ -448,7 +448,7 @@ body.mopen #snack{bottom:auto;top:16px;transform:translate(-50%,-20px)}body.mope
 <script id="engine">
 'use strict';
 const LS = 'ebrahimi_acc_v1';
-const VERSION = '5.9';
+const VERSION = '6.0';
 
 /* ---- Chart of accounts (کدینگ حساب‌ها) ----
    nature: A=asset (debit), L=liability (credit), E=equity (credit), E-=contra equity (debit),
@@ -1086,7 +1086,7 @@ let MAP=null, ML=null, MYM=null, PICK=null, MYPOS=null, MAPF='all';
 function getGPS(){ return new Promise((res,rej)=>{ if(!navigator.geolocation) return rej(new Error('GPS در این مرورگر نیست'));
  navigator.geolocation.getCurrentPosition(p=>res({lat:+p.coords.latitude.toFixed(6),lng:+p.coords.longitude.toFixed(6),acc:Math.round(p.coords.accuracy)}),e=>rej(new Error(e.code===1?'اجازهٔ لوکیشن داده نشد':'لوکیشن پیدا نشد — GPS را روشن کنید')),{enableHighAccuracy:true,timeout:20000,maximumAge:0}); }); }
 function viewMap(){
- const nloc=DB.customers.filter(x=>!x.deleted&&!x.lat).length;
+ const nloc=DB.customers.filter(x=>!x.deleted&&!x.lat&&!x.walkin).length;
  return `<div class="mapbar">
   <button class="btn sm ${MAPF==='all'?'':'alt'}" onclick="MAPF='all';drawMarkers()">همه</button>
   <button class="btn sm ${MAPF==='debt'?'':'alt'}" onclick="MAPF='debt';drawMarkers()">فقط بدهکارها</button>
@@ -1145,7 +1145,7 @@ async function captureCustLoc(id){ try{ toast('در حال گرفتن لوکیش
 /* ---------- customers ---------- */
 let CQ='', CF='all', CS='bal';
 let CA='';
-function viewCustomers(){ const c=C(), cs=DB.customers.filter(x=>!x.deleted), deb=cs.filter(x=>(c.CU[x.id]||{}).bal>0.5), tot=deb.reduce((s,x)=>s+c.CU[x.id].bal,0), old=deb.filter(x=>c.CU[x.id].oldest>30).length, nl=cs.filter(x=>!x.lat).length;
+function viewCustomers(){ const c=C(), cs=DB.customers.filter(x=>!x.deleted), deb=cs.filter(x=>(c.CU[x.id]||{}).bal>0.5), tot=deb.reduce((s,x)=>s+c.CU[x.id].bal,0), old=deb.filter(x=>c.CU[x.id].oldest>30).length, nl=cs.filter(x=>!x.lat&&!x.walkin).length;
  const areas={}; cs.forEach(x=>{ const a=(x.area||'').split(/[،,]/)[0].trim(); if(a) areas[a]=(areas[a]||0)+1; }); const top=Object.entries(areas).sort((a,b)=>b[1]-a[1]).slice(0,10);
  return `<div class="grid k4">${kpi('in','#f08c2e','مجموع طلب',money(tot),fm(deb.length)+' دکان بدهکار','warn',"CF='debt';render()")}${kpi('clock','#e5484d','بدهی کهنه',fm(old),'بیش از ۳۰ روز',old?'neg':'',"CF='old';render()")}${kpi('shop','#13a389','همه دکان‌ها',fm(cs.length),'')}${kpi('pin','#3b6fd8','بدون لوکیشن',fm(nl),'روی نقشه نیستند','',"CF='noloc';render()")}</div>
  <div class="row" style="margin:18px 0 12px"><div class="sbox" style="flex:1;min-width:200px;margin:0">${I('search')}<input placeholder="جستجوی نام دکان، صاحب، شماره، ساحه…" value="${esc(CQ)}" oninput="CQ=this.value;drawCList()"></div><button class="btn" onclick="customerForm()">${I('plus')} دکان جدید</button><button class="btn alt" onclick="bulkForm('c')">${I('in')} ورود گروهی</button><button class="btn alt" onclick="printCollect()">${I('print')} لیست وصولی</button><button class="btn" style="--c:#25b05a" onclick="bulkRemind()">${I('wa')} یادآوری گروهی</button></div>
@@ -1158,7 +1158,7 @@ function drawCList(){ const el=$('#clist'); if(!el) return; const c=C(), q=CQ.tr
  let a=DB.customers.filter(x=>!x.deleted); const g=x=>c.CU[x.id]||{bal:0,oldest:0,sales:0,last:''};
  if(q) a=a.filter(x=>[x.name,x.owner,x.phone,x.area,x.code].join(' ').toLowerCase().includes(q));
  if(CA) a=a.filter(x=>(x.area||'').split(/[،,]/)[0].trim()===CA);
- if(CF==='debt') a=a.filter(x=>g(x).bal>0.5); if(CF==='old') a=a.filter(x=>g(x).bal>0.5&&g(x).oldest>30); if(CF==='noloc') a=a.filter(x=>!x.lat); if(CF==='credit') a=a.filter(x=>g(x).bal<-0.5); if(CF==='sleep') a=a.filter(x=>g(x).last&&g(x).last<addDays(today(),-21)).sort((x,y)=>g(y).sales-g(x).sales);
+ if(CF==='debt') a=a.filter(x=>g(x).bal>0.5); if(CF==='old') a=a.filter(x=>g(x).bal>0.5&&g(x).oldest>30); if(CF==='noloc') a=a.filter(x=>!x.lat&&!x.walkin); if(CF==='credit') a=a.filter(x=>g(x).bal<-0.5); if(CF==='sleep') a=a.filter(x=>g(x).last&&g(x).last<addDays(today(),-21)).sort((x,y)=>g(y).sales-g(x).sales);
  const so={bal:(x,y)=>g(y).bal-g(x).bal,old:(x,y)=>g(y).oldest-g(x).oldest,name:(x,y)=>x.name.localeCompare(y.name,'fa'),last:(x,y)=>(g(y).last||'').localeCompare(g(x).last||''),sales:(x,y)=>g(y).sales-g(x).sales}[CS];
  if(CF!=='sleep') a.sort(so); const tot=a.reduce((s,x)=>s+Math.max(0,g(x).bal),0);
  el.innerHTML=`<div class="hint" style="padding:0 4px 6px">${fm(a.length)} دکان، مجموع طلب: <b>${money(tot)}</b></div>`+(a.map(custItem).join('')||'<div class="empty">دکانی پیدا نشد</div>');
@@ -1345,8 +1345,9 @@ function drawParty(open){ const el=$('#pbox'); if(!el) return; const id=fv('part
 function drawPL(){ const el=$('#plst'); if(!el) return; const q=($('#pq').value||'').trim().toLowerCase(), kind=F.pk;
  const last=x=>((kind==='c'?C().CU:C().SU)[x.id]||{}).last||'';
  const a=(kind==='c'?DB.customers:DB.suppliers).filter(x=>!x.deleted&&(!q||[x.name,x.owner,x.area,x.phone,x.code].join(' ').toLowerCase().includes(q))).sort((x,y)=>last(y).localeCompare(last(x))||x.name.localeCompare(y.name,'fa'));
- el.innerHTML=(F.pnew?`<div class="pi new" onclick="pickParty('__new')"><div class="av">${I('plus')}</div><div class="m"><b>${kind==='c'?'دکان جدید':'عمده‌فروش جدید'}</b>${q?`<div class="mu">«${esc(q)}»</div>`:''}</div></div>`:'')+
+ el.innerHTML=(kind==='c'&&F.type==='sale'&&!q?`<div class="pi new" onclick="pickWalkin()"><div class="av" style="--c:#16a37a">${I('cash')}</div><div class="m"><b>مشتری گذری (فروش نقدی)</b><div class="mu">برای کسی که دکان ثبت‌شده ندارد — پول کامل نقد</div></div></div>`:'')+(F.pnew?`<div class="pi new" onclick="pickParty('__new')"><div class="av">${I('plus')}</div><div class="m"><b>${kind==='c'?'دکان جدید':'عمده‌فروش جدید'}</b>${q?`<div class="mu">«${esc(q)}»</div>`:''}</div></div>`:'')+
  a.slice(0,40).map(x=>{ const b=pBal(x.id); return `<div class="pi" onclick="pickParty('${x.id}')"><div class="av" style="--c:${pCol(x)}">${esc(x.name[0]||'؟')}</div><div class="m"><b>${esc(x.name)}</b><div class="mu">${esc([x.owner,x.area].filter(Boolean).join('، '))}</div></div>${b>0.5?`<b class="${kind==='c'?'warn':'neg'}">${money(b)}</b>`:''}</div>`; }).join('')+(a.length?'':`<div class="empty">در لیست پیدا نشد${F.pnew&&q?' — از دکمهٔ بالا آن را اضافه کنید':''}</div>`); }
+function pickWalkin(){ if(!cust('walkin')) save('customer',{id:'walkin',code:'C-0000',name:'مشتری گذری (نقدی)',walkin:true,area:''}); pickParty('walkin'); const p=$('#f_paid'); if(p){ p.closest('label')&&(p.closest('label').style.opacity=.5); } toast('فروش نقدی — پول کامل حساب می‌شود'); }
 function pickParty(id){ const q=(($('#pq')||{}).value||'').trim(); $('#f_party').value=id; drawParty(); partyChanged();
  if(id==='__new'){ const n=$('#f_nc_name'); if(n){ n.value=q; n.focus(); } } }
 function partyChanged(){ const v=fv('party'); const nb=$('#newParty'); if(nb) nb.style.display=v==='__new'?'block':'none';
@@ -1483,6 +1484,7 @@ function saveTxn(type){
  if(['receipt','payment','expense','capital','drawing','transfer'].includes(type)&&!t.amount) return toast('مبلغ را بنویسید');
  if(F.photo) t.photo=F.photo; else if(F.photo===undefined&&F.editId){ const o=DB.txns.find(x=>x.id===F.editId); if(o&&o.photo) t.photo=o.photo; }
  if(type==='expense') t.acc=fv('acc'); if(type==='transfer'){ t.to=fv('to'); if(t.to===t.method) return toast('مبدأ و مقصد یکی است'); }
+ if(type==='sale'&&t.party==='walkin') t.paid=txnTotal(t);
  if(type==='sale'){ const net=txnTotal(t); if((t.paid||0)>net+0.01) return toast('نقد گرفته‌شده از خالص بل بیشتر است — اضافه را جدا «دریافت پول» ثبت کنید');
   if(type==='sale'){ const bc=(t.items||[]).filter(i=>{ const a=(C().P[i.pid]||{avg:0}).avg; return a>0&&num(i.price)<a-0.01; }); if(bc.length){ if(!can('edit')) return toast('⛔ قیمت '+bc.map(i=>pname(i.pid)).join('، ')+' زیر قیمت خرید است — از مالک بپرسید'); toast('⚠️ '+bc.map(i=>pname(i.pid)).join('، ')+' زیر قیمت خرید فروخته شد'); } }
   { const cu=cust(t.party), lim=num((cu||{}).limit), prev=(C().CU[t.party]||{bal:0}).bal-(F.editId?(()=>{ const o=DB.txns.find(x=>x.id===F.editId); return o&&o.party===t.party?txnTotal(o)-num(o.paid):0; })():0), after=prev+txnTotal(t)-num(t.paid);
@@ -1659,7 +1661,7 @@ function healthCheck(){ const c=C(), out=[]; let d=0,cr=0; c.J.forEach(j=>{ d+=j
  const ap=-balOf('2100'), su=Object.values(c.SU).reduce((s,x)=>s+x.bal,0); out.push([Math.abs(ap-su)<1,'حساب قرض‌ها با مجموع حساب عمده‌فروش‌ها برابر است',money(ap)]);
  const neg=DB.products.filter(p=>!p.deleted&&(c.P[p.id]||{qty:0}).qty<0); out.push([!neg.length,neg.length?'موجودی منفی: '+neg.map(p=>p.name).join('، '):'هیچ جنسی موجودی منفی ندارد',neg.length?'این یعنی فروشی ثبت شده که خریدش ثبت نشده':'']);
  const cash=balOf('1010'); out.push([cash>=0,cash>=0?'صندوق نقدی منفی نیست':'صندوق نقدی منفی است',cash<0?'یک خرید/مصرف بیش از پول موجود ثبت شده یا سرمایه/نقد اول دوره ثبت نشده':money(cash)]);
- const noloc=DB.customers.filter(x=>!x.deleted&&!x.lat).length; out.push([!noloc,noloc?fm(noloc)+' دکان لوکیشن ندارد':'همه دکان‌ها لوکیشن دارند','']);
+ const noloc=DB.customers.filter(x=>!x.deleted&&!x.lat&&!x.walkin).length; out.push([!noloc,noloc?fm(noloc)+' دکان لوکیشن ندارد':'همه دکان‌ها لوکیشن دارند','']);
  const dup={}; DB.txns.forEach(t=>{ if(t.no) dup[t.no]=(dup[t.no]||0)+1; }); const dn=Object.values(dup).filter(v=>v>1).length; out.push([!dn,dn?fm(dn)+' نمبر سند تکراری':'نمبرهای سند یکتا هستند','']);
  openModal('بررسی سلامت حساب‌ها',`<div class="list">${out.map(o=>`<div class="it" style="cursor:default"><div class="ic" style="--c:${o[0]?'#16a37a':'#e5484d'};width:38px;height:38px">${I(o[0]?'check':'alert')}</div><div class="m"><div class="t" style="font-weight:600">${esc(o[1])}</div>${o[2]?`<div class="d">${esc(o[2])}</div>`:''}</div></div>`).join('')}</div>`); }
 
