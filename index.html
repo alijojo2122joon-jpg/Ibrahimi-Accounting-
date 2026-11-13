@@ -416,7 +416,7 @@ svg.flip{transform:scaleX(-1)}
 <script id="engine">
 'use strict';
 const LS = 'ebrahimi_acc_v1';
-const VERSION = '3.4';
+const VERSION = '3.5';
 
 /* ---- Chart of accounts (کدینگ حساب‌ها) ----
    nature: A=asset (debit), L=liability (credit), E=equity (credit), E-=contra equity (debit),
@@ -1236,7 +1236,7 @@ function drawParty(open){ const el=$('#pbox'); if(!el) return; const id=fv('part
   if(id==='__new'){ el.innerHTML=`<div class="psel" onclick="drawParty(true)"><div class="av">${I('plus')}</div><div class="m"><b>${kind==='c'?'دکان جدید':'عمده‌فروش جدید'}</b><div class="mu">مشخصات را پایین بنویسید</div></div><span class="chg">تغییر</span></div>`; return; }
   const p=(kind==='c'?cust:supp)(id); if(!p){ $('#f_party').value=''; return drawParty(true); } const b=pBal(id);
   el.innerHTML=`<div class="psel" onclick="drawParty(true)"><div class="av ${p.photo?'ph':''}" style="--c:${pCol(p)}">${p.photo?`<img src="${p.photo}">`:esc(p.name[0]||'؟')}</div><div class="m"><b>${esc(p.name)}</b><div class="mu">${esc([p.owner,p.area].filter(Boolean).join(' · '))}</div></div><div class="pb"><div class="mu">${kind==='c'?'بدهی فعلی':'قرض ما'}</div><b class="${b>0.5?(kind==='c'?'warn':'neg'):'pos'}">${money(b)}</b></div></div>`; return; }
- el.innerHTML=`<div class="pdrop"><div class="sbox">${I('search')}<input id="pq" placeholder="${kind==='c'?'جستجوی نام دکان، صاحب یا ساحه…':'جستجوی عمده‌فروش…'}" oninput="drawPL()" autocomplete="off"></div><div class="plist" id="plst"></div></div>`;
+ el.innerHTML=`<div class="pdrop"><div class="sbox">${I('search')}<input id="pq" placeholder="${kind==='c'?'جستجوی نام دکان، صاحب یا ساحه…':'جستجوی عمده‌فروش…'}" oninput="drawPL()" onkeydown="if(event.key==='Enter'){event.preventDefault();const f=document.querySelector('#plst .pi:not(.new)')||document.querySelector('#plst .pi.new');f&&f.click();setTimeout(()=>{const g=$('#gq');g&&g.focus();},50);}" autocomplete="off"></div><div class="plist" id="plst"></div></div>`;
  drawPL(); if(window.innerWidth>860) setTimeout(()=>{ const q=$('#pq'); q&&q.focus(); },60); }
 function drawPL(){ const el=$('#plst'); if(!el) return; const q=($('#pq').value||'').trim().toLowerCase(), kind=F.pk;
  const last=x=>((kind==='c'?C().CU:C().SU)[x.id]||{}).last||'';
@@ -1253,7 +1253,7 @@ const newSuppFields=()=>`<div id="newParty" style="display:none" class="card"><b
 const gpsBox=()=>`<div class="gstrip"><button type="button" class="btn sm bl" onclick="formGPS()">${I('pin')} ثبت لوکیشن</button><span class="gps" id="gpsInfo"></span></div>`;
 
 /* ---------- point-of-sale cart ---------- */
-function cartBox(){ return sec('box','اجناس',`<div class="sbox">${I('search')}<input id="gq" placeholder="جستجوی جنس یا کد…" oninput="drawGrid()" autocomplete="off"></div><div class="pgrid" id="pgrid"></div><div id="cart" class="cart"></div>`,`<span class="mu" id="cartCnt"></span>`); }
+function cartBox(){ return sec('box','اجناس',`<div class="sbox">${I('search')}<input id="gq" placeholder="جستجوی جنس یا کد… (Enter = اضافه)" oninput="drawGrid()" onkeydown="gqKey(event)" autocomplete="off"></div><div class="pgrid" id="pgrid"></div><div id="cart" class="cart"></div>`,`<span class="mu" id="cartCnt"></span>`); }
 function lastPrice(cid,pid){ if(!cid||cid==='__new') return 0; const t=DB.txns.filter(t=>!t.void&&t.type==='sale'&&t.party===cid&&(t.items||[]).some(i=>i.pid===pid)).sort((a,b)=>(b.date+b.createdAt).localeCompare(a.date+a.createdAt))[0]; return t?num(t.items.find(i=>i.pid===pid).price):0; }
 function lpDate(cid,pid){ const t=DB.txns.filter(t=>!t.void&&t.type==='sale'&&t.party===cid&&(t.items||[]).some(i=>i.pid===pid)).sort((a,b)=>(b.date+b.createdAt).localeCompare(a.date+a.createdAt))[0]; return t?t.date:''; }
 function defPrice(pid){ const p=prod(pid)||{}; if(F.type==='sale'||F.type==='sreturn'){ const c=cust(fv('party')), adj=num((c||{}).priceAdj), base=adj?Math.round(num(p.price)*(1+adj/100)):num(p.price); const lp=lastPrice(fv('party'),pid); return lp&&(!p.priceAt||lpDate(fv('party'),pid)>=p.priceAt.slice(0,10))?lp:base; } if(F.type==='adjust') return 0; const afn=Math.round((C().P[pid]||{}).lastBuy||num(p.openCost)), rt=typeof fxRate==='function'&&$('#f_cur')?fxRate():1; return rt>0&&rt!==1?r2(afn/rt):afn; }
@@ -1263,6 +1263,7 @@ function drawGrid(){ const el=$('#pgrid'); if(!el) return; const q=(($('#gq')||{
  const a=DB.products.filter(p=>!p.deleted&&(!q||[p.name,p.code,p.cat].join(' ').toLowerCase().includes(q))).sort((x,y)=>(pop[y.id]||0)-(pop[x.id]||0)||x.name.localeCompare(y.name,'fa'));
  el.innerHTML=a.slice(0,q?40:18).map(p=>{ const s=(C().P[p.id]||{qty:0}).qty, inC=F.cart.find(i=>i.pid===p.id);
   return `<button type="button" class="pc ${inC?'on':''} ${p.photo?'hp':''}" onclick="addCart('${p.id}')">${p.photo?`<img src="${p.photo}">`:''}<b>${esc(p.name)}</b>${F.type==='adjust'?'':`<span>${fm(defPrice(p.id))} ؋</span>`}<i class="${s<=0?'neg':num(p.minQty)&&s<=num(p.minQty)?'warn':''}">موجود ${fm(s)} ${esc(p.unit||'')}</i>${inC?`<em>${fm(inC.qty)}</em>`:''}</button>`; }).join('')||'<div class="empty">پیدا نشد</div>'; }
+function gqKey(e){ if(e.key!=='Enter') return; e.preventDefault(); const f=document.querySelector('#pgrid .pc'); if(!f) return; f.click(); const q=$('#gq'); q.value=''; drawGrid(); setTimeout(()=>{ const ins=document.querySelectorAll('#cart .stp input'); const last=[...document.querySelectorAll('#cart .cl')].find(r=>r.querySelector('b')&&f.querySelector('b')&&r.querySelector('b').textContent===f.querySelector('b').textContent); const i=last?last.querySelector('.stp input'):ins[ins.length-1]; if(i){ i.focus(); i.select(); i.onkeydown=ev=>{ if(ev.key==='Enter'){ ev.preventDefault(); q.focus(); } }; } },30); }
 function addCart(pid){ const it=F.cart.find(i=>i.pid===pid); if(it) it.qty=r2(it.qty+(F.type==='adjust'&&it.qty<0?-1:1)); else F.cart.push({pid,qty:F.type==='adjust'?-1:1,price:defPrice(pid)}); drawCart(); drawGrid(); calcForm(); }
 function drawCart(){ const el=$('#cart'); if(!el) return; const adj=F.type==='adjust';
  el.innerHTML=F.cart.map((it,i)=>{ const p=prod(it.pid)||{}, st=(C().P[it.pid]||{qty:0}).qty, over=F.type==='sale'&&it.qty>st;
@@ -1365,6 +1366,8 @@ function saveTxn(type){
  if(['receipt','payment','expense','capital','drawing','transfer'].includes(type)&&!t.amount) return toast('مبلغ را بنویسید');
  if(type==='expense') t.acc=fv('acc'); if(type==='transfer'){ t.to=fv('to'); if(t.to===t.method) return toast('مبدأ و مقصد یکی است'); }
  if(type==='sale'){ const net=txnTotal(t); if((t.paid||0)>net+0.01) return toast('نقد گرفته‌شده از خالص بل بیشتر است — اضافه را جدا «دریافت پول» ثبت کنید');
+  { const cu=cust(t.party), lim=num((cu||{}).limit), prev=(C().CU[t.party]||{bal:0}).bal-(F.editId?(()=>{ const o=DB.txns.find(x=>x.id===F.editId); return o&&o.party===t.party?txnTotal(o)-num(o.paid):0; })():0), after=prev+txnTotal(t)-num(t.paid);
+   if(lim&&after>lim+0.5){ if(!can('edit')) return toast('⛔ از سقف اعتبار این دکان ('+money(lim)+') بیشتر می‌شود — نقد بگیرید یا از مالک بپرسید'); else toast('⚠️ از سقف اعتبار ('+money(lim)+') گذشت'); } }
   const prevQ=pid=>F.editId?((DB.txns.find(x=>x.id===F.editId)||{}).items||[]).filter(i=>i.pid===pid).reduce((a,i)=>a+num(i.qty),0):0;
   const short=t.items.filter(i=>num(i.qty)>(C().P[i.pid]||{qty:0}).qty+prevQ(i.pid)); if(short.length) toast('⚠️ موجودی '+short.map(i=>pname(i.pid)).join('، ')+' کافی نیست — ثبت شد، موجودی را بررسی کنید'); }
  const editing=F.editId;
