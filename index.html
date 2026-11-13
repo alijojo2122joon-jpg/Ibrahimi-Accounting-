@@ -1226,13 +1226,13 @@ const KB={
  places:[['خیرخانه',34.5800,69.1560],['سرای شمالی',34.5640,69.1760],['تایمنی',34.5490,69.1770],['قلعهٔ فتح‌الله',34.5445,69.1620],['کارتهٔ پروان',34.5410,69.1500],['باغ بالا',34.5490,69.1370],['شهرنو',34.5365,69.1735],['وزیر اکبرخان',34.5400,69.1940],['مکرویان',34.5230,69.2040],['میدان هوایی',34.5675,69.2140],['مندوی',34.5150,69.1800],['چمن حضوری',34.5205,69.1895],['ده‌مزنگ',34.5205,69.1520],['کوته‌سنگی',34.5160,69.1380],['پل‌سوخته',34.5085,69.1300],['دشت برچی',34.5030,69.0880],['کارتهٔ سه',34.5025,69.1440],['کارتهٔ چهار',34.5050,69.1590],['دارالامان',34.4640,69.1120],['کمپنی',34.4830,69.0930],['بگرامی',34.4880,69.2600],['قرغه',34.5560,69.0480],['پل چرخی',34.5470,69.3150],['خوشحال‌خان',34.5270,69.1200]]};
 let KBL=null;
 function kabulLayer(on){ if(!MAP||typeof L==='undefined') return; if(KBL){ try{ MAP.removeLayer(KBL); }catch(e){} KBL=null; } if(!on) return;
- KBL=L.layerGroup(); const dark=document.documentElement.dataset.theme==='dark', road=dark?'#5b6472':'#ffffff', edge=dark?'#2f343c':'#c9ced6';
+ KBL=L.layerGroup(); const dark=document.documentElement.dataset.theme==='dark', road=dark?'#4a515c':'#ffffff', edge=dark?'#23272d':'#bcc3cc';
  L.polyline(KB.river,{color:'#7fb6e6',weight:7,opacity:.85,interactive:false}).addTo(KBL);
  KB.minor.forEach(l=>{ L.polyline(l,{color:edge,weight:6,interactive:false}).addTo(KBL); L.polyline(l,{color:road,weight:3,interactive:false}).addTo(KBL); });
  KB.main.forEach(l=>{ L.polyline(l,{color:edge,weight:10,interactive:false}).addTo(KBL); L.polyline(l,{color:dark?'#8a7a45':'#ffd98a',weight:6,interactive:false}).addTo(KBL); });
  L.polyline(KB.runway,{color:'#9aa3ae',weight:9,interactive:false}).addTo(KBL);
  KB.places.forEach(([n,a,b])=>L.marker([a,b],{interactive:false,keyboard:false,icon:L.divIcon({className:'kbl',html:`<span>${n}</span>`,iconSize:[0,0]})}).addTo(KBL));
- KBL.addTo(MAP); try{ KBL.eachLayer(l=>l.bringToBack&&l.bringToBack()); }catch(e){} }
+ KBL.addTo(MAP); }
 
 function mapFallback(el){ const pts=mapShops().filter(x=>x.lat); if(!pts.length){ el.innerHTML='<div class="empty">هنوز دکانی لوکیشن ندارد</div>'; return; }
  const la=pts.map(x=>x.lat), ln=pts.map(x=>x.lng), a0=Math.min(...la), a1=Math.max(...la), n0=Math.min(...ln), n1=Math.max(...ln), W=600, H=420, P=30, sx=v=>P+(n1-n0?(v-n0)/(n1-n0):.5)*(W-2*P), sy=v=>P+(a1-a0?(a1-v)/(a1-a0):.5)*(H-2*P);
