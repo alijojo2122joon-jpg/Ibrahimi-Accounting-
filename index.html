@@ -245,6 +245,16 @@ svg.flip{transform:scaleX(-1)}
 #side .keys{font-size:11px;color:var(--mu);margin-top:14px;text-align:center;direction:rtl}
 /* printable invoice */
 #printArea{display:none}
+.pcards{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:18px}
+.prc{cursor:pointer;padding:16px}.prc:active{box-shadow:var(--in)}
+.prc .ic{width:44px;height:44px;margin:4px}
+.prc .pn{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.sbar{height:9px;border-radius:99px;box-shadow:var(--inS);margin:14px 0 12px;overflow:hidden}
+.sbar i{display:block;height:100%;border-radius:99px}
+.prow{display:flex;justify-content:space-between;gap:8px}.prow>div{display:flex;flex-direction:column;font-size:12px}.prow b{font-size:15px}.prow small{font-weight:500;font-size:11px}
+.shl{grid-template-columns:auto minmax(0,1fr) auto 70px}
+.ck input{width:20px;height:20px;accent-color:#13a389}
+
 .promise{margin-top:10px;padding:9px 12px;border-radius:14px;box-shadow:var(--inS);font-size:13px;cursor:pointer;color:var(--g2)}
 .promise.late{color:var(--red)}.promise svg.i{width:16px;height:16px;vertical-align:-3px}
 .steps2{display:grid;gap:10px;counter-reset:s}
@@ -289,6 +299,8 @@ svg.flip{transform:scaleX(-1)}
  .tw .tbl{min-width:520px}
  .cl{grid-template-columns:auto minmax(0,1fr) auto 32px;row-gap:8px}
  .cn{grid-column:1/-1}
+ .shl{grid-template-columns:auto auto minmax(0,1fr)}.shl .cn{grid-column:2/-1}
+ .pcards{grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:12px}.prc{padding:12px}.prc .ic{display:none}.prow{flex-wrap:wrap}
  .stick{margin:18px -18px -20px}
  .stick .ft b{font-size:19px}.stick .btn{padding:13px 18px}
  .etiles{grid-template-columns:repeat(4,minmax(0,1fr));gap:8px}
@@ -341,7 +353,7 @@ svg.flip{transform:scaleX(-1)}
 <script id="engine">
 'use strict';
 const LS = 'ebrahimi_acc_v1';
-const VERSION = '1.5';
+const VERSION = '1.6';
 
 /* ---- Chart of accounts (کدینگ حساب‌ها) ----
    nature: A=asset (debit), L=liability (credit), E=equity (credit), E-=contra equity (debit),
@@ -662,15 +674,15 @@ let R={v:'dash',id:null,tab:null};
 function go(v,id){ if(!can(v)){ toast('این بخش فقط برای مالک است'); v='dash'; } R={v,id:id||null,tab:null}; if(location.hash!=='#'+v) history.replaceState(null,'','#'+v); render(); window.scrollTo(0,0); }
 function drawSide(){
  $('#side').innerHTML=`<div class="brand"><div class="logo">${I('book')}</div><div>${esc(DB.settings.biz||'ابراهیمی اکانتینگ')}</div></div><div class="sub">حسابداری توزیع عمده</div>`+
- NAV.filter(n=>can(n[0])).map(n=>`<a class="${R.v===n[0]||(R.v==='customer'&&n[0]==='customers')||(R.v==='supplier'&&n[0]==='suppliers')?'on':''}" onclick="go('${n[0]}')">${I(n[1])}<span>${n[2]}</span></a>`).join('')+
+ NAV.filter(n=>can(n[0])).map(n=>`<a class="${R.v===n[0]||(R.v==='customer'&&n[0]==='customers')||(R.v==='supplier'&&n[0]==='suppliers')||(R.v==='product'&&n[0]==='products')?'on':''}" onclick="go('${n[0]}')">${I(n[1])}<span>${n[2]}</span></a>`).join('')+
  `<div class="qa"><button onclick="saleForm()">${I('receipt')} فروش جدید</button><button onclick="receiptForm()">${I('cash')} دریافت پول</button><button onclick="purchaseForm()">${I('cart')} خرید از عمده‌فروش</button><button onclick="expenseForm()">${I('fuel')} ثبت مصرف</button></div><div class="keys">F2 فروش · F3 دریافت · F4 خرید · F8 مصرف</div>`;
  const B=(v,ic,l,on)=>`<a class="${on?'on':''}" onclick="go('${v}')"><b>${I(ic)}</b>${l}</a>`;
- $('#bnav').innerHTML=B('dash','home','خانه',R.v==='dash')+B('map','map','نقشه',R.v==='map')+`<a class="plus" onclick="quickMenu()"><b>${I('plus')}</b>ثبت</a>`+B('customers','shop','دکان‌ها',['customers','customer'].includes(R.v))+B('more','menu','بیشتر',['products','suppliers','txns','reports','settings','supplier','more'].includes(R.v));
+ $('#bnav').innerHTML=B('dash','home','خانه',R.v==='dash')+B('map','map','نقشه',R.v==='map')+`<a class="plus" onclick="quickMenu()"><b>${I('plus')}</b>ثبت</a>`+B('customers','shop','دکان‌ها',['customers','customer'].includes(R.v))+B('more','menu','بیشتر',['products','product','suppliers','txns','reports','settings','supplier','more'].includes(R.v));
 }
 function drawTop(){
  const st={off:['','همگام‌سازی خاموش'],ok:['ok','همگام شد'],err:['err','خطای همگام‌سازی'],busy:['busy','در حال همگام‌سازی…']}[syncState]||['',''];
  const pend=META.dirty.length, dark=META.theme==='dark';
- $('#top').innerHTML=`<h1>${esc((NAV.find(n=>n[0]===R.v)||['','',R.v==='customer'?'حساب دکان':R.v==='supplier'?'حساب عمده‌فروش':'بیشتر'])[2])}</h1>
+ $('#top').innerHTML=`<h1>${esc((NAV.find(n=>n[0]===R.v)||['','',R.v==='customer'?'حساب دکان':R.v==='product'?'کاردکس جنس':R.v==='supplier'?'حساب عمده‌فروش':'بیشتر'])[2])}</h1>
  <button class="chip" onclick="go('settings')" title="${st[1]}"><span class="dot ${st[0]}"></span><span class="hm">${META.sync.url?(pend?fm(pend)+' در انتظار':st[1]):'همین دستگاه'}</span></button>
  <button class="chip" onclick="setTheme('${dark?'light':'dark'}')" title="حالت شب/روز">${I(dark?'sun':'moon')}</button>
  ${hasPins()?`<button class="chip" onclick="lockNow()" title="قفل">${I('lock')}</button>`:''}<button class="chip" onclick="userMenu()">${I('user')} ${esc(META.user)}</button>`;
@@ -680,7 +692,7 @@ function render(){
  drawSide(); drawTop();
  if(MAP&&R.v!=='map'){ try{MAP.remove();}catch(e){} MAP=null; }
  const v=$('#view');
- const views={dash:viewDash,map:viewMap,customers:viewCustomers,customer:viewCustomer,products:viewProducts,suppliers:viewSuppliers,supplier:viewSupplier,txns:viewTxns,reports:viewReports,settings:viewSettings,more:viewMore};
+ const views={dash:viewDash,map:viewMap,customers:viewCustomers,customer:viewCustomer,products:viewProducts,product:viewProduct,suppliers:viewSuppliers,supplier:viewSupplier,txns:viewTxns,reports:viewReports,settings:viewSettings,more:viewMore};
  v.innerHTML=(views[R.v]||viewDash)();
  if(R.v==='map') setTimeout(initMap,30);
  if(R.v==='customers') drawCList();
@@ -807,7 +819,7 @@ function viewDash(){
   <div class="card"><h3>${I('clock')} آخرین ثبت‌ها<span class="sp"></span><button class="btn sm alt" onclick="go('txns')">همه</button></h3><div class="list">
    ${recent.map(txItem).join('')||'<div class="empty">هنوز چیزی ثبت نشده</div>'}</div></div>
  </div>
- ${low.length?`<div class="card" style="margin-top:18px"><h3>${I('alert')} اجناس کم‌موجود — وقت خرید از مندوی</h3><div class="tw"><table class="tbl"><tr><th>جنس</th><th>موجودی</th><th>حد اقل</th><th>آخرین قیمت خرید</th></tr>${low.map(p=>`<tr><td>${esc(p.name)}</td><td class="n neg">${fm(c.P[p.id].qty)} ${esc(p.unit||'')}</td><td class="n">${fm(p.minQty)}</td><td class="n">${money(c.P[p.id].lastBuy)}</td></tr>`).join('')}</table></div></div>`:''}`;
+ ${low.length?`<div class="card" style="margin-top:18px"><h3>${I('alert')} اجناس کم‌موجود — وقت خرید از مندوی<span class="sp"></span><button class="btn sm" style="--c:#f08c2e" onclick="shopList()">${I('cart')} لیست خرید</button></h3><div class="tw"><table class="tbl"><tr><th>جنس</th><th>موجودی</th><th>حد اقل</th><th>آخرین قیمت خرید</th></tr>${low.map(p=>`<tr><td>${esc(p.name)}</td><td class="n neg">${fm(c.P[p.id].qty)} ${esc(p.unit||'')}</td><td class="n">${fm(p.minQty)}</td><td class="n">${money(c.P[p.id].lastBuy)}</td></tr>`).join('')}</table></div></div>`:''}`;
 }
 function chart14(){ const td=today(), days=[...Array(14)].map((_,i)=>addDays(td,i-13)), S={}, Cc={};
  for(const t of DB.txns){ if(t.void||t.date<days[0]||t.date>td) continue; if(t.type==='sale'){ S[t.date]=(S[t.date]||0)+txnTotal(t); Cc[t.date]=(Cc[t.date]||0)+num(t.paid); } if(t.type==='receipt') Cc[t.date]=(Cc[t.date]||0)+num(t.amount); }
@@ -1001,13 +1013,58 @@ function saveCustomer(){ const name=fv('name').trim(); if(!name) return toast('�
  closeModal(); toast('ذخیره شد ✓'); go('customer',r.id); }
 
 /* ---------- products ---------- */
-let PQ='';
-function viewProducts(){ return `<div class="row" style="margin-bottom:10px"><input class="in" style="flex:1;min-width:180px" placeholder="🔍 جستجوی جنس…" value="${esc(PQ)}" oninput="PQ=this.value;drawPList()"><button class="btn" onclick="productForm()">＋ جنس جدید</button><button class="btn alt" onclick="purchaseForm()">🛒 خرید</button><button class="btn alt" onclick="adjustForm()">📦 شمارش/اصلاح</button></div><div class="card"><div class="tw" id="plist"></div></div>`; }
+let PQ='', PCAT='', PVIEW='cards';
+function viewProducts(){ const c=C(), ps=DB.products.filter(p=>!p.deleted);
+ const val=ps.reduce((s,p)=>{ const x=c.P[p.id]||{qty:0,avg:0}; return s+x.qty*x.avg; },0), low=ps.filter(p=>num(p.minQty)&&(c.P[p.id]||{qty:0}).qty<=num(p.minQty)).length, out=ps.filter(p=>(c.P[p.id]||{qty:0}).qty<=0).length;
+ const cats=[...new Set(ps.map(p=>p.cat).filter(Boolean))];
+ return `<div class="grid k4">${kpi('box','#3b6fd8','تعداد اجناس',fm(ps.length),cats.length?fm(cats.length)+' کتگوری':'')}${can('cost')?kpi('wallet','#13a389','ارزش جنس در هنگر',money(val),'به قیمت تمام‌شده'):kpi('wallet','#13a389','موجود در هنگر',fm(ps.reduce((s,p)=>s+Math.max(0,(c.P[p.id]||{qty:0}).qty),0)),'واحد')}${kpi('alert','#f08c2e','کم‌موجود',fm(low),'زیر حد اقل','warn',"shopList()")}${kpi('out','#e5484d','تمام‌شده',fm(out),'موجودی صفر یا منفی',out?'neg':'')}</div>
+ <div class="row" style="margin:18px 0 12px"><div class="sbox" style="flex:1;min-width:200px;margin:0">${I('search')}<input placeholder="جستجوی جنس، کد یا کتگوری…" value="${esc(PQ)}" oninput="PQ=this.value;drawPList()"></div>
+ <button class="btn" onclick="productForm()">${I('plus')} جنس جدید</button><button class="btn" style="--c:#f08c2e" onclick="shopList()">${I('cart')} لیست خرید مندوی</button><button class="btn alt" onclick="adjustForm()">${I('box')} شمارش هنگر</button></div>
+ <div class="tabs">${['',...cats].map(k=>`<button class="${PCAT===k?'on':''}" onclick="PCAT='${esc(k).replace(/'/g,'')}';render()">${k?esc(k):'همه'}</button>`).join('')}<span style="flex:1"></span><button class="${PVIEW==='cards'?'on':''}" onclick="PVIEW='cards';drawPList()">کارت</button><button class="${PVIEW==='table'?'on':''}" onclick="PVIEW='table';drawPList()">جدول</button></div>
+ <div id="plist"></div>`; }
 function drawPList(){ const el=$('#plist'); if(!el) return; const c=C(), q=PQ.trim().toLowerCase();
- const a=DB.products.filter(p=>!p.deleted&&(!q||[p.name,p.code,p.cat].join(' ').toLowerCase().includes(q))).sort((x,y)=>(x.cat||'').localeCompare(y.cat||'','fa')||x.name.localeCompare(y.name,'fa'));
+ document.querySelectorAll('.tabs button').forEach(b=>{ if(b.textContent==='کارت') b.classList.toggle('on',PVIEW==='cards'); if(b.textContent==='جدول') b.classList.toggle('on',PVIEW==='table'); });
+ const a=DB.products.filter(p=>!p.deleted&&(!PCAT||p.cat===PCAT)&&(!q||[p.name,p.code,p.cat].join(' ').toLowerCase().includes(q))).sort((x,y)=>(x.cat||'').localeCompare(y.cat||'','fa')||x.name.localeCompare(y.name,'fa'));
+ if(!a.length){ el.innerHTML=`<div class="card empty">${DB.products.length?'جنسی پیدا نشد':'هنوز جنسی ثبت نشده — «جنس جدید» را بزنید'}</div>`; return; }
+ if(PVIEW==='cards'){ el.innerHTML=`<div class="pcards">${a.map(p=>{ const s=c.P[p.id]||{qty:0,avg:0,soldQty:0}; const mn=num(p.minQty), cap=Math.max(mn*3,s.qty,1), pct=Math.max(0,Math.min(100,s.qty/cap*100)); const col=s.qty<=0?'#e5484d':mn&&s.qty<=mn?'#f08c2e':'#13a389'; const mg=num(p.price)&&s.avg?(num(p.price)-s.avg)/num(p.price)*100:0;
+  return `<div class="card prc" onclick="go('product','${p.id}')"><div class="row" style="gap:12px;flex-wrap:nowrap"><div class="ic" style="--c:${col}">${I('box')}</div><div style="flex:1;min-width:0"><b class="pn">${esc(p.name)}</b><div class="mu" style="font-size:12px">${esc([p.code,p.cat].filter(Boolean).join(' · '))}</div></div></div>
+  <div class="sbar"><i style="width:${pct}%;background:${col}"></i></div>
+  <div class="prow"><div><span class="mu">موجودی</span><b style="color:${col}">${fm(s.qty)} <small>${esc(p.unit||'')}</small></b></div><div><span class="mu">قیمت فروش</span><b>${money(p.price)}</b></div>${can('cost')?`<div><span class="mu">حاشیه</span><b class="${mg<0?'neg':'pos'}">${fm(Math.round(mg))}٪</b></div>`:''}</div></div>`; }).join('')}</div>`; return; }
  let tv=0; const rows=a.map(p=>{ const s=c.P[p.id]||{qty:0,avg:0,soldQty:0,rev:0,cogs:0}; const val=s.qty*s.avg; tv+=val; const mg=num(p.price)&&s.avg?(num(p.price)-s.avg)/num(p.price)*100:0; const low=num(p.minQty)&&s.qty<=num(p.minQty);
-  return `<tr class="click" onclick="productForm('${p.id}')"><td><b>${esc(p.name)}</b><div class="mu" style="font-size:12px">${esc(p.code||'')} ${p.cat?'· '+esc(p.cat):''}</div></td><td class="n ${s.qty<0?'neg':low?'warn':''}"><b>${fm(s.qty)}</b> ${esc(p.unit||'')}</td><td class="n">${fm(s.avg)}</td><td class="n">${fm(p.price)}</td><td class="n ${mg<0?'neg':''}">${fm(mg)}٪</td><td class="n">${money(val)}</td><td class="n">${fm(s.soldQty)}</td><td class="n ${s.rev-s.cogs>=0?'pos':'neg'}">${money(s.rev-s.cogs)}</td></tr>`; }).join('');
- el.innerHTML=`<table class="tbl ${can('cost')?'':'nocost'}"><tr><th>جنس</th><th class="n">موجودی</th><th class="n">قیمت تمام‌شده (میانگین)</th><th class="n">قیمت فروش</th><th class="n">حاشیه</th><th class="n">ارزش موجودی</th><th class="n">فروخته‌شده</th><th class="n">سود ناخالص</th></tr>${rows||'<tr><td colspan="8" class="empty">جنسی ثبت نشده</td></tr>'}<tfoot><tr><td>جمع</td><td></td><td></td><td></td><td></td><td class="n">${money(tv)}</td><td></td><td></td></tr></tfoot></table>`; }
+  return `<tr class="click" onclick="go('product','${p.id}')"><td><b>${esc(p.name)}</b><div class="mu" style="font-size:12px">${esc(p.code||'')} ${p.cat?'· '+esc(p.cat):''}</div></td><td class="n ${s.qty<0?'neg':low?'warn':''}"><b>${fm(s.qty)}</b> ${esc(p.unit||'')}</td><td class="n">${fm(s.avg)}</td><td class="n">${fm(p.price)}</td><td class="n ${mg<0?'neg':''}">${fm(mg)}٪</td><td class="n">${money(val)}</td><td class="n">${fm(s.soldQty)}</td><td class="n ${s.rev-s.cogs>=0?'pos':'neg'}">${money(s.rev-s.cogs)}</td></tr>`; }).join('');
+ el.innerHTML=`<div class="card"><div class="tw"><table class="tbl ${can('cost')?'':'nocost'}"><tr><th>جنس</th><th class="n">موجودی</th><th class="n">قیمت تمام‌شده</th><th class="n">قیمت فروش</th><th class="n">حاشیه</th><th class="n">ارزش موجودی</th><th class="n">فروخته‌شده</th><th class="n">سود ناخالص</th></tr>${rows}<tfoot><tr><td>جمع</td><td></td><td></td><td></td><td></td><td class="n">${money(tv)}</td><td></td><td></td></tr></tfoot></table></div></div>`; }
+
+/* ---------- product detail & stock card (کاردکس) ---------- */
+function kardex(pid){ const p=prod(pid)||{}; let q=num(p.openQty); const rows=[]; if(q) rows.push({d:DB.settings.startDate,desc:'موجودی اول دوره',in:q,out:0,bal:q,price:num(p.openCost)});
+ const lab={sale:'فروش',sreturn:'مرجوعی از دکان',purchase:'خرید',preturn:'مرجوعی به عمده‌فروش',adjust:'اصلاح موجودی'};
+ for(const t of DB.txns.filter(t=>!t.void&&(t.items||[]).some(i=>i.pid===pid)).sort((a,b)=>(a.date+a.createdAt).localeCompare(b.date+b.createdAt)))
+  for(const i of t.items.filter(i=>i.pid===pid)){ const n=num(i.qty), inc=['purchase','sreturn'].includes(t.type)||(t.type==='adjust'&&n>0), amt=Math.abs(n);
+   q+=inc?amt:-amt; rows.push({id:t.id,d:t.date,no:t.no,desc:lab[t.type]+(partyName(t)?' — '+partyName(t):''),in:inc?amt:0,out:inc?0:amt,bal:q,price:num(i.price),type:t.type}); }
+ return rows; }
+function viewProduct(){ const p=prod(R.id); if(!p) return '<div class="empty">پیدا نشد</div>'; const s=C().P[p.id]||{qty:0,avg:0,soldQty:0,rev:0,cogs:0,lastBuy:0}; const k=kardex(p.id);
+ const d30=addDays(today(),-29); const sold30=k.filter(r=>r.type==='sale'&&r.d>=d30).reduce((a,r)=>a+r.out,0), perDay=sold30/30, days=perDay>0?Math.floor(s.qty/perDay):null;
+ const buyers={}; DB.txns.forEach(t=>{ if(!t.void&&t.type==='sale') (t.items||[]).forEach(i=>{ if(i.pid===p.id) buyers[t.party]=(buyers[t.party]||0)+num(i.qty); }); });
+ const top=Object.entries(buyers).sort((a,b)=>b[1]-a[1]).slice(0,5);
+ return `<div class="row" style="margin-bottom:16px"><button class="btn alt sm" onclick="go('products')">${I('chev','flip')} همه اجناس</button><span style="flex:1"></span><button class="btn sm alt" onclick="productForm('${p.id}')">${I('edit')} ویرایش</button><button class="btn sm bl" onclick="purchaseForm();setTimeout(()=>addCart('${p.id}'),50)">${I('cart')} خرید</button></div>
+ <div class="card"><div class="ctt">${esc(p.name)}</div><div class="mu">${esc([p.code,p.cat,p.unit].filter(Boolean).join(' · '))}</div></div>
+ <div class="grid k4" style="margin-top:18px">${kpi('box','#3b6fd8','موجودی',fm(s.qty)+' '+esc(p.unit||''),num(p.minQty)?'حد اقل '+fm(p.minQty):'',s.qty<=0?'neg':num(p.minQty)&&s.qty<=num(p.minQty)?'warn':'')}${kpi('trend','#13a389','فروش ۳۰ روز',fm(sold30)+' '+esc(p.unit||''),days!==null?'تقریباً '+fm(days)+' روز دیگر کافی است':'فروش اخیر ندارد')}${kpi('cash','#f08c2e','قیمت فروش',money(p.price),can('cost')?'آخرین خرید '+money(s.lastBuy):'')}${can('cost')?kpi('wallet','#8b5cf6','قیمت تمام‌شده (میانگین)',money(s.avg),'سود تا حالا '+money(s.rev-s.cogs),'',''):''}</div>
+ ${top.length?`<div class="card" style="margin-top:18px"><h3>${I('shop')} بیشترین خریداران</h3><div class="list">${top.map(([cid,qq])=>{ const x=cust(cid); return x?`<div class="it" onclick="go('customer','${cid}')"><div class="av" style="--c:${colorOf(x.name)}">${esc(x.name[0]||'؟')}</div><div class="m"><div class="t">${esc(x.name)}</div><div class="d">${esc(x.area||'')}</div></div><div class="a">${fm(qq)} ${esc(p.unit||'')}</div></div>`:''; }).join('')}</div></div>`:''}
+ <div class="card" style="margin-top:18px"><h3>${I('book')} کاردکس (ورود و خروج جنس)</h3><div class="tw"><table class="tbl"><tr><th>تاریخ</th><th>شرح</th><th class="n">وارده</th><th class="n">صادره</th><th class="n">مانده</th><th class="n">فی</th></tr>
+ ${k.slice().reverse().map(r=>`<tr class="${r.id?'click':''}" ${r.id?`onclick="showTxn('${r.id}')"`:''}><td>${fd(r.d)}<div class="mu" style="font-size:11.5px">${esc(r.no||'')}</div></td><td>${esc(r.desc)}</td><td class="n pos">${r.in?fm(r.in):''}</td><td class="n neg">${r.out?fm(r.out):''}</td><td class="n"><b>${fm(r.bal)}</b></td><td class="n mu">${r.price&&(can('cost')||['sale','sreturn'].includes(r.type))?fm(r.price):''}</td></tr>`).join('')||'<tr><td colspan="6" class="empty">حرکتی نیست</td></tr>'}</table></div></div>`; }
+
+/* ---------- Mandawi shopping list ---------- */
+function shopSuggest(){ const c=C(), d30=addDays(today(),-29), sold={};
+ DB.txns.forEach(t=>{ if(!t.void&&t.type==='sale'&&t.date>=d30) (t.items||[]).forEach(i=>sold[i.pid]=(sold[i.pid]||0)+num(i.qty)); });
+ return DB.products.filter(p=>!p.deleted).map(p=>{ const q=(c.P[p.id]||{qty:0}).qty, mn=num(p.minQty), need14=(sold[p.id]||0)/30*14, target=Math.max(mn*2,Math.ceil(need14)); return {p,q,sug:Math.max(0,Math.ceil(target-q)),low:(mn&&q<=mn)||(need14>0&&q<need14/2),price:Math.round((c.P[p.id]||{}).lastBuy||num(p.openCost))}; })
+  .filter(o=>o.low&&o.sug>0).sort((a,b)=>(a.q-num(a.p.minQty))-(b.q-num(b.p.minQty))); }
+function shopList(){ const a=shopSuggest(); F={type:'shop',list:a.map(o=>({pid:o.p.id,qty:o.sug,price:o.price,on:true}))};
+ openModal('لیست خرید مندوی',`<div class="hint" style="margin-bottom:12px">اجناسی که کم شده‌اند یا با سرعت فروش فعلی کمتر از یک هفته کافی‌اند. مقدار پیشنهادی برای حدود دو هفته فروش است — قابل تغییر.</div>
+ ${a.length?`<div class="cart">${a.map((o,i)=>`<div class="cl shl"><label class="ck"><input type="checkbox" checked onchange="F.list[${i}].on=this.checked;shopTot()"></label><div class="cn"><b>${esc(o.p.name)}</b><div class="mu">موجود ${fm(o.q)} · حد اقل ${fm(o.p.minQty||0)} ${esc(o.p.unit||'')}</div></div><div class="stp"><button type="button" onclick="F.list[${i}].qty++;this.nextElementSibling.value=F.list[${i}].qty;shopTot()">+</button><input inputmode="decimal" value="${o.sug}" oninput="F.list[${i}].qty=num(this.value);shopTot()"><button type="button" onclick="F.list[${i}].qty=Math.max(0,F.list[${i}].qty-1);this.previousElementSibling.value=F.list[${i}].qty;shopTot()">−</button></div>${can('cost')?`<div class="ct">${fm(o.price)}</div>`:''}</div>`).join('')}</div>`:'<div class="empty">همه اجناس کافی است 👌</div>'}
+ ${a.length?`<div class="row" style="margin-top:14px"><a class="btn" style="--c:#25b05a" id="shopWa" target="_blank" rel="noopener" href="#">${I('wa')} ارسال لیست در واتس‌اپ</a><button class="btn alt" onclick="navigator.clipboard.writeText(shopText()).then(()=>toast('کاپی شد'))">کاپی</button><button class="btn bl" onclick="shopToPurchase()">${I('cart')} تبدیل به بل خرید</button></div><div class="sum" id="shopSum" style="margin-top:14px"></div>`:''}`);
+ shopTot(); }
+function shopText(){ return `لیست خرید — ${DB.settings.biz||'ابراهیمی'} — ${fd(today())}\n`+F.list.filter(i=>i.on&&i.qty>0).map((i,k)=>`${fm(k+1)}. ${pname(i.pid)}: ${fm(i.qty)} ${(prod(i.pid)||{}).unit||''}`).join('\n'); }
+function shopTot(){ const t=F.list.filter(i=>i.on).reduce((s,i)=>s+i.qty*i.price,0); const el=$('#shopSum'); if(el) el.innerHTML=can('cost')?`<div class="big"><span>هزینهٔ تقریبی (به آخرین قیمت خرید)</span><b>${money(t)}</b></div>`:''; const w=$('#shopWa'); if(w) w.href='https://wa.me/?text='+encodeURIComponent(shopText()); }
+function shopToPurchase(){ const l=F.list.filter(i=>i.on&&i.qty>0); purchaseForm(); F.cart=l.map(i=>({pid:i.pid,qty:i.qty,price:i.price})); drawCart(); drawGrid(); calcForm(); }
 function productForm(id){ const p=id?prod(id):{unit:'کارتن'}; F={type:'product',id};
  const units=['کارتن','دانه','بوجی','کیلو','بسته','قطی','بشکه','لیتر','درجن','سیر'];
  openModal(id?'ویرایش جنس':'جنس جدید',`
