@@ -269,6 +269,7 @@ svg.flip{transform:scaleX(-1)}
 .ctx{border:0;background:var(--bg);box-shadow:var(--upS);border-radius:10px;width:32px;height:32px;display:grid;place-items:center;cursor:pointer;color:var(--mu);font:inherit}.ctx svg{width:15px;height:15px}
 .cttot{display:flex;justify-content:space-between;align-items:center;margin:12px 0;font-size:14px}.cttot b{font-size:18px}
 .card h3 .seg button{white-space:nowrap;padding:6px 12px;font-size:13px}
+.card h3{flex-wrap:wrap;row-gap:8px}
 .ctbtns{display:grid;grid-template-columns:1.3fr 1fr;gap:10px}.ctbtns .btn{justify-content:center}
 @media(min-width:900px){.ctcart{bottom:12px}}
 /* ---- smooth motion + rotating saber light around the selected option ---- */
@@ -567,7 +568,7 @@ body.mopen #snack{bottom:auto;top:16px;transform:translate(-50%,-20px)}body.mope
 <script id="engine">
 'use strict';
 const LS = 'ebrahimi_acc_v1';
-const VERSION = '9.15';
+const VERSION = '9.16';
 
 /* ---- Chart of accounts (کدینگ حساب‌ها) ----
    nature: A=asset (debit), L=liability (credit), E=equity (credit), E-=contra equity (debit),
@@ -1161,7 +1162,7 @@ function viewDash(){
    [payablesCard(),'out','#e5484d','قرض‌هایی که باید بدهیم'],
    [fixedCard(),'fuel','#e5484d','مصارف ثابت این ماه'],
    [changesCard(),'user','#8b5cf6','ثبت‌های دیگران'],
-   [low.length?`<div class="card"><div class="tw"><table class="tbl"><tr><th>جنس</th><th>موجودی</th><th>حد اقل</th></tr>${low.map(p=>`<tr><td>${esc(p.name)}</td><td class="neg">${fm((c.P[p.id]||{qty:0}).qty)}</td><td>${fm(num(p.minQty))}</td></tr>`).join('')}</table></div><button class="btn" style="margin-top:12px" onclick="closeModal();shopList()">${I('cart')} لیست خرید</button></div>`:'','box','#f08c2e','اجناس کم‌موجود',low.length],
+   [low.length?`<div class="card"><div class="tw"><table class="tbl"><tr><th>جنس</th><th>موجودی</th><th>حد اقل</th></tr>${low.map(p=>`<tr><td>${esc(p.name)}</td><td class="neg">${fm((c.P[p.id]||{qty:0}).qty)}</td><td>${fm(num(p.minQty))}</td></tr>`).join('')}</table></div><button class="btn" style="margin-top:12px" onclick="closeModal();BY.d=addDays(today(),1);go('buys');buyFromLow()">${I('cart')} به لیست خرید فردا اضافه کن</button></div>`:'','box','#f08c2e','اجناس کم‌موجود',low.length],
    [expiryCard(),'alert','#e5484d','جنس نزدیک تاریخ انقضا'],
    [goalsCard(),'trend','#13a389','هدف این ماه']
   ].filter(x=>x[0]); window.DTODO=T;
@@ -1823,6 +1824,7 @@ function saveTxn(type){
   const short=t.items.filter(i=>num(i.qty)>(C().P[i.pid]||{qty:0}).qty+prevQ(i.pid)); if(short.length) toast('⚠️ موجودی '+short.map(i=>pname(i.pid)).join('، ')+' کافی نیست — ثبت شد، موجودی را بررسی کنید'); }
  const editing=F.editId;
  if(editing){ const o=DB.txns.find(x=>x.id===editing); const snap=Object.assign({},o); delete snap.history;
+  ['counter','geo','gps','dc','hid','ref','order'].forEach(k=>{ if(o[k]!=null&&t[k]==null) t[k]=o[k]; });
   Object.assign(t,{id:o.id,no:o.no,createdAt:o.createdAt,by:o.by,editedBy:META.user,editedAt:nowIso(),history:[...(o.history||[]),{at:nowIso(),by:META.user,prev:snap}]}); }
  else t.no=nextNo(TT[type][1]);
  if(fromCounter&&!editing) t.counter=true;
@@ -2491,6 +2493,13 @@ function buyShare(){ const d=BY.d, a=buysOn(d).filter(b=>b.status!=='skip'), g={
  const txt=`🛒 لیست خرید ${fd(d)} — ${DB.settings.biz||'ابراهیمی'}\n`+Object.entries(g).map(([k,l])=>`\n▫️ ${k}\n`+l.map(b=>`${b.status==='bought'?'✅':'⬜'} ${buyName(b)}: ${fm(r2(b.qty))} ${buyUnit(b)}${b.note?' ('+b.note+')':''}`).join('\n')).join('\n');
  window.open('https://wa.me/?text='+encodeURIComponent(txt),'_blank'); }
 
+/* keep linked records consistent when a document is voided: a voided day close takes its hand-over with it; a voided purchase from the shopping list puts the item back on the list */
+(function(){ const o=window.save; if(typeof o!=='function') return; let busy=false;
+ window.save=function(kind,rec){ const r=o.apply(this,arguments); if(busy||kind!=='txn'||!rec||!rec.void) return r; busy=true;
+  try{ if(rec.type==='dclose'){ const h=DB.txns.find(x=>!x.void&&x.type==='handover'&&(x.id===rec.hid||x.dc===rec.id)); if(h) o('txn',Object.assign({},h,{void:true,voidBy:META.user,voidAt:nowIso(),voidReason:'بستن حساب '+(rec.no||'')+' باطل شد'})); }
+   if(rec.type==='purchase') (DB.buys||[]).filter(b=>b.txn===rec.id&&!b.deleted).forEach(b=>o('buy',Object.assign({},b,{status:'open',txn:null,bQty:null,bPrice:null,boughtBy:null,boughtAt:null}))); }
+  finally{ busy=false; } return r; }; })();
+
 /* ---------- text size ---------- */
 function applyFont(){ const z={lg:1.12,xl:1.25}[META.font]||1; document.body.style.zoom=z===1?'':z; }
 function setFont(v){ META.font=v; persist(); applyFont(); render(); }
@@ -2556,6 +2565,11 @@ function priceList(){ const a=priceItems();
 
 /* ---------- in-app guide ---------- */
 function viewHelp(){ const G=[
+ ['cart','#13a389','هنگر، بستن حساب و لیست خرید',[
+  ['فروش در هنگر','«بیشتر ← فروش هنگر». روی جنس بزنید، مقدار را بنویسید (کیلو، متر، دانه… اعشار هم قبول است، مثل ۱.۵) و «افزودن». آخر کار «نقد گرفتم — ثبت» یا «به حساب دکان (قرض)». برای مهدی و مهیار در تنظیمات ← کاربرها دکمهٔ «هنگر» را بزنید تا اپ مستقیم با همین صفحه باز شود.'],
+  ['ورود جنس به هنگر','در صفحهٔ هنگر «ورود جنس به هنگر» را بزنید، جنس و مقدار را انتخاب کنید و عمده‌فروش را بنویسید. موجودی فوراً زیاد می‌شود؛ قیمت را مالک در «ثبت‌های دیگران» تأیید یا درست می‌کند.'],
+  ['بستن حساب آخر روز','در صفحهٔ هنگر «بستن حساب». پول صندوق را بشمارید، بنویسید و انتخاب کنید پول به کی تحویل شد. کم و زیاد فوراً نشان داده می‌شود. اشتباه شد؟ گزارش را باز کنید ← «ویرایش» — هر تغییر با نام و ساعت می‌ماند. همهٔ روزها در «بیشتر ← حساب‌های بسته‌شده» (روزانه، هفته‌وار، ماهوار).'],
+  ['لیست خرید فردا','«بیشتر ← لیست خرید فردا». جنس و مقدار را اضافه کنید یا «اجناس کم‌موجود» را بزنید. در مندوی کنار هر قلم مربع را بزنید («خریدم») و قیمت واقعی را بنویسید — بل خرید خودش ساخته می‌شود، موجودی زیاد و حساب عمده‌فروش به‌روز می‌شود. آخر کار «بستن لیست»؛ نخریده‌ها به فردا می‌رود.']]],
  ['map','#3b6fd8','نقشه',[
   ['پیدا کردن دکان روی نقشه','بالای نقشه نام دکان را بنویسید؛ نقشه به آن دکان می‌رود و کارتش باز می‌شود. با دکمهٔ ☰ کنار نقشه، نوع نقشه را عوض کنید — «ماهواره» عکس هوایی است و پیدا کردن دکان را آسان می‌کند.'],
   ['دکان جدید از روی نقشه','انگشت را روی جای دکان نگه دارید (روی کامپیوتر: کلیک راست) و «دکان جدید اینجا» را بزنید. اگر جای یک دکان اشتباه است، روی آن بزنید و «جابجا کردن» را انتخاب کنید و بکشید.'],
