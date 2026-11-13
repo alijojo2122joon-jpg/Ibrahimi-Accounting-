@@ -561,7 +561,7 @@ body.mopen #snack{bottom:auto;top:16px;transform:translate(-50%,-20px)}body.mope
 <script id="engine">
 'use strict';
 const LS = 'ebrahimi_acc_v1';
-const VERSION = '9.13';
+const VERSION = '9.14';
 
 /* ---- Chart of accounts (کدینگ حساب‌ها) ----
    nature: A=asset (debit), L=liability (credit), E=equity (credit), E-=contra equity (debit),
@@ -1134,7 +1134,7 @@ function viewDash(){
  ${(()=>{ const t=DB.settings.truck; if(!t||!(t.log||[]).length) return ''; const km=Math.max(...t.log.map(l=>num(l.km))), o=t.log.filter(l=>l.oil).sort((a,b)=>num(b.km)-num(a.km))[0]; if(!o) return ''; const left=num(o.km)+(num(t.oilEvery)||5000)-km; return left<=300?`<div class="card banner" onclick="go('truck')" style="cursor:pointer"><div class="ic" style="--c:#f08c2e">${I('gear')}</div><div style="flex:1"><b>${left<=0?'وقت تعویض روغن موتر رسیده':'تعویض روغن موتر: '+fm(left)+' کیلومتر مانده'}</b></div></div>`:''; })()}
  ${can('settings')&&DB.txns.length>20&&daysBetween(monthStart(),today())<7&&!(DB.settings.lockDate&&DB.settings.lockDate>=addDays(monthStart(),-1))?`<div class="card banner" style="cursor:pointer" onclick="monthClose()"><div class="ic" style="--c:#3b6fd8">${I('lock')}</div><div style="flex:1"><b>ماه نو شد — حساب ماه قبل را ببندید</b><div class="hint">۶ قدم کوتاه: شمارش صندوق و هنگر، گزارش، بکاپ و قفل</div></div>${I('chev')}</div>`:''}
  ${typeof deferredInstall!=='undefined'&&deferredInstall?`<div class="card banner"><div class="ic" style="--c:#13a389">${I('in')}</div><div style="flex:1"><b>اپ را روی گوشی نصب کنید</b><div class="hint">مثل یک برنامه باز می‌شود و بدون انترنت هم کار می‌کند.</div></div><button class="btn sm" onclick="installApp()">نصب</button></div>`:''}
- ${setupCard()}
+ ${demoCard()}${setupCard()}
  <div class="qrow dashq">${[['receipt','#13a389','فروش','saleForm()'],['cash','#16a37a','دریافت پول','receiptForm()'],['cart','#3b6fd8','خرید','purchaseForm()'],['fuel','#e5484d','مصرف','expenseForm()']].map(q=>`<button class="qa" onclick="${q[3]}"><div class="ic" style="--c:${q[1]}">${I(q[0])}</div><span>${q[2]}</span></button>`).join('')}</div>
  ${myGoalCard()}
  <div class="card"><h3>${I('clock')} امروز</h3>
@@ -2190,7 +2190,7 @@ function viewCounter(){ const c=C(), sale=CT.mode==='sale', q=CT.q.trim().toLowe
  let ps=DB.products.filter(p=>!p.deleted&&(!CT.cat||p.cat===CT.cat)&&(!q||[p.name,p.code,p.cat].join(' ').toLowerCase().includes(q)));
  ps.sort((a,b)=>(fq[b.id]||0)-(fq[a.id]||0)||a.name.localeCompare(b.name,'fa')); const more=ps.length-60; ps=ps.slice(0,60);
  const inC=pid=>CT.cart.filter(i=>i.pid===pid).reduce((s,i)=>s+num(i.qty),0);
- return `<div class="ctop">
+ return demoCard()+`<div class="ctop">
   <div class="seg ctseg"><button class="${sale?'on':''}" onclick="ctMode('sale')">${I('receipt')} فروش</button><button class="${sale?'':'on'}" onclick="ctMode('in')">${I('in')} ورود جنس به هنگر</button></div>
   <div class="mu ctwho">${I('user')} ثبت‌کننده: <b>${esc(META.user)}</b></div></div>
  <div class="card ctcard"><input class="in" id="ctq" placeholder="جستجوی جنس… (نام یا کد)" value="${esc(CT.q)}" oninput="CT.q=this.value;ctGrid()" autocomplete="off">
@@ -2394,6 +2394,10 @@ const SFX_MONEY=new Set(['sale','receipt','purchase','payment','sreturn','pretur
  const o=window.save; if(typeof o==='function') window.save=function(kind,rec){ const fresh=kind==='txn'&&rec&&!rec.id&&!rec.void; const r=o.apply(this,arguments);
   if(fresh&&performance.now()-SFXU<4000){ SFXU=0; const n=SFX_EXP.has(rec.type)?'exp':SFX_MONEY.has(rec.type)?'money':null; if(n) setTimeout(()=>sfx(n),70); } return r; };
 })();
+
+/* empty app → offer sample data right where you look */
+function demoCard(){ if(DB.txns.length||!can('settings')) return '';
+ return `<div class="card banner" style="border:2px dashed color-mix(in srgb,var(--g2) 50%,transparent)"><div class="ic" style="--c:#13a389">${I('chart')}</div><div style="flex:1"><b>برنامه هنوز خالی است</b><div class="hint">برای دیدن همه‌چیز با عدد و رقم نمونه — حدود ۳۸۰ ثبت: فروش، هنگر، خرید، مصرف، بستن حساب‌ها — این دکمه را بزنید. بعداً از تنظیمات پاک می‌شود.</div></div><button class="btn sm" onclick="loadDemo()">${I('chart')} دادهٔ نمونه</button></div>`; }
 
 /* ---------- text size ---------- */
 function applyFont(){ const z={lg:1.12,xl:1.25}[META.font]||1; document.body.style.zoom=z===1?'':z; }
