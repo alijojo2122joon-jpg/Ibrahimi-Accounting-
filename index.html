@@ -245,6 +245,8 @@ svg.flip{transform:scaleX(-1)}
 #side .keys{font-size:11px;color:var(--mu);margin-top:14px;text-align:center;direction:rtl}
 /* printable invoice */
 #printArea{display:none}
+.ucard{display:flex;gap:12px;align-items:center;padding:12px;border-radius:18px;box-shadow:var(--upS)}
+
 #snack{position:fixed;left:50%;bottom:96px;transform:translate(-50%,20px);background:#1e2530;color:#fff;border-radius:16px;padding:10px 12px 10px 18px;display:flex;align-items:center;gap:14px;z-index:3100;opacity:0;pointer-events:none;transition:.25s;box-shadow:0 8px 24px rgba(0,0,0,.25);max-width:92vw;min-width:300px;justify-content:space-between;font-weight:600;font-size:14px}
 #snack.on{opacity:1;pointer-events:auto;transform:translate(-50%,0)}
 #snack button{border:0;background:#ffc24b;color:#1e2530;font-weight:800;border-radius:10px;padding:7px 14px;cursor:pointer}
@@ -394,7 +396,7 @@ svg.flip{transform:scaleX(-1)}
 <script id="engine">
 'use strict';
 const LS = 'ebrahimi_acc_v1';
-const VERSION = '2.6';
+const VERSION = '2.7';
 
 /* ---- Chart of accounts (کدینگ حساب‌ها) ----
    nature: A=asset (debit), L=liability (credit), E=equity (credit), E-=contra equity (debit),
@@ -1550,7 +1552,7 @@ function viewReports(){ const tab=R.tab||'pnl'; if(!RP.from){ RP.from=monthStart
  const range=`<div class="row noprint" style="margin-bottom:10px"><span class="mu">از</span><input class="in" type="date" style="width:auto" value="${RP.from}" onchange="RP.from=this.value;render()"><span class="mu">تا</span><input class="in" type="date" style="width:auto" value="${RP.to}" onchange="RP.to=this.value;render()">
  <button class="btn sm alt" onclick="RP.from=today();RP.to=today();render()">امروز</button><button class="btn sm alt" onclick="RP.from=monthStart();RP.to=today();render()">این ماه</button><button class="btn sm alt" onclick="RP.from=addDays(today(),-29);RP.to=today();render()">۳۰ روز</button><button class="btn sm alt" onclick="RP.from=DB.settings.startDate;RP.to=today();render()">از ابتدا</button></div><div class="hint" style="margin-bottom:8px">${fd(RP.from)} تا ${fd(RP.to)}</div>`;
  const body={pnl:()=>range+repPnl(),bs:()=>repBS(),daily:()=>repDaily(),aging:()=>repAging(),sales:()=>range+repSales(),custs:()=>range+repCusts(),tb:()=>range+repTB(),gl:()=>range+repGL(),coa:()=>repCOA()}[tab]();
- return `<div class="tabs noprint">${tabs.map(t=>`<button class="${tab===t[0]?'on':''}" onclick="R.tab='${t[0]}';render()">${t[1]}</button>`).join('')}</div>${tab==='pnl'?body:`<div class="card">${body}</div>`}`; }
+ return `<div class="tabs noprint">${tabs.map(t=>`<button class="${tab===t[0]?'on':''}" onclick="R.tab='${t[0]}';render()">${t[1]}</button>`).join('')}</div>${tab==='pnl'||tab==='daily'||tab==='aging'?body:`<div class="card">${body}</div>`}`; }
 const trow=(l,v,cls='',b)=>`<tr><td>${b?'<b>'+l+'</b>':l}</td><td class="n ${cls}">${b?'<b>'+money(v)+'</b>':money(v)}</td></tr>`;
 /* ---------- chart helpers ---------- */
 const kfmt=v=>{ const a=Math.abs(v), sg=v<0?'−':''; return sg+(a>=1e6?fm(r2(a/1e6))+'M':a>=1e3?fm(Math.round(a/1e3))+'K':fm(Math.round(a))); };
@@ -1559,8 +1561,8 @@ function barChart(labels,series,H=220){ const W=720, B=28, L=50, n=labels.length
  const bw=cw*0.7/series.length;
  const bars=labels.map((lb,i)=>series.map((s,k)=>{ const v=s.values[i]||0, x=L+i*cw+cw*0.15+k*bw, top=Math.min(y(v),y0), h=Math.abs(y(v)-y0); return `<rect x="${x}" y="${top}" width="${bw-2}" height="${Math.max(h,0)}" rx="4" fill="${v<0?'#e5484d':s.color}"><title>${esc(lb)} — ${esc(s.name)}: ${money(v)}</title></rect>`; }).join('')+`<text x="${L+i*cw+cw/2}" y="${H-8}" text-anchor="middle" class="ax">${esc(lb)}</text>`).join('');
  return `<svg class="chart" viewBox="0 0 ${W} ${H}" dir="ltr">${g}<line x1="${L}" x2="${W}" y1="${y0}" y2="${y0}" stroke="var(--mu)" stroke-opacity=".4"/>${bars}</svg><div class="lg" style="justify-content:center;margin-top:6px">${series.map(s=>`<i style="background:${s.color}"></i>${esc(s.name)}`).join(' ')}</div>`; }
-function donut(items,total,center){ const C2=2*Math.PI*70; let off=0; const cols=['#e5484d','#f08c2e','#f0b429','#3b6fd8','#8b5cf6','#13a389','#16a37a','#7d8796','#25b05a'];
- const arcs=items.map((it,i)=>{ const len=total?it.v/total*C2:0; const s=`<circle cx="100" cy="100" r="70" fill="none" stroke="${cols[i%cols.length]}" stroke-width="26" stroke-dasharray="${len.toFixed(1)} ${(C2-len).toFixed(1)}" stroke-dashoffset="${(-off).toFixed(1)}"><title>${esc(it.l)}: ${money(it.v)}</title></circle>`; off+=len; return s; }).join('');
+function donut(items,total,center){ const C2=2*Math.PI*70; let off=0; const cols=items.length===4&&items[0].l.startsWith('۰')?['#16a37a','#f0b429','#f08c2e','#e5484d']:['#e5484d','#f08c2e','#f0b429','#3b6fd8','#8b5cf6','#13a389','#16a37a','#7d8796','#25b05a'];
+ const arcs=items.map((it,i)=>{ const len=total?it.v/total*C2:0; if(len<0.5) return ''; const s=`<circle cx="100" cy="100" r="70" fill="none" stroke="${cols[i%cols.length]}" stroke-width="26" stroke-dasharray="${len.toFixed(1)} ${(C2-len).toFixed(1)}" stroke-dashoffset="${(-off).toFixed(1)}"><title>${esc(it.l)}: ${money(it.v)}</title></circle>`; off+=len; return s; }).join('');
  return `<div class="donut"><div class="dwrap"><svg viewBox="0 0 200 200" style="transform:rotate(-90deg)"><circle cx="100" cy="100" r="70" fill="none" stroke="var(--line)" stroke-width="26"/>${arcs}</svg><div class="dc">${center}</div></div>
  <div class="dleg">${items.map((it,i)=>`<div><i style="background:${cols[i%cols.length]}"></i><span>${esc(it.l)}</span><b>${money(it.v)}</b><em>${fm(total?Math.round(it.v/total*100):0)}٪</em></div>`).join('')}</div></div>`; }
 function persianMonths(n){ let pf; try{ pf=new Intl.DateTimeFormat('en-u-ca-persian',{year:'numeric',month:'numeric',day:'numeric'}); }catch(e){ return []; }
@@ -1598,17 +1600,20 @@ function repDaily(){ const d=RP.dd||today(); const tx=DB.txns.filter(t=>!t.void&
    if(t.type==='sreturn'){ o.ret+=tot; if(cash) o.cout+=num(t.paid); }
    if(t.type==='preturn'&&cash) o.cin+=num(t.paid);
    if(t.type==='transfer'){ if(t.method==='cash') o.cout+=num(t.amount); if(t.to==='cash') o.cin+=num(t.amount); } } return o; };
- const all=calc(tx), open=balOf('1010',addDays(d,-1)), close=balOf('1010',d);
+ const all=calc(tx), open=balOf('1010',addDays(d,-1)), close=balOf('1010',d), cc=tx.find(t=>t.type==='cashcount');
  const col=(o)=>`<table class="tbl">${trow('فروش (بل‌ها)',o.sales)}${trow('نقد گرفته‌شده هنگام فروش',o.cashSale,'pos')}${trow('دریافت طلب از دکان‌ها',o.recv,'pos')}${trow('خرید از عمده‌فروش',o.buy)}${trow('پرداخت به عمده‌فروش',o.pay,'neg')}${trow('مصارف',o.exp,'neg')}${o.draw?trow('برداشت مالک',o.draw,'neg'):''}${o.ret?trow('مرجوعی فروش',o.ret,'warn'):''}<tfoot><tr><td>خالص نقد (ورود − خروج)</td><td class="n ${o.cin-o.cout>=0?'pos':'neg'}">${money(o.cin-o.cout)}</td></tr></tfoot></table>`;
- return `<div class="row noprint" style="margin-bottom:10px"><span class="mu">روز</span><input class="in" type="date" style="width:auto" value="${d}" onchange="RP.dd=this.value;render()"><b>${fd(d)}</b></div>
- <h3>🌙 گزارش شبانه — جمع‌بندی صندوق<span class="sp"></span><button class="btn sm" onclick="cashCloseForm()">${I('wallet')} شمارش و بستن صندوق</button></h3><div class="grid k3"><div class="kpi card"><div class="l">صندوق اول روز</div><div class="v">${money(open)}</div></div><div class="kpi card"><div class="l">صندوق آخر روز (باید در دست باشد)</div><div class="v pos">${money(close)}</div></div><div class="kpi card"><div class="l">تعداد ثبت‌ها</div><div class="v">${fm(all.cnt)}</div></div></div>
- <div class="grid k${Math.min(3,users.length+1)}" style="margin-top:12px"><div><h3>همه</h3>${col(all)}</div>${users.map(u=>`<div><h3>👤 ${esc(u)}</h3>${col(calc(tx.filter(t=>t.by===u)))}</div>`).join('')}</div>
- <div class="hint" style="margin-top:8px">💡 هر شب پول دست هر نفر را بشمارید و با «خالص نقد» همان نفر مقایسه کنید. تفاوت = اشتباه یا ثبت‌نشده.</div>`; }
+ const per=users.map(u=>({u,o:calc(tx.filter(t=>t.by===u))})).filter(x=>x.o.cnt);
+ return `<div class="row noprint" style="margin-bottom:16px;justify-content:space-between"><button class="btn sm alt" onclick="RP.dd=addDays('${d}',-1);render()">${I('chev','flip')} روز قبل</button><div style="text-align:center"><b style="font-size:17px">${fd(d)}</b><div class="mu" style="font-size:12px">${WD?WD.format(new Date(d+'T12:00:00')):''}</div></div><button class="btn sm alt" onclick="RP.dd=addDays('${d}',1);render()" ${d>=today()?'disabled':''}>روز بعد ${I('chev')}</button></div>
+ <div class="grid k4">${kpi('wallet','#7d8796','صندوق اول روز',money(open),'')}${kpi('in','#16a37a','پول آمد',money(all.cin),fm(all.cnt)+' ثبت','pos')}${kpi('out','#e5484d','پول رفت',money(all.cout),'','neg')}${kpi('cash','#13a389','صندوق آخر روز',money(close),cc?(Math.abs(num(cc.diff))<1?'✓ شمرده شد — برابر':(num(cc.diff)<0?'کسری ':'اضافه ')+money(Math.abs(num(cc.diff)))):'هنوز شمرده نشده',cc&&num(cc.diff)<0?'neg':'')}</div>
+ <div class="card" style="margin-top:18px"><h3>${I('user')} پول دست هر نفر<span class="sp"></span><button class="btn sm" onclick="cashCloseForm()">${I('wallet')} بستن صندوق</button></h3>
+ ${per.length?`<div class="grid k3">${per.map(({u,o})=>`<div class="ucard"><div class="av" style="--c:${colorOf(u)};width:46px;height:46px">${esc(u[0]||'؟')}</div><div><b>${esc(u)}</b><div class="mu" style="font-size:12px">${fm(o.cnt)} ثبت · فروش ${kfmt(o.sales)} · وصول ${kfmt(o.cashSale+o.recv)}</div><div class="${o.cin-o.cout>=0?'pos':'neg'}" style="font-weight:800;font-size:18px;margin-top:4px">${money(o.cin-o.cout)}</div><div class="mu" style="font-size:11.5px">باید در دست داشته باشد</div></div></div>`).join('')}</div>`:'<div class="empty">امروز هنوز ثبتی نیست</div>'}
+ <div class="hint" style="margin-top:10px">هر شب پول دست هر نفر را بشمارید و با عدد بالا مقایسه کنید. تفاوت یعنی اشتباه یا چیزی که ثبت نشده.</div></div>
+ <details class="more" style="margin-top:18px"><summary>${I('book')} جزئیات کامل روز</summary><div class="grid k${Math.min(3,per.length+1)}" style="margin-top:12px"><div><h3>همه</h3>${col(all)}</div>${per.map(({u,o})=>`<div><h3>${esc(u)}</h3>${col(o)}</div>`).join('')}</div></details>`; }
 function repAging(){ const c=C(); const a=DB.customers.filter(x=>!x.deleted&&(c.CU[x.id]||{}).bal>0.5).sort((x,y)=>c.CU[y.id].bal-c.CU[x.id].bal); const T=[0,0,0,0];
  const rows=a.map(x=>{ const b=c.CU[x.id].b; b.forEach((v,i)=>T[i]+=v); return `<tr class="click" onclick="go('customer','${x.id}')"><td>${esc(x.name)}<div class="mu" style="font-size:12px">${esc(x.area||'')}</div></td>${b.map((v,i)=>`<td class="n ${i>=2&&v?'neg':''}">${v?fm(v):'—'}</td>`).join('')}<td class="n"><b>${fm(c.CU[x.id].bal)}</b></td><td class="n">${fm(c.CU[x.id].oldest)}</td></tr>`; }).join('');
  const tot=T.reduce((s,v)=>s+v,0);
- return `<h3>⏳ گزارش کهنگی طلب‌ها (Aging)</h3><div class="grid k4" style="margin-bottom:10px">${['۰–۳۰ روز','۳۱–۶۰ روز','۶۱–۹۰ روز','بیش از ۹۰ روز'].map((l,i)=>`<div class="card kpi"><div class="l">${l}</div><div class="v ${i>=2?'neg':''}">${money(T[i])}</div><div class="s">${fm(tot?T[i]/tot*100:0)}٪</div></div>`).join('')}</div>
- <div class="tw"><table class="tbl"><tr><th>دکان</th><th class="n">۰–۳۰</th><th class="n">۳۱–۶۰</th><th class="n">۶۱–۹۰</th><th class="n">+۹۰</th><th class="n">جمع</th><th class="n">روز</th></tr>${rows||'<tr><td colspan="7" class="empty">طلبی نیست</td></tr>'}<tfoot><tr><td>جمع</td>${T.map(v=>`<td class="n">${fm(v)}</td>`).join('')}<td class="n">${fm(tot)}</td><td></td></tr></tfoot></table></div>`; }
+ return `<div class="card" style="margin-bottom:18px"><h3>${I('clock')} طلب‌ها چقدر کهنه‌اند؟</h3>${donut(['۰ تا ۳۰ روز','۳۱ تا ۶۰ روز','۶۱ تا ۹۰ روز','بیش از ۹۰ روز'].map((l,i)=>({l,v:T[i]})),tot,`<b>${kfmt(tot)}</b><span>مجموع طلب</span>`)}</div><div class="card"><h3>${I('book')} گزارش کهنگی طلب‌ها (Aging)</h3><div class="grid k4" style="margin-bottom:10px">${['۰–۳۰ روز','۳۱–۶۰ روز','۶۱–۹۰ روز','بیش از ۹۰ روز'].map((l,i)=>`<div class="card kpi"><div class="l">${l}</div><div class="v ${i>=2?'neg':''}">${money(T[i])}</div><div class="s">${fm(tot?T[i]/tot*100:0)}٪</div></div>`).join('')}</div>
+ <div class="tw"><table class="tbl"><tr><th>دکان</th><th class="n">۰–۳۰</th><th class="n">۳۱–۶۰</th><th class="n">۶۱–۹۰</th><th class="n">+۹۰</th><th class="n">جمع</th><th class="n">روز</th></tr>${rows||'<tr><td colspan="7" class="empty">طلبی نیست</td></tr>'}<tfoot><tr><td>جمع</td>${T.map(v=>`<td class="n">${fm(v)}</td>`).join('')}<td class="n">${fm(tot)}</td><td></td></tr></tfoot></table></div></div>`; }
 function repSales(){ const m={}; for(const t of DB.txns){ if(t.void||t.date<RP.from||t.date>RP.to) continue; if(t.type!=='sale'&&t.type!=='sreturn') continue; const sg=t.type==='sale'?1:-1;
   for(const i of t.items||[]){ const o=m[i.pid]||(m[i.pid]={q:0,v:0}); o.q+=sg*num(i.qty); o.v+=sg*num(i.qty)*num(i.price); } }
  const a=Object.entries(m).sort((x,y)=>y[1].v-x[1].v); const tv=a.reduce((s,x)=>s+x[1].v,0);
