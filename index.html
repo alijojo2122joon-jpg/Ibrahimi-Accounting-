@@ -245,6 +245,37 @@ svg.flip{transform:scaleX(-1)}
 #side .keys{font-size:11px;color:var(--mu);margin-top:14px;text-align:center;direction:rtl}
 /* printable invoice */
 #printArea{display:none}
+/* ---- smooth motion + rotating saber light around the selected option ---- */
+@property --sa{syntax:'<angle>';inherits:false;initial-value:0deg}
+:root{--ease:cubic-bezier(.22,1,.36,1);--saber1:#22d3ee;--saber2:#a78bfa}
+button,a,.item,.card,.qa,.chip,.hrow,.dtoday>div{transition:transform .35s var(--ease),box-shadow .35s var(--ease),background-color .35s var(--ease),color .3s var(--ease),opacity .3s var(--ease)}
+button:active,.qa:active,.item:active,.dtoday>div:active,.dsum .card:active{transform:scale(.965)}
+#view{animation:vin .45s var(--ease) both}
+@keyframes vin{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
+#modal:not(.hide) .sheet{animation:min .4s var(--ease) both}
+@keyframes min{from{opacity:0;transform:translateY(24px) scale(.98)}to{opacity:1;transform:none}}
+#side a.on,#bnav a.on,.tabs button.on,.seg button.on,.chips button.on,.chipf.on,.rpk.on,.days button.on,.uchips button.on,.lusers button.on,.etiles button.on,.pc.on,.mctl button.on{position:relative;isolation:isolate;outline:none}
+#side a.on::before,#bnav a.on::before,.tabs button.on::before,.seg button.on::before,.chips button.on::before,.chipf.on::before,.rpk.on::before,.days button.on::before,.uchips button.on::before,.lusers button.on::before,.etiles button.on::before,.pc.on::before,.mctl button.on::before{
+ content:"";position:absolute;inset:-2px;border-radius:inherit;padding:2px;pointer-events:none;z-index:1;
+ background:conic-gradient(from var(--sa),transparent 0deg,transparent 250deg,color-mix(in srgb,var(--saber2) 70%,transparent) 300deg,var(--saber1) 345deg,#fff 352deg,transparent 360deg);
+ -webkit-mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);-webkit-mask-composite:xor;mask-composite:exclude;
+ filter:drop-shadow(0 0 4px var(--saber1)) drop-shadow(0 0 8px color-mix(in srgb,var(--saber2) 60%,transparent));
+ animation:saber 3.2s cubic-bezier(.65,0,.35,1) infinite}
+#bnav a.on::before{inset:2px 6px;border-radius:14px}
+@keyframes saber{0%{--sa:0deg}45%{--sa:200deg}60%{--sa:235deg}100%{--sa:360deg}}
+[data-theme=dark]{--saber1:#5eead4;--saber2:#c084fc}
+@media (prefers-reduced-motion:reduce){*{animation-duration:.01s!important;transition-duration:.01s!important}}
+.dtoday{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+.dtoday>div{cursor:pointer;padding:10px;border-radius:14px;box-shadow:var(--inS)}
+.dtoday span,.dsum span{display:block;font-size:12px;color:var(--mu)}
+.dtoday b,.dsum b{display:block;font-size:17px;margin:4px 0 2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.dtoday small,.dsum small{font-size:11px;color:var(--mu)}
+.tdi{width:36px;height:36px;border-radius:12px;display:grid;place-items:center;color:var(--c);background:color-mix(in srgb,var(--c) 14%,transparent);flex:none}.tdi svg{width:19px;height:19px}
+.tdn{background:var(--c);color:#fff;border-radius:99px;padding:1px 9px;font-size:12px;font-weight:800}.tdc{color:var(--mu);font-size:20px}
+.dsum{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-top:18px}
+.dsum .card{margin:0;cursor:pointer;padding:14px}
+#view>.card+.card,#view>.card+.dsum,#view>.dsum+.card{margin-top:18px}
+@media(max-width:560px){.dtoday b,.dsum b{font-size:14px}.dsum{gap:8px}.dsum .card{padding:10px}}
 
 /* leaflet essentials (inline, so the map works even where outside CSS is blocked) */
 .leaflet-pane,.leaflet-tile,.leaflet-marker-icon,.leaflet-marker-shadow,.leaflet-tile-container,.leaflet-pane>svg,.leaflet-pane>canvas,.leaflet-zoom-box,.leaflet-image-layer,.leaflet-layer{position:absolute;left:0;top:0}
@@ -511,7 +542,7 @@ body.mopen #snack{bottom:auto;top:16px;transform:translate(-50%,-20px)}body.mope
 <script id="engine">
 'use strict';
 const LS = 'ebrahimi_acc_v1';
-const VERSION = '9.0';
+const VERSION = '9.1';
 
 /* ---- Chart of accounts (کدینگ حساب‌ها) ----
    nature: A=asset (debit), L=liability (credit), E=equity (credit), E-=contra equity (debit),
@@ -951,12 +982,13 @@ function drawTop(){
  <button class="chip" onclick="searchAll()" title="جستجو">${I('search')}</button>${hasPins()?`<button class="chip" onclick="lockNow()" title="قفل">${I('lock')}</button>`:''}<button class="chip" onclick="userMenu()">${I('user')} ${esc(META.user)}</button>`;
 }
 let BOOTED=false;
+let LASTV=null;
 function render(){
  if(!BOOTED&&idbOK&&!DB.txns.length&&num(META.recCount)>=4000){ const v=$('#view'); if(v) v.innerHTML='<div class="card" style="text-align:center;padding:40px"><b>در حال باز کردن حساب‌ها…</b><div class="mu" style="margin-top:8px">'+fm(META.recCount)+' سند</div></div>'; return; }
  if(!can(R.v)) R={v:'dash',id:null,tab:null};
  drawSide(); drawTop();
  if(MAP&&R.v!=='map'){ try{MAP.remove();}catch(e){} MAP=null; }
- const v=$('#view');
+ const v=$('#view'); if(v&&R.v!==LASTV){ v.style.animation='none'; void v.offsetWidth; v.style.animation=''; } LASTV=R.v;
  const views={dash:viewDash,map:viewMap,customers:viewCustomers,customer:viewCustomer,products:viewProducts,product:viewProduct,suppliers:viewSuppliers,supplier:viewSupplier,txns:viewTxns,reports:viewReports,settings:viewSettings,more:viewMore,help:viewHelp,truck:truckView,persons:viewPersons,person:viewPerson};
  try{ v.innerHTML=(views[R.v]||viewDash)();
   if(R.v==='map') setTimeout(initMap,30);
@@ -1081,40 +1113,37 @@ function viewDash(){
  ${can('settings')&&DB.txns.length>20&&daysBetween(monthStart(),today())<7&&!(DB.settings.lockDate&&DB.settings.lockDate>=addDays(monthStart(),-1))?`<div class="card banner" style="cursor:pointer" onclick="monthClose()"><div class="ic" style="--c:#3b6fd8">${I('lock')}</div><div style="flex:1"><b>ماه نو شد — حساب ماه قبل را ببندید</b><div class="hint">۶ قدم کوتاه: شمارش صندوق و هنگر، گزارش، بکاپ و قفل</div></div>${I('chev')}</div>`:''}
  ${typeof deferredInstall!=='undefined'&&deferredInstall?`<div class="card banner"><div class="ic" style="--c:#13a389">${I('in')}</div><div style="flex:1"><b>اپ را روی گوشی نصب کنید</b><div class="hint">مثل یک برنامه باز می‌شود و بدون انترنت هم کار می‌کند.</div></div><button class="btn sm" onclick="installApp()">نصب</button></div>`:''}
  ${setupCard()}
- <div class="qrow dashq">${[['receipt','#13a389','فروش','saleForm()'],['cash','#16a37a','دریافت پول','receiptForm()'],['cart','#3b6fd8','خرید عمده','purchaseForm()'],['fuel','#e5484d','مصرف','expenseForm()'],['map','#f08c2e','نقشه',"go('map')"],['shop','#8b5cf6','دکان جدید','customerForm()'],['wallet','#0f8f78','بستن صندوق','cashCloseForm()']].map(q=>act(q[0],q[1],q[2],q[3])).join('')}</div>
- <div class="card hero">
-  <div class="ring"><svg viewBox="0 0 200 200"><defs><linearGradient id="rg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#ffc24b"/><stop offset="1" stop-color="#ff5a4e"/></linearGradient></defs>
-   <circle cx="100" cy="100" r="84" fill="none" stroke="var(--line)" stroke-width="12"/>
-   <circle cx="100" cy="100" r="84" fill="none" stroke="url(#rg)" stroke-width="12" stroke-linecap="round" stroke-dasharray="${(rate/100*527.8).toFixed(1)} 528" ${rate>0?'':'stroke-opacity="0"'}/></svg>
-   <div class="in"><b>${fm(Math.round(rate))}<small>٪</small></b><span>وصول پول در ۳۰ روز<br>${money(recv30)} از ${money(p30.netSales)}</span></div></div>
-  <div class="hrows">
-   <div class="hrow" onclick="R={v:'reports',tab:'daily'};render()"><div class="ic" style="--c:#13a389">${I('wallet')}</div><div class="m"><b>صندوق نقدی</b><div>بانک/حواله: ${money(bank)}</div></div><div class="v">${money(cash)}</div></div>
-   <div class="hrow" onclick="R={v:'reports',tab:'aging'};render()"><div class="ic" style="--c:#f08c2e">${I('in')}</div><div class="m"><b>طلب از دکان‌ها</b><div>${fm(debtors.length)} دکان بدهکار${old?`، <span class="neg">${fm(old)} بیش از ۳۰ روز</span>`:''}</div></div><div class="v warn">${money(ar)}</div></div>
-   <div class="hrow" onclick="go('suppliers')"><div class="ic" style="--c:#e5484d">${I('out')}</div><div class="m"><b>قرض به عمده‌فروش‌ها</b><div>${fm(DB.suppliers.filter(s=>(c.SU[s.id]||{}).bal>0.5).length)} طلبکار</div></div><div class="v neg">${money(ap)}</div></div>
-   <div class="hrow" onclick="go('products')"><div class="ic" style="--c:#3b6fd8">${I('box')}</div><div class="m"><b>ارزش جنس در هنگر</b><div>${low.length?`<span class="neg">${fm(low.length)} جنس کم‌موجود</span>`:'موجودی سالم'}</div></div><div class="v">${money(inv)}</div></div>
-   ${can('profit')?'':'<!--'}<div class="hrow" onclick="R={v:'reports',tab:'pnl'};render()"><div class="ic" style="--c:#8b5cf6">${I('trend')}</div><div class="m"><b>سود خالص ۳۰ روز</b><div>حاشیهٔ سود ناخالص ${fm(p30.margin)}٪</div></div><div class="v ${p30.net>=0?'pos':'neg'}">${money(p30.net)}</div></div>${can('profit')?'':'-->'}
-  </div>
+ <div class="qrow dashq">${[['receipt','#13a389','فروش','saleForm()'],['cash','#16a37a','دریافت پول','receiptForm()'],['cart','#3b6fd8','خرید','purchaseForm()'],['fuel','#e5484d','مصرف','expenseForm()']].map(q=>`<button class="qa" onclick="${q[3]}"><div class="ic" style="--c:${q[1]}">${I(q[0])}</div><span>${q[2]}</span></button>`).join('')}</div>
+ ${myGoalCard()}
+ <div class="card"><h3>${I('clock')} امروز</h3>
+  <div class="dtoday">
+   <div onclick="go('txns')"><span>فروش</span><b>${money(salesT)}</b><small>${delta(salesT,salesY,'دیروز')}</small></div>
+   <div onclick="go('txns')"><span>پول جمع‌شده</span><b class="pos">${money(recvT)}</b><small>${delta(recvT,recvY,'دیروز')}</small></div>
+   <div onclick="R={v:'reports',tab:'daily'};render()"><span>صندوق</span><b>${money(cash)}</b><small>${bank?'بانک: '+money(bank):'&nbsp;'}</small></div>
+  </div></div>
+ ${(()=>{ const T=[
+   [nightCard(),'moon','#3b6fd8','کارهای آخر روز'],
+   [truckCard(),'truck','#f08c2e','موتر امروز'],
+   [agendaCard(),'cash','#13a389','امروز باید پول جمع شود',agenda().length],
+   [todayShopsCard(),'shop','#8b5cf6','دکان‌های مسیر امروز'],
+   [ordersCard(),'book','#3b6fd8','فرمایش‌های باز',openOrders().length],
+   [payablesCard(),'out','#e5484d','قرض‌هایی که باید بدهیم'],
+   [fixedCard(),'fuel','#e5484d','مصارف ثابت این ماه'],
+   [changesCard(),'user','#8b5cf6','ثبت‌های دیگران'],
+   [low.length?`<div class="card"><div class="tw"><table class="tbl"><tr><th>جنس</th><th>موجودی</th><th>حد اقل</th></tr>${low.map(p=>`<tr><td>${esc(p.name)}</td><td class="neg">${fm((c.P[p.id]||{qty:0}).qty)}</td><td>${fm(num(p.minQty))}</td></tr>`).join('')}</table></div><button class="btn" style="margin-top:12px" onclick="closeModal();shopList()">${I('cart')} لیست خرید</button></div>`:'','box','#f08c2e','اجناس کم‌موجود',low.length],
+   [expiryCard(),'alert','#e5484d','جنس نزدیک تاریخ انقضا'],
+   [goalsCard(),'trend','#13a389','هدف این ماه']
+  ].filter(x=>x[0]); window.DTODO=T;
+  return `<div class="card"><h3>${I('check')} کارهای امروز<span class="sp"></span>${T.length?`<span class="hint">${fm(T.length)} مورد</span>`:''}</h3>${T.length?`<div class="list">${T.map((x,i)=>`<div class="it" onclick="openModal(DTODO[${i}][3],DTODO[${i}][0])"><span class="tdi" style="--c:${x[2]}">${I(x[1])}</span><div class="m"><div class="t">${x[3]}</div></div>${x[4]?`<span class="tdn" style="--c:${x[2]}">${fm(x[4])}</span>`:''}<span class="tdc">‹</span></div>`).join('')}</div>`:'<div class="empty">امروز کار عقب‌مانده‌ای نیست 🎉</div>'}</div>`; })()}
+ <div class="dsum">
+  <div class="card" onclick="R={v:'reports',tab:'aging'};render()"><span>طلب از دکان‌ها</span><b class="warn">${money(ar)}</b><small>${fm(debtors.length)} دکان${old?` · <span class="neg">${fm(old)} دیر</span>`:''}</small></div>
+  <div class="card" onclick="go('suppliers')"><span>قرض ما</span><b class="neg">${money(ap)}</b><small>به عمده‌فروش‌ها</small></div>
+  ${can('profit')?`<div class="card" onclick="R={v:'reports',tab:'pnl'};render()"><span>سود ۳۰ روز</span><b class="${p30.net>=0?'pos':'neg'}">${money(p30.net)}</b><small>وصول ${fm(Math.round(rate))}٪</small></div>`:`<div class="card" onclick="go('products')"><span>ارزش جنس</span><b>${money(inv)}</b><small>در هنگر</small></div>`}
  </div>
- ${goalsCard()}
- <div class="grid k4" style="margin-top:18px">
-  ${kpi('receipt','#13a389','فروش امروز',money(salesT),delta(salesT,salesY,'دیروز'))}
-  ${kpi('cash','#16a37a','پول جمع‌شدهٔ امروز',money(recvT),delta(recvT,recvY,'دیروز'),'pos')}
-  ${kpi('trend','#3b6fd8','فروش این ماه',money(M.netSales),delta(M.netSales,LM.netSales,'ماه قبل'))}
-  ${!can('profit')?'':kpi('bank','#3b6fd8','ارزش خالص کسب‌وکار',money(cash+bank+ar+inv+(S['1500']||0)-ap+(S['2200']||0)),'دارایی منهای قرض')}
- </div>
- <div class="card" style="margin-top:18px"><h3>${I('chart')} فروش و پول جمع‌شده — ۱۴ روز اخیر<span class="sp"></span><span class="lg"><i style="background:#13a389"></i>فروش <i style="background:#f08c2e"></i>وصول</span></h3>${chart14()}</div>
- ${nightCard()}${myGoalCard()}${truckCard()}${changesCard()}${payablesCard()}${fixedCard()}${agendaCard()}
- ${ordersCard()}
- ${todayShopsCard()}
- <div class="grid k2" style="margin-top:18px">
-  <div class="card"><h3>${I('alert')} بیشترین طلب‌ها<span class="sp"></span><button class="btn sm alt" onclick="go('map')">روی نقشه</button></h3><div class="list">
-   ${debtors.slice(0,7).map(x=>custItem(x)).join('')||'<div class="empty">هیچ دکانی بدهکار نیست 🎉</div>'}</div></div>
-  <div class="card"><h3>${I('clock')} آخرین ثبت‌ها<span class="sp"></span><button class="btn sm alt" onclick="go('txns')">همه</button></h3>${todayByUser()}<div class="list">
-   ${recent.map(txItem).join('')||'<div class="empty">هنوز چیزی ثبت نشده</div>'}</div></div>
- </div>
- ${topProductsCard()}
- ${expiryCard()}
- ${low.length?`<div class="card" style="margin-top:18px"><h3>${I('alert')} اجناس کم‌موجود — وقت خرید از مندوی<span class="sp"></span><button class="btn sm" style="--c:#f08c2e" onclick="shopList()">${I('cart')} لیست خرید</button></h3><div class="tw"><table class="tbl"><tr><th>جنس</th><th>موجودی</th><th>حد اقل</th><th>آخرین قیمت خرید</th></tr>${low.map(p=>`<tr><td>${esc(p.name)}</td><td class="n neg">${fm(c.P[p.id].qty)} ${esc(p.unit||'')}</td><td class="n">${fm(p.minQty)}</td><td class="n">${money(c.P[p.id].lastBuy)}</td></tr>`).join('')}</table></div></div>`:''}`;
+ <div class="card"><h3>${I('chart')} ۱۴ روز اخیر<span class="sp"></span><span class="lg"><i style="background:#13a389"></i>فروش <i style="background:#f08c2e"></i>وصول</span></h3>${chart14()}</div>
+ <div class="card"><h3>${I('clock')} آخرین ثبت‌ها<span class="sp"></span><button class="btn sm alt" onclick="go('txns')">همه</button></h3>${todayByUser()}<div class="list">
+   ${recent.slice(0,5).map(txItem).join('')||'<div class="empty">هنوز چیزی ثبت نشده</div>'}</div></div>
+ `;
 }
 function chart14(){ const td=today(), days=[...Array(14)].map((_,i)=>addDays(td,i-13)), S={}, Cc={};
  for(const t of DB.txns){ if(t.void||t.date<days[0]||t.date>td) continue; if(t.type==='sale'){ S[t.date]=(S[t.date]||0)+txnTotal(t); Cc[t.date]=(Cc[t.date]||0)+num(t.paid); } if(t.type==='receipt') Cc[t.date]=(Cc[t.date]||0)+num(t.amount); }
