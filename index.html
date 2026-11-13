@@ -448,7 +448,7 @@ body.mopen #snack{bottom:auto;top:16px;transform:translate(-50%,-20px)}body.mope
 <script id="engine">
 'use strict';
 const LS = 'ebrahimi_acc_v1';
-const VERSION = '7.6';
+const VERSION = '7.7';
 
 /* ---- Chart of accounts (کدینگ حساب‌ها) ----
    nature: A=asset (debit), L=liability (credit), E=equity (credit), E-=contra equity (debit),
@@ -1824,6 +1824,20 @@ function nightCard(force){ if(!can('settings')) return ''; const h=new Date().ge
  const ok=items.filter(i=>i[0]).length; if(!force&&ok===items.length) return '';
  return `<div class="card" style="margin-bottom:18px"><h3>${I('moon')} کارهای آخر شب<span class="sp"></span><span class="mu" style="font-size:12.5px">${fm(ok)} از ${fm(items.length)}</span></h3><div class="slist">${items.map(i=>`<div class="sr" ${i[0]?'style="cursor:default"':`onclick="${i[3]}"`}><span class="badge" style="--c:${i[0]?'#16a37a':'#f08c2e'}">${i[0]?'شد':'مانده'}</span><div class="m"><b style="font-weight:600;${i[0]?'opacity:.6':''}">${i[1]}</b>${i[2]?`<div class="mu">${esc(i[2])}</div>`:''}</div>${i[0]?'':I('chev')}</div>`).join('')}</div></div>`; }
 
+/* ---------- shops whose buying dropped or grew ---------- */
+let STD=30;
+function repShopTrend(){ const td=today(), a1=addDays(td,-STD+1), a0=addDays(td,-2*STD+1), b0=addDays(a1,-1), m={};
+ DB.txns.forEach(t=>{ if(t.void||(t.type!=='sale'&&t.type!=='sreturn')||t.date<a0) return; const o=m[t.party]||(m[t.party]={now:0,prev:0}); const v=(t.type==='sale'?1:-1)*txnTotal(t); if(t.date>=a1) o.now+=v; else if(t.date<=b0) o.prev+=v; });
+ const a=Object.entries(m).filter(([id])=>{ const x=cust(id); return x&&!x.deleted&&!x.walkin; }).map(([id,o])=>({x:cust(id),...o,d:o.now-o.prev,pc:o.prev?((o.now-o.prev)/o.prev*100):null}));
+ const down=a.filter(o=>o.prev>0&&o.d<0).sort((p,q)=>p.d-q.d).slice(0,15), up=a.filter(o=>o.d>0).sort((p,q)=>q.d-p.d).slice(0,10);
+ const row=o=>`<div class="sr" onclick="go('customer','${o.x.id}')"><div class="m"><b>${esc(o.x.name)}</b><div class="mu">${esc(o.x.area||'')} — قبلاً ${kfmt(o.prev)}، حالا ${kfmt(o.now)}</div></div><b class="${o.d<0?'neg':'pos'}">${o.d<0?'▼':'▲'} ${o.pc===null?'تازه':fm(Math.abs(Math.round(o.pc)))+'٪'}</b></div>`;
+ const T0=a.reduce((s,o)=>s+o.prev,0), T1=a.reduce((s,o)=>s+o.now,0);
+ return `<div class="tabs">${[30,60,90].map(n=>`<button class="${STD===n?'on':''}" onclick="STD=${n};render()">${fm(n)} روز</button>`).join('')}</div><div class="mu" style="font-size:12.5px;margin:-6px 0 12px">مقایسهٔ ${fm(STD)} روز اخیر با ${fm(STD)} روز پیش از آن</div>
+ <div class="grid k3" style="margin-bottom:18px">${kpi('receipt','#13a389','فروش این دوره',money(T1),'')}${kpi('clock','#7d8796','فروش دورهٔ قبل',money(T0),'')}${kpi('trend',T1>=T0?'#16a37a':'#e5484d','تغییر',(T1>=T0?'▲ ':'▼ ')+fm(Math.abs(Math.round(T0?(T1-T0)/T0*100:0)))+'٪','',T1>=T0?'pos':'neg')}</div>
+ <div class="grid k2" style="align-items:start"><div class="card"><h3>${I('alert')} خریدشان کم شده — سر بزنید</h3><div class="slist">${down.map(row).join('')||'<div class="empty">هیچ دکانی کم نشده ✓</div>'}</div></div>
+ <div class="card"><h3>${I('trend')} خریدشان زیاد شده</h3><div class="slist">${up.map(row).join('')||'<div class="empty">—</div>'}</div></div></div>
+ <div class="hint" style="margin-top:10px">دکانی که ناگهان کمتر می‌خرد شاید از توزیع‌کنندهٔ دیگری جنس گرفته. زودتر سر بزنید و دلیلش را بپرسید.</div>`; }
+
 /* ---------- text size ---------- */
 function applyFont(){ const z={lg:1.12,xl:1.25}[META.font]||1; document.body.style.zoom=z===1?'':z; }
 function setFont(v){ META.font=v; persist(); applyFont(); render(); }
@@ -2275,10 +2289,10 @@ function drawSearch(){ const el=$('#gsr'); if(!el) return; const q=(fv('gsq')||$
 function monthStart(){ const t=today(); try{ const p=new Intl.DateTimeFormat('en-u-ca-persian',{day:'numeric'}).format(new Date(t+'T12:00:00')); const d=parseInt(p,10); if(d>0&&d<32) return addDays(t,-(d-1)); }catch(e){} return t.slice(0,8)+'01'; }
 let RP={from:'',to:''};
 function viewReports(){ const tab=R.tab||'month'; if(!RP.from){ RP.from=monthStart(); RP.to=today(); }
- const tabs=[['month','گزارش ماه'],['pnl','سود و زیان'],['cash','جریان نقدی'],['stock','گزارش گدام'],['users','کارکرد هر نفر'],['shops','سود و ریسک دکان‌ها'],['areas','فروش ساحه‌ها'],['cats','کتگوری‌ها'],['year','گزارش سالانه'],['fc','پیش‌بینی پول'],['bs','بیلانس‌شیت'],['daily','گزارش روزانه / شبانه'],['aging','طلب‌ها و کهنگی'],['sales','فروش اجناس'],['custs','بهترین مشتری‌ها'],['tb','میزان (تراز آزمایشی)'],['gl','دفتر روزنامه'],['coa','کدینگ حساب‌ها'],['log','فعالیت کاربران']];
+ const tabs=[['month','گزارش ماه'],['pnl','سود و زیان'],['cash','جریان نقدی'],['stock','گزارش گدام'],['users','کارکرد هر نفر'],['shops','سود و ریسک دکان‌ها'],['areas','فروش ساحه‌ها'],['cats','کتگوری‌ها'],['year','گزارش سالانه'],['fc','پیش‌بینی پول'],['trend','دکان‌های کم/زیاد شده'],['bs','بیلانس‌شیت'],['daily','گزارش روزانه / شبانه'],['aging','طلب‌ها و کهنگی'],['sales','فروش اجناس'],['custs','بهترین مشتری‌ها'],['tb','میزان (تراز آزمایشی)'],['gl','دفتر روزنامه'],['coa','کدینگ حساب‌ها'],['log','فعالیت کاربران']];
  const range=`<div class="row noprint" style="margin-bottom:10px"><span class="mu">از</span><input class="in" type="date" style="width:auto" value="${RP.from}" onchange="RP.from=this.value;render()"><span class="mu">تا</span><input class="in" type="date" style="width:auto" value="${RP.to}" onchange="RP.to=this.value;render()">
  <button class="btn sm alt" onclick="RP.from=today();RP.to=today();render()">امروز</button><button class="btn sm alt" onclick="RP.from=monthStart();RP.to=today();render()">این ماه</button><button class="btn sm alt" onclick="RP.from=addDays(today(),-29);RP.to=today();render()">۳۰ روز</button><button class="btn sm alt" onclick="RP.from=DB.settings.startDate;RP.to=today();render()">از ابتدا</button></div><div class="hint" style="margin-bottom:8px">${fd(RP.from)} تا ${fd(RP.to)}</div>`;
- const body={pnl:()=>range+repPnl(),bs:()=>repBS(),daily:()=>repDaily(),aging:()=>repAging(),sales:()=>range+repSales(),custs:()=>range+repCusts(),tb:()=>range+repTB(),gl:()=>range+repGL(),coa:()=>repCOA(),log:()=>repLog(),month:()=>repMonth(),cash:()=>range+repCash(),stock:()=>deadStockCard()+range+repStock(),users:()=>range+repUsers(),shops:()=>range+repShops(),areas:()=>range+repAreas(),cats:()=>range+repCats(),year:()=>repYear(),fc:()=>repForecast()}[tab]();
+ const body={pnl:()=>range+repPnl(),bs:()=>repBS(),daily:()=>repDaily(),aging:()=>repAging(),sales:()=>range+repSales(),custs:()=>range+repCusts(),tb:()=>range+repTB(),gl:()=>range+repGL(),coa:()=>repCOA(),log:()=>repLog(),month:()=>repMonth(),cash:()=>range+repCash(),stock:()=>deadStockCard()+range+repStock(),users:()=>range+repUsers(),shops:()=>range+repShops(),areas:()=>range+repAreas(),cats:()=>range+repCats(),year:()=>repYear(),fc:()=>repForecast(),trend:()=>repShopTrend()}[tab]();
  return `<div class="tabs noprint">${tabs.map(t=>`<button class="${tab===t[0]?'on':''}" onclick="R.tab='${t[0]}';render()">${t[1]}</button>`).join('')}</div>${tab==='pnl'||tab==='daily'||tab==='aging'||tab==='month'?body:`<div class="card">${body}</div>`}`; }
 const trow=(l,v,cls='',b)=>`<tr><td>${b?'<b>'+l+'</b>':l}</td><td class="n ${cls}">${b?'<b>'+money(v)+'</b>':money(v)}</td></tr>`;
 /* ---------- chart helpers ---------- */
