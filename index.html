@@ -245,6 +245,7 @@ svg.flip{transform:scaleX(-1)}
 #side .keys{font-size:11px;color:var(--mu);margin-top:14px;text-align:center;direction:rtl}
 /* printable invoice */
 #printArea{display:none}
+.rpk{display:flex;flex-direction:column;gap:3px;text-align:right;border:0;background:var(--bg);box-shadow:var(--upS);border-radius:16px;padding:12px 14px;cursor:pointer;font:inherit;color:var(--tx);min-height:64px}.rpk.on{box-shadow:var(--inS);color:var(--g2)}.rpk b{font-size:13.5px}.rpk span{font-size:11.5px;color:var(--mu)}
 .who{--c:#888;display:inline-flex;align-items:center;gap:4px;border-radius:99px;padding:1px 8px 1px 9px;font-size:11.5px;font-weight:800;color:var(--c);background:color-mix(in srgb,var(--c) 15%,transparent);white-space:nowrap;vertical-align:middle}.who::before{content:'';width:6px;height:6px;border-radius:50%;background:var(--c)}
 .uchips{display:flex;gap:8px;flex-wrap:wrap;margin:-4px 0 12px}.uchips button{border:0;cursor:pointer;font:inherit;border-radius:14px;padding:7px 12px;background:var(--bg);box-shadow:var(--upS);color:var(--tx);display:flex;align-items:center;gap:7px;font-weight:700;font-size:13px}.uchips button.on{box-shadow:var(--inS);color:var(--c)}.uchips button i{font-style:normal;background:var(--c);color:#fff;border-radius:99px;padding:0 7px;font-size:11px}
 .simplehi{margin:4px 4px 16px}.simplehi b{font-size:22px;font-weight:800}
@@ -448,7 +449,7 @@ body.mopen #snack{bottom:auto;top:16px;transform:translate(-50%,-20px)}body.mope
 <script id="engine">
 'use strict';
 const LS = 'ebrahimi_acc_v1';
-const VERSION = '7.7';
+const VERSION = '7.8';
 
 /* ---- Chart of accounts (کدینگ حساب‌ها) ----
    nature: A=asset (debit), L=liability (credit), E=equity (credit), E-=contra equity (debit),
@@ -2293,7 +2294,14 @@ function viewReports(){ const tab=R.tab||'month'; if(!RP.from){ RP.from=monthSta
  const range=`<div class="row noprint" style="margin-bottom:10px"><span class="mu">از</span><input class="in" type="date" style="width:auto" value="${RP.from}" onchange="RP.from=this.value;render()"><span class="mu">تا</span><input class="in" type="date" style="width:auto" value="${RP.to}" onchange="RP.to=this.value;render()">
  <button class="btn sm alt" onclick="RP.from=today();RP.to=today();render()">امروز</button><button class="btn sm alt" onclick="RP.from=monthStart();RP.to=today();render()">این ماه</button><button class="btn sm alt" onclick="RP.from=addDays(today(),-29);RP.to=today();render()">۳۰ روز</button><button class="btn sm alt" onclick="RP.from=DB.settings.startDate;RP.to=today();render()">از ابتدا</button></div><div class="hint" style="margin-bottom:8px">${fd(RP.from)} تا ${fd(RP.to)}</div>`;
  const body={pnl:()=>range+repPnl(),bs:()=>repBS(),daily:()=>repDaily(),aging:()=>repAging(),sales:()=>range+repSales(),custs:()=>range+repCusts(),tb:()=>range+repTB(),gl:()=>range+repGL(),coa:()=>repCOA(),log:()=>repLog(),month:()=>repMonth(),cash:()=>range+repCash(),stock:()=>deadStockCard()+range+repStock(),users:()=>range+repUsers(),shops:()=>range+repShops(),areas:()=>range+repAreas(),cats:()=>range+repCats(),year:()=>repYear(),fc:()=>repForecast(),trend:()=>repShopTrend()}[tab]();
- return `<div class="tabs noprint">${tabs.map(t=>`<button class="${tab===t[0]?'on':''}" onclick="R.tab='${t[0]}';render()">${t[1]}</button>`).join('')}</div>${tab==='pnl'||tab==='daily'||tab==='aging'||tab==='month'?body:`<div class="card">${body}</div>`}`; }
+ const cur=(tabs.find(t=>t[0]===tab)||tabs[0])[1];
+ return `<div class="row noprint" style="justify-content:space-between;margin-bottom:12px"><b style="font-size:18px">${cur}</b><button class="btn sm" onclick="repPicker()">${I('menu')} همه گزارش‌ها</button></div><div class="tabs noprint">${tabs.map(t=>`<button class="${tab===t[0]?'on':''}" onclick="R.tab='${t[0]}';render()">${t[1]}</button>`).join('')}</div>${tab==='pnl'||tab==='daily'||tab==='aging'||tab==='month'?body:`<div class="card">${body}</div>`}`; }
+const REP_G=[['cash','#16a37a','پول',[['daily','گزارش روزانه / شبانه','پول دست هر نفر، بستن صندوق'],['cash','جریان نقدی','پول آمد و رفت'],['fc','پیش‌بینی پول','۷ تا ۳۰ روز آینده'],['aging','طلب‌ها و کهنگی','کدام طلب کهنه شده']]],
+ ['receipt','#13a389','فروش و دکان‌ها',[['month','گزارش ماه','خلاصهٔ یک‌صفحه‌ای ماه'],['year','گزارش سالانه','۱۲ ماه، ماه به ماه'],['sales','فروش اجناس','سود هر جنس'],['cats','کتگوری‌ها','فروش و سود هر کتگوری'],['areas','فروش ساحه‌ها','کدام ساحه بهتر است'],['custs','بهترین مشتری‌ها',''],['shops','سود و ریسک دکان‌ها','خوش‌حسابی'],['trend','دکان‌های کم/زیاد شده','کی کمتر می‌خرد']]],
+ ['box','#f08c2e','گدام',[['stock','گزارش گدام','ورود و خروج، اجناس راکد']]],
+ ['user','#8b5cf6','افراد',[['users','کارکرد هر نفر',''],['log','فعالیت کاربران','ثبت، ویرایش، ابطال']]],
+ ['book','#3b6fd8','حسابداری',[['pnl','سود و زیان',''],['bs','بیلانس‌شیت',''],['tb','میزان (تراز آزمایشی)',''],['gl','دفتر روزنامه',''],['coa','کدینگ حساب‌ها','']]]];
+function repPicker(){ openModal('همه گزارش‌ها',REP_G.map(g=>`<h3 style="font-size:15px;margin:14px 0 8px">${I(g[0])} ${g[2]}</h3><div class="grid k2" style="grid-template-columns:repeat(2,minmax(0,1fr));gap:10px">${g[3].map(r=>`<button class="rpk ${R.tab===r[0]?'on':''}" onclick="closeModal();R.tab='${r[0]}';render()"><b>${r[1]}</b>${r[2]?`<span>${r[2]}</span>`:''}</button>`).join('')}</div>`).join('')); }
 const trow=(l,v,cls='',b)=>`<tr><td>${b?'<b>'+l+'</b>':l}</td><td class="n ${cls}">${b?'<b>'+money(v)+'</b>':money(v)}</td></tr>`;
 /* ---------- chart helpers ---------- */
 const kfmt=v=>{ const a=Math.abs(v), sg=v<0?'−':''; return sg+(a>=1e6?fm(r2(a/1e6))+'M':a>=1e3?fm(Math.round(a/1e3))+'K':fm(Math.round(a))); };
