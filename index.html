@@ -396,7 +396,7 @@ svg.flip{transform:scaleX(-1)}
 <script id="engine">
 'use strict';
 const LS = 'ebrahimi_acc_v1';
-const VERSION = '2.7';
+const VERSION = '2.8';
 
 /* ---- Chart of accounts (کدینگ حساب‌ها) ----
    nature: A=asset (debit), L=liability (credit), E=equity (credit), E-=contra equity (debit),
@@ -469,10 +469,23 @@ function load(){
  if(!Array.isArray(META.dirty)) META.dirty=[];
  if(!META.sync) META.sync={};
 }
-function persist(){
- try{ localStorage.setItem(LS,JSON.stringify(DB)); localStorage.setItem(LS+'_meta',JSON.stringify(META)); return true; }
- catch(e){ if(typeof toast==='function') toast('⚠️ خطا در ذخیره‌سازی: '+e.message); return false; }
-}
+/* storage: IndexedDB (large, durable) + localStorage copy while small */
+let _idb=null;
+function idbOpen(){ return _idb||(_idb=new Promise((res,rej)=>{ try{ const r=indexedDB.open('ibrahimi-acc',1); r.onupgradeneeded=()=>r.result.createObjectStore('kv'); r.onsuccess=()=>res(r.result); r.onerror=()=>rej(r.error); }catch(e){ rej(e); } })); }
+async function idbGet(k){ const d=await idbOpen(); return new Promise((res,rej)=>{ const q=d.transaction('kv').objectStore('kv').get(k); q.onsuccess=()=>res(q.result); q.onerror=()=>rej(q.error); }); }
+async function idbSet(k,v){ const d=await idbOpen(); return new Promise((res,rej)=>{ const tx=d.transaction('kv','readwrite'); tx.objectStore('kv').put(v,k); tx.oncomplete=()=>res(true); tx.onerror=()=>rej(tx.error); }); }
+let idbOK=typeof indexedDB!=='undefined';
+function persist(){ DB.savedAt=nowIso(); let ok=false;
+ try{ localStorage.setItem(LS+'_meta',JSON.stringify(META)); }catch(e){}
+ if(idbOK){ idbSet('db',DB).catch(()=>{ idbOK=false; }); ok=true; }
+ try{ const j=JSON.stringify(DB); if(j.length<3500000){ localStorage.setItem(LS,j); ok=true; } else { localStorage.removeItem(LS); } }
+ catch(e){ try{ localStorage.removeItem(LS); }catch(_){} }
+ if(!ok&&typeof toast==='function') toast('⚠️ خطا در ذخیره‌سازی — فوراً بکاپ بگیرید');
+ return ok; }
+async function loadIDB(){ if(!idbOK) return false; try{ const v=await idbGet('db');
+  if(v&&Array.isArray(v.txns)&&(!DB.savedAt||(v.savedAt||'')>DB.savedAt)){ DB=v; ['products','customers','suppliers','txns'].forEach(k=>{ if(!Array.isArray(DB[k])) DB[k]=[]; }); invalidate(); return true; }
+  if(!v&&DB.savedAt) idbSet('db',DB).catch(()=>{});
+ }catch(e){ idbOK=false; } return false; }
 const KIND = {product:'products',customer:'customers',supplier:'suppliers',txn:'txns'};
 let _C=null; function invalidate(){ _C=null; }
 function C(){ return _C||(_C=compute()); }
@@ -1715,6 +1728,8 @@ document.addEventListener('visibilitychange',()=>{ if(!document.hidden) doSync(f
 setInterval(()=>doSync(false),60000);
 { const h=location.hash.slice(1); if(NAV.some(n=>n[0]===h)||h==='more') R.v=h; }
 render(); doSync(false);
+loadIDB().then(ch=>{ if(ch) render(); });
+try{ navigator.storage&&navigator.storage.persist&&navigator.storage.persist(); }catch(e){}
 if(needUnlock()){ LK={user:META.user,pin:'',mode:'unlock'}; drawLock(); }
 </script>
 </body>
