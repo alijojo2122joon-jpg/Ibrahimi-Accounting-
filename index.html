@@ -450,7 +450,7 @@ body.mopen #snack{bottom:auto;top:16px;transform:translate(-50%,-20px)}body.mope
 <script id="engine">
 'use strict';
 const LS = 'ebrahimi_acc_v1';
-const VERSION = '8.2';
+const VERSION = '8.3';
 
 /* ---- Chart of accounts (کدینگ حساب‌ها) ----
    nature: A=asset (debit), L=liability (credit), E=equity (credit), E-=contra equity (debit),
@@ -1873,6 +1873,15 @@ function stampGeo(id){ if(!DB.settings.geoStamp||!navigator.geolocation) return;
 const geoTxt=t=>!t.geo?'':t.geo.m===undefined?'جای ثبت ذخیره شد':t.geo.m<=Math.max(150,t.geo.acc||0)?'سر دکان ثبت شد':'ثبت در '+(t.geo.m>=1000?fm(Math.round(t.geo.m/100)/10)+' کیلومتری':fm(t.geo.m)+' متری')+' دکان';
 function farEntries(days){ const since=addDays(today(),-days); return DB.txns.filter(t=>!t.void&&t.date>=since&&t.geo&&t.geo.m!==undefined&&t.geo.m>Math.max(500,(t.geo.acc||0)*2)); }
 
+/* ---------- what's new after an update ---------- */
+const NEWS=[['user','#8b5cf6','کی ثبت کرده',['نام و ساعت ثبت‌کننده کنار هر سند، فیلتر هر نفر، تاریخچهٔ فعالیت','تأیید مصارف دیگران، تحویل پول بین افراد، هدف فروش هر نفر']],
+ ['truck','#0369a1','موتر و خرید',['بارگیری صبح و تطبیق شب موتر','وعدهٔ پرداخت به عمده‌فروش با یادآوری و صورت‌حساب واتس‌اپ','پیشنهاد قیمت فروش تازه وقتی قیمت خرید بالا می‌رود','لیست خرید به تفکیک ارزان‌ترین عمده‌فروش']],
+ ['shop','#f08c2e','دکان‌ها',['قسط‌بندی بدهی‌های بزرگ','یکی کردن دکان‌های تکراری','مرجوعی از یک بل مشخص، مشتری گذری','دکان‌هایی که خریدشان کم شده']],
+ ['chart','#13a389','گزارش‌ها',['پیش‌بینی پول ۷ تا ۳۰ روز','گزارش سالانه و کتگوری‌ها، اجناس راکد','کارهای آخر شب، مصارف ثابت ماهانه','دکمهٔ «همه گزارش‌ها» برای پیدا کردن آسان']]];
+function whatsNew(force){ const seen=META.seenVer; if(!force&&(!DB.txns.length||seen===VERSION)) return; META.seenVer=VERSION; persist();
+ if($('#modal')&&!$('#modal').classList.contains('hide')) return;
+ openModal('تازه‌های نسخهٔ '+fm(VERSION),NEWS.map(g=>`<div class="card" style="padding:12px 14px;margin-bottom:10px"><div class="row" style="gap:10px;margin-bottom:6px"><span class="ic" style="--c:${g[1]};width:34px;height:34px">${I(g[0])}</span><b>${g[2]}</b></div>${g[3].map(l=>`<div class="mu" style="font-size:13px;margin:3px 0">• ${l}</div>`).join('')}</div>`).join('')+`<div class="row" style="margin-top:6px"><button class="btn" onclick="closeModal();go('help')">${I('book')} راهنمای کامل</button><button class="btn alt" onclick="closeModal()">بستن</button></div>`); }
+
 /* ---------- text size ---------- */
 function applyFont(){ const z={lg:1.12,xl:1.25}[META.font]||1; document.body.style.zoom=z===1?'':z; }
 function setFont(v){ META.font=v; persist(); applyFont(); render(); }
@@ -1964,7 +1973,7 @@ function viewHelp(){ const G=[
   ['میان‌بُرها روی کامپیوتر','F2 فروش، F3 دریافت پول، F4 خرید، F8 مصرف، / جستجو، Esc بستن'],
   ['امنیت','در تنظیمات برای هر نفر رمز بگذارید. نقش «فروشنده» سود و قیمت خرید را نمی‌بیند و نمی‌تواند سند را پاک یا عوض کند.'],
   ['گوشی و کامپیوتر با هم','با همگام‌سازی (تنظیمات) هر چیزی که در گوشی ثبت شود روی کامپیوتر هم می‌آید. بدون انترنت هم ثبت کنید؛ وقتی انترنت آمد خودش می‌فرستد.']]]];
- return G.map(([ic,col,t,items],k)=>`<div class="card" style="margin-bottom:18px"><h3><span class="ic" style="--c:${col};width:40px;height:40px;margin:4px">${I(ic)}</span> ${t}</h3>${items.map(([q,a],i)=>`<details class="more" style="margin-top:10px" ${k===0&&i===0?'open':''}><summary>${esc(q)}</summary><div class="hint" style="margin-top:8px;color:var(--tx);font-size:13.5px">${esc(a)}</div></details>`).join('')}</div>`).join(''); }
+ return `<div class="row" style="margin-bottom:14px"><button class="btn" onclick="whatsNew(true)">${I('trend')} تازه‌های نسخهٔ ${fm(VERSION)}</button></div>`+G.map(([ic,col,t,items],k)=>`<div class="card" style="margin-bottom:18px"><h3><span class="ic" style="--c:${col};width:40px;height:40px;margin:4px">${I(ic)}</span> ${t}</h3>${items.map(([q,a],i)=>`<details class="more" style="margin-top:10px" ${k===0&&i===0?'open':''}><summary>${esc(q)}</summary><div class="hint" style="margin-top:8px;color:var(--tx);font-size:13.5px">${esc(a)}</div></details>`).join('')}</div>`).join(''); }
 
 /* ---------- connect a second device with a link / QR ---------- */
 const b64u=s=>btoa(unescape(encodeURIComponent(s))).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'');
@@ -2478,7 +2487,7 @@ function exportCSV(k){ const c=C();
  if(k==='stock') dl('stock-'+today()+'.csv',csv([['کد','جنس','واحد','موجودی','قیمت تمام‌شده','قیمت فروش','ارزش'],...DB.products.filter(p=>!p.deleted).map(p=>{ const s=c.P[p.id]||{qty:0,avg:0}; return [p.code,p.name,p.unit,r2(s.qty),r2(s.avg),p.price,r2(s.qty*s.avg)]; })]),'text/csv'); }
 function wipeAll(){ DB=defaultDB(); META.dirty=[]; META.lastPull=''; persist(); invalidate(); toast('همه پاک شد'); go('dash'); }
 function loadDemo(){
- META.setupDone=1; DB=defaultDB(); const sd=addDays(today(),-75); DB.settings.startDate=sd; persist(); invalidate();
+ META.setupDone=1; META.seenVer=VERSION; DB=defaultDB(); const sd=addDays(today(),-75); DB.settings.startDate=sd; persist(); invalidate();
  const P=[['روغن آفتاب ۵ لیتره','روغن','قطی',780,690,40],['برنج سیلا ۲۵ کیلو','برنج و آرد','بوجی',2650,2380,15],['آرد ۵۰ کیلو','برنج و آرد','بوجی',1900,1720,20],['بوره ۵۰ کیلو','مواد خوراکی','بوجی',3400,3150,10],['چای سبز ۱ کیلو','مواد خوراکی','بسته',420,360,30],['صابون لباس','شوینده','کارتن',950,820,12],['پودر لباس ۳ کیلو','شوینده','دانه',310,260,24],['نوشابه ۲۵۰ میلی (کارتن)','نوشیدنی','کارتن',540,470,25]]
   .map(a=>save('product',{code:nextNo('P'),name:a[0],cat:a[1],unit:a[2],price:a[3],openCost:a[4],openQty:a[5]*5,minQty:Math.round(a[5]/2)}));
  const S=[['تجارتخانه حاجی رحیم','مندوی، سرای عشقری'],['شرکت پخش نوشابه','شهرنو']].map(a=>save('supplier',{code:nextNo('S'),name:a[0],area:a[1]}));
@@ -2525,7 +2534,7 @@ document.addEventListener('visibilitychange',()=>{ if(!document.hidden) doSync(f
 setInterval(()=>doSync(false),60000);
 { const h=location.hash.slice(1); if(NAV.some(n=>n[0]===h)||h==='more') R.v=h; }
 render(); doSync(false);
-setTimeout(checkJoin,300); setTimeout(notifyDue,2500);
+setTimeout(checkJoin,300); setTimeout(notifyDue,2500); setTimeout(whatsNew,1200);
 loadIDB().then(ch=>{ if(ch) render(); });
 try{ navigator.storage&&navigator.storage.persist&&navigator.storage.persist(); }catch(e){}
 if(needUnlock()){ LK={user:META.user,pin:'',mode:'unlock'}; drawLock(); }
