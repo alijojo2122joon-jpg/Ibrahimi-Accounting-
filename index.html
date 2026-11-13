@@ -245,6 +245,9 @@ svg.flip{transform:scaleX(-1)}
 #side .keys{font-size:11px;color:var(--mu);margin-top:14px;text-align:center;direction:rtl}
 /* printable invoice */
 #printArea{display:none}
+.gr{display:flex;align-items:center;gap:14px}.gr .m{flex:1;min-width:0}
+.ring.xs{width:96px;height:96px;flex:none}.ring.xs .in{inset:16px}.ring.xs .in b{font-size:19px}.ring.xs .in b small{font-size:12px}
+
 .stars{color:#f0b429;letter-spacing:1px;white-space:nowrap}.stars i{font-style:normal;color:var(--line);filter:brightness(.8)}
 
 .bc{grid-column:1/-1;color:var(--red);font-size:12px;font-weight:700;display:flex;align-items:center;gap:5px}.bc svg.i{width:15px;height:15px}
@@ -430,7 +433,7 @@ svg.flip{transform:scaleX(-1)}
 <script id="engine">
 'use strict';
 const LS = 'ebrahimi_acc_v1';
-const VERSION = '4.3';
+const VERSION = '4.4';
 
 /* ---- Chart of accounts (کدینگ حساب‌ها) ----
    nature: A=asset (debit), L=liability (credit), E=equity (credit), E-=contra equity (debit),
@@ -889,6 +892,7 @@ function viewDash(){
  return `
  ${can('settings')&&DB.txns.length>15&&!META.sync.url&&(!META.lastBackup||daysBetween(META.lastBackup.slice(0,10),today())>=7)?`<div class="card banner"><div class="ic" style="--c:#e5484d">${I('alert')}</div><div style="flex:1"><b>${META.lastBackup?'آخرین بکاپ '+fm(daysBetween(META.lastBackup.slice(0,10),today()))+' روز پیش بود':'هنوز از اطلاعات بکاپ نگرفته‌اید'}</b><div class="hint">اگر گوشی گم یا خراب شود، حساب‌ها از بین می‌رود. یک فایل بکاپ بگیرید و در تلگرام یا گوگل‌درایو نگه دارید.</div></div><button class="btn sm red" onclick="exportJSON();render()">بکاپ</button></div>`:''}
  ${META.sync.url&&(syncState==='err'||(META.dirty.length>0&&META.lastSyncAt&&Date.now()-new Date(META.lastSyncAt).getTime()>3600000))?`<div class="card banner"><div class="ic" style="--c:#e5484d">${I('sync')}</div><div style="flex:1"><b>${fm(META.dirty.length)} ثبت هنوز به دستگاه‌های دیگر نرفته</b><div class="hint">${syncState==='err'?esc(META.lastSyncErr||'خطای همگام‌سازی'):'انترنت را بررسی کنید'}</div></div><button class="btn sm" onclick="doSync(true)">دوباره</button></div>`:''}
+ ${can('settings')?budgetAlerts().map(o=>`<div class="card banner"><div class="ic" style="--c:#f08c2e">${I('fuel')}</div><div style="flex:1"><b>${esc(ACC[o.a].name)}: ${money(o.u.used)} از سقف ${money(o.u.lim)}</b><div class="hint">${o.u.pct>=100?'این ماه از سقف بودجه گذشت':'نزدیک به سقف بودجهٔ این ماه'}</div></div></div>`).join(''):''}
  ${typeof deferredInstall!=='undefined'&&deferredInstall?`<div class="card banner"><div class="ic" style="--c:#13a389">${I('in')}</div><div style="flex:1"><b>اپ را روی گوشی نصب کنید</b><div class="hint">مثل یک برنامه باز می‌شود و بدون انترنت هم کار می‌کند.</div></div><button class="btn sm" onclick="installApp()">نصب</button></div>`:''}
  ${setupCard()}
  <div class="qrow dashq">${[['receipt','#13a389','فروش','saleForm()'],['cash','#16a37a','دریافت پول','receiptForm()'],['cart','#3b6fd8','خرید عمده','purchaseForm()'],['fuel','#e5484d','مصرف','expenseForm()'],['map','#f08c2e','نقشه',"go('map')"],['shop','#8b5cf6','دکان جدید','customerForm()'],['wallet','#0f8f78','بستن صندوق','cashCloseForm()']].map(q=>act(q[0],q[1],q[2],q[3])).join('')}</div>
@@ -905,6 +909,7 @@ function viewDash(){
    ${can('profit')?'':'<!--'}<div class="hrow" onclick="R={v:'reports',tab:'pnl'};render()"><div class="ic" style="--c:#8b5cf6">${I('trend')}</div><div class="m"><b>سود خالص ۳۰ روز</b><div>حاشیهٔ سود ناخالص ${fm(p30.margin)}٪</div></div><div class="v ${p30.net>=0?'pos':'neg'}">${money(p30.net)}</div></div>${can('profit')?'':'-->'}
   </div>
  </div>
+ ${goalsCard()}
  <div class="grid k4" style="margin-top:18px">
   ${kpi('receipt','#13a389','فروش امروز',money(salesT),delta(salesT,salesY,'دیروز'))}
   ${kpi('cash','#16a37a','پول جمع‌شدهٔ امروز',money(recvT),delta(recvT,recvY,'دیروز'),'pos')}
@@ -1268,7 +1273,7 @@ function saveSupplier(){ const name=fv('name').trim(); if(!name) return toast('�
 let F={};
 /* ---------- shared form pieces ---------- */
 const methodSel=(v='cash')=>`<input type="hidden" id="f_method" value="${v}"><div class="seg"><button type="button" class="${v==='cash'?'on':''}" onclick="segSet('method','cash',this)">${I('cash')} نقد</button><button type="button" class="${v==='bank'?'on':''}" onclick="segSet('method','bank',this)">${I('bank')} بانک / حواله</button></div>`;
-function segSet(k,v,b){ $('#f_'+k).value=v; b.parentNode.querySelectorAll('button').forEach(x=>x.classList.toggle('on',x===b)); calcForm(); }
+function segSet(k,v,b){ $('#f_'+k).value=v; b.parentNode.querySelectorAll('button').forEach(x=>x.classList.toggle('on',x===b)); calcForm(); if(k==='acc') budgetHint(); }
 const dateInp=()=>fl('تاریخ',`<input class="in" type="date" id="f_date" value="${today()}" onchange="calcForm()">`)+`<div class="hint" id="dateFa" style="margin-top:-6px;margin-bottom:8px"></div>`;
 const sec=(ic,title,body,extra='')=>`<div class="sec"><div class="sech">${I(ic)}<span>${title}</span><span class="sp"></span>${extra}</div>${body}</div>`;
 const more=(body,label='روش پرداخت، تاریخ و یادداشت')=>`<details class="more"><summary>${I('menu')} ${label}</summary><div style="margin-top:12px">${body}</div></details>`;
@@ -1379,7 +1384,7 @@ function returnForm(type){ F={type,cart:[]}; const isS=type==='sreturn';
 const EXP_IC={'6100':'fuel','6200':'gear','6300':'shop','6400':'user','6500':'box','6600':'trend','6700':'bank','6900':'menu'};
 function expenseForm(){ F={type:'expense'};
  const fq=frequentExpenses(); openModal('ثبت مصرف',(fq.length?sec('clock','مصارف همیشگی (یک لمس)',`<div class="chips">${fq.map(o=>`<button type="button" onclick="useExpense('${o.acc}',${o.amount},'${esc(o.note).replace(/'/g,'')}')">${esc(o.note||ACC[o.acc].name)} · ${fm(o.amount)}</button>`).join('')}</div>`):'')+sec('fuel','نوع مصرف',`<input type="hidden" id="f_acc" value="6100"><div class="etiles">${ACCOUNTS.filter(a=>a[0][0]==='6'&&a[0]!=='6800'&&a[0]!=='6950').map((a,i)=>`<button type="button" class="${i?'':'on'}" onclick="segSet('acc','${a[0]}',this)"><span class="ic" style="--c:#e5484d">${I(EXP_IC[a[0]]||'menu')}</span><b>${a[1]}</b></button>`).join('')}</div>`)+
- sec('cash','مبلغ',`<input class="in big" id="f_amount" inputmode="decimal" placeholder="۰" oninput="calcForm()">${fl('شرح',inp('note','','placeholder="مثلاً ۲۰ لیتر دیزل"'))}`+more(fl('روش',methodSel())+dateInp(),'روش و تاریخ'))+sec('receipt','عکس رسید (اختیاری)',photoBox(null))+saveBar('expense','ثبت مصرف','var(--red)')); drawPhotoBox(); calcForm(); }
+ sec('cash','مبلغ',`<input class="in big" id="f_amount" inputmode="decimal" placeholder="۰" oninput="calcForm();budgetHint()"><div id="bhint"></div>${fl('شرح',inp('note','','placeholder="مثلاً ۲۰ لیتر دیزل"'))}`+more(fl('روش',methodSel())+dateInp(),'روش و تاریخ'))+sec('receipt','عکس رسید (اختیاری)',photoBox(null))+saveBar('expense','ثبت مصرف','var(--red)')); drawPhotoBox(); calcForm(); }
 function cashForm(type){ F={type};
  openModal(TT[type][0],`<div class="hint" style="margin-bottom:12px">${type==='capital'?'پولی که مالک از جیب خود به کسب‌وکار می‌آورد.':type==='drawing'?'پولی که برای خانه یا مصارف شخصی از دخل برداشته می‌شود — مصرف تجارت حساب نمی‌شود.':'انتقال بین صندوق نقدی و بانک/حواله.'}</div>`+
  sec('cash','مبلغ',`<input class="in big" id="f_amount" inputmode="decimal" placeholder="۰" oninput="calcForm()">${fl(type==='transfer'?'از':'روش',methodSel())}${type==='transfer'?fl('به',`<select class="in" id="f_to"><option value="bank">بانک / حواله</option><option value="cash">صندوق نقدی</option></select>`):''}${dateInp()}${fl('شرح',inp('note'))}`)+saveBar(type,'ثبت')); calcForm(); }
@@ -1740,6 +1745,26 @@ function repUsers(){ const from=RP.from, to=RP.to, tx=DB.txns.filter(t=>!t.void&
  const st=users.map(u=>{ const a=tx.filter(t=>t.by===u); const sales=a.filter(t=>t.type==='sale'); return {u,bills:sales.length,sales:sales.reduce((s,t)=>s+txnTotal(t),0),coll:a.reduce((s,t)=>s+(t.type==='receipt'?num(t.amount):t.type==='sale'?num(t.paid):0),0),shops:new Set(sales.map(t=>t.party)).size,newShops:DB.customers.filter(x=>x.by===u&&(x.createdAt||'').slice(0,10)>=from&&(x.createdAt||'').slice(0,10)<=to).length,exp:a.filter(t=>t.type==='expense').reduce((s,t)=>s+num(t.amount),0)}; }).filter(x=>x.bills||x.coll||x.exp);
  return `<h3>${I('user')} کارکرد هر نفر</h3>${st.length?`<div class="grid k2">${st.map(x=>`<div class="ucard" style="align-items:flex-start"><div class="av" style="--c:${colorOf(x.u)};width:46px;height:46px">${esc(x.u[0]||'؟')}</div><div style="flex:1"><b style="font-size:16px">${esc(x.u)}</b><div class="grid k2 mini" style="margin-top:8px;gap:8px"><div><span class="mu">بل فروش</span><b>${fm(x.bills)}</b></div><div><span class="mu">فروش</span><b>${money(x.sales)}</b></div><div><span class="mu">پول جمع کرد</span><b class="pos">${money(x.coll)}</b></div><div><span class="mu">دکان‌ها</span><b>${fm(x.shops)}${x.newShops?` <small class="pos">+${fm(x.newShops)} جدید</small>`:''}</b></div>${x.exp?`<div><span class="mu">مصرف ثبت کرد</span><b class="neg">${money(x.exp)}</b></div>`:''}</div></div></div>`).join('')}</div>`:'<div class="empty">در این بازه فعالیتی نیست</div>'}`; }
 
+/* ---------- monthly goals & expense budgets ---------- */
+function monthLen(){ try{ const m=+new Intl.DateTimeFormat('en-u-ca-persian',{month:'numeric'}).format(new Date(today()+'T12:00:00')).replace(/\D/g,''); return m<=6?31:m<=11?30:29; }catch(e){ return 30; } }
+function goalRing(pct,col,center,sub){ return `<div class="gr"><div class="ring xs">${ringSvg(Math.min(100,pct),col)}<div class="in"><b>${fm(Math.round(pct))}<small>٪</small></b></div></div><div class="m">${center}<div class="mu" style="font-size:12px">${sub}</div></div></div>`; }
+function goalsCard(){ const g=DB.settings.goals||{}; if(!num(g.sales)&&!num(g.coll)) return can('settings')?'':'';
+ const ms=monthStart(), td=today(), M=pnl(ms,td), coll=DB.txns.filter(t=>!t.void&&t.date>=ms&&t.date<=td).reduce((s,t)=>s+(t.type==='receipt'?num(t.amount):t.type==='sale'?num(t.paid):0),0);
+ const L=monthLen(), passed=daysBetween(ms,td)+1, left=Math.max(1,L-passed+1), exp=passed/L*100;
+ const one=(lab,cur,goal,col)=>{ const pct=goal?cur/goal*100:0, need=Math.max(0,goal-cur)/left, ahead=pct>=exp;
+  return goalRing(pct,col,`<b>${lab}</b> <span class="mu">${money(cur)} از ${money(goal)}</span>`,pct>=100?'<span class="pos">هدف رسید 🎉</span>':`${ahead?'<span class="pos">جلوتر از برنامه</span>':'<span class="warn">عقب‌تر از برنامه</span>'} · روزی ${money(need)} لازم است (${fm(left)} روز مانده)`); };
+ return `<div class="card" style="margin-top:18px"><h3>${I('trend')} هدف این ماه<span class="sp"></span>${can('settings')?`<button class="btn sm alt" onclick="goalForm()">تغییر</button>`:''}</h3><div class="grid k2">${num(g.sales)?one('فروش',M.netSales,num(g.sales),'#13a389'):''}${num(g.coll)?one('جمع کردن پول',coll,num(g.coll),'#f08c2e'):''}</div></div>`; }
+function goalForm(){ const g=DB.settings.goals||{}, b=DB.settings.budgets||{}; F={type:'goals'};
+ openModal('هدف ماهانه و بودجهٔ مصارف',sec('trend','هدف هر ماه',`<div class="f2">${fl('هدف فروش ماه',inp('g_sales',g.sales||'','inputmode="decimal" placeholder="مثلاً ۶۰۰٬۰۰۰"'))}${fl('هدف جمع کردن پول',inp('g_coll',g.coll||'','inputmode="decimal"'))}</div>`)+
+ sec('fuel','سقف مصرف هر ماه (اختیاری)',`<div class="hint" style="margin:-4px 0 10px">اگر مصرفی از سقفش بگذرد، هنگام ثبت و در داشبورد هشدار می‌آید.</div><div class="f2">${ACCOUNTS.filter(a=>a[0][0]==='6'&&!['6800','6950'].includes(a[0])).map(a=>fl(a[1],`<input class="in" id="b_${a[0]}" inputmode="decimal" value="${b[a[0]]||''}" placeholder="—">`)).join('')}</div>`)+
+ `<div class="stick"><div class="ft"></div><button class="btn" onclick="saveGoals()">${I('check')} ذخیره</button></div>`); }
+function saveGoals(){ const b={}; ACCOUNTS.forEach(a=>{ const e=$('#b_'+a[0]); if(e&&num(e.value)) b[a[0]]=num(e.value); });
+ save('settings',Object.assign({},DB.settings,{goals:{sales:num(fv('g_sales')),coll:num(fv('g_coll'))},budgets:b})); closeModal(); toast('ذخیره شد ✓'); render(); }
+function budgetUse(acc){ const lim=num((DB.settings.budgets||{})[acc]); if(!lim) return null; const used=sums(monthStart(),today())[acc]||0; return {lim,used,pct:used/lim*100}; }
+function budgetAlerts(){ const b=DB.settings.budgets||{}; return Object.keys(b).map(a=>({a,u:budgetUse(a)})).filter(o=>o.u&&o.u.pct>=90); }
+function budgetHint(){ const el=$('#bhint'); if(!el) return; const u=budgetUse(fv('acc')); if(!u){ el.innerHTML=''; return; } const after=u.used+num(fv('amount'));
+ el.innerHTML=`<div class="aging" style="margin:4px 0"><i style="width:${Math.min(100,after/u.lim*100)}%;background:${after>u.lim?'#e5484d':after/u.lim>.8?'#f08c2e':'#16a37a'}"></i></div><div class="hint ${after>u.lim?'neg':''}">این ماه ${money(after)} از سقف ${money(u.lim)}${after>u.lim?' — از سقف گذشت!':''}</div>`; }
+
 /* ---------- transaction detail ---------- */
 function showTxn(id,fresh){ const t=DB.txns.find(x=>x.id===id); if(!t) return; const tt=TT[t.type]; const js=C().J.filter(j=>j.tx===id);
  const items=t.items||[]; const isC=['sale','sreturn','receipt'].includes(t.type); const party=isC?cust(t.party):supp(t.party);
@@ -1886,7 +1911,7 @@ function viewSettings(){ const s=DB.settings, sc=META.sync;
  return `<div class="grid k2">
  ${usersCard()}
  <div class="card"><h3>${I('sun')} نمایش</h3>${fl('اندازهٔ متن',`<div class="seg">${[['','عادی'],['lg','بزرگ'],['xl','خیلی بزرگ']].map(o=>`<button type="button" class="${(META.font||'')===o[0]?'on':''}" onclick="setFont('${o[0]}')">${o[1]}</button>`).join('')}</div>`)}${fl('حالت',`<div class="seg"><button type="button" class="${META.theme!=='dark'?'on':''}" onclick="setTheme('light');render()">${I('sun')} روز</button><button type="button" class="${META.theme==='dark'?'on':''}" onclick="setTheme('dark');render()">${I('moon')} شب</button></div>`)}
- <button class="btn alt" style="width:100%;margin-bottom:10px" onclick="enableNotif()">${I('clock')} ${META.notif?'اعلان قول‌های پرداخت روشن است ✓':'روشن کردن اعلان قول‌های پرداخت'}</button><button class="btn alt" style="width:100%" onclick="healthCheck()">${I('check')} بررسی سلامت حساب‌ها</button>${typeof deferredInstall!=='undefined'&&deferredInstall?`<button class="btn" style="width:100%;margin-top:10px" onclick="installApp()">${I('in')} نصب اپ روی گوشی</button>`:''}</div>
+ <button class="btn alt" style="width:100%;margin-bottom:10px" onclick="goalForm()">${I('trend')} هدف ماهانه و بودجهٔ مصارف</button><button class="btn alt" style="width:100%;margin-bottom:10px" onclick="enableNotif()">${I('clock')} ${META.notif?'اعلان قول‌های پرداخت روشن است ✓':'روشن کردن اعلان قول‌های پرداخت'}</button><button class="btn alt" style="width:100%" onclick="healthCheck()">${I('check')} بررسی سلامت حساب‌ها</button>${typeof deferredInstall!=='undefined'&&deferredInstall?`<button class="btn" style="width:100%;margin-top:10px" onclick="installApp()">${I('in')} نصب اپ روی گوشی</button>`:''}</div>
  <div class="card"><h3>${I('shop')} کسب‌وکار</h3>${fl('نام',`<input class="in" id="s_biz" value="${esc(s.biz)}">`)}<div class="f2">${fl('شماره تماس (روی بل چاپی)',`<input class="in" id="s_phone" dir="ltr" value="${esc(s.phone||'')}">`)}${fl('آدرس (روی بل چاپی)',`<input class="in" id="s_addr" value="${esc(s.addr||'')}">`)}</div><div class="f2">${fl('پول نقد در صندوق در روز شروع',`<input class="in" id="s_ocash" inputmode="decimal" value="${s.openCash||''}" placeholder="۰">`)}${fl('پول در بانک/حواله در روز شروع',`<input class="in" id="s_obank" inputmode="decimal" value="${s.openBank||''}" placeholder="۰">`)}</div>${fl('قفل حساب‌ها تا تاریخ (بعد از بستن ماه)',`<input class="in" type="date" id="s_lock" value="${s.lockDate||''}">`)}<div class="hint" style="margin:-6px 0 10px">اسناد تا این تاریخ دیگر قابل ثبت، ویرایش یا ابطال نیستند — برای اینکه حساب ماه‌های بسته‌شده دست نخورد.</div>${fl('تاریخ شروع حساب‌ها (اول دوره)',`<input class="in" type="date" id="s_start" value="${s.startDate}">`)}
  <button class="btn" onclick="saveSettings()">${I('check')} ذخیره</button><div class="hint" style="margin-top:8px">کد این دستگاه: <b>${META.device}</b> (در نمبر بل‌ها می‌آید تا بل‌های گوشی و کامپیوتر قاطی نشوند)</div></div>
  <div class="card"><h3>${I('in')} پشتیبان (بکاپ)</h3><div class="hint">همه اطلاعات در همین مرورگر ذخیره است. هر هفته یک بکاپ بگیرید و در گوگل‌درایو/تلگرام نگه دارید.</div>
