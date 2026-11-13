@@ -298,6 +298,7 @@ body.mapfsb #bnav,body.mapfsb #fab{display:none!important}
 .mk.pl{outline:3px dashed #e5484d;outline-offset:2px}
 .me{width:22px;height:22px;border-radius:50%;background:#3b6fd8;border:4px solid #fff;box-shadow:0 0 0 6px rgba(59,111,216,.25),0 2px 8px rgba(0,0,0,.3);animation:mepulse 2s infinite}
 @keyframes mepulse{0%{box-shadow:0 0 0 0 rgba(59,111,216,.45),0 2px 8px rgba(0,0,0,.3)}70%{box-shadow:0 0 0 14px rgba(59,111,216,0),0 2px 8px rgba(0,0,0,.3)}100%{box-shadow:0 0 0 0 rgba(59,111,216,0),0 2px 8px rgba(0,0,0,.3)}}
+.mkc{border-radius:50%;background:color-mix(in srgb,var(--c) 88%,transparent);color:#fff;display:flex;flex-direction:column;align-items:center;justify-content:center;border:4px solid color-mix(in srgb,#fff 70%,transparent);box-shadow:0 0 0 6px color-mix(in srgb,var(--c) 25%,transparent),0 4px 12px rgba(0,0,0,.3);box-sizing:border-box;line-height:1.1;cursor:pointer}.mkc b{font-size:15px}.mkc i{font-style:normal;font-size:10px;opacity:.95}
 .pop .pa{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px;margin-top:10px}.pop .pa>*{display:flex;flex-direction:column;align-items:center;gap:3px;padding:8px 2px;border-radius:12px;background:color-mix(in srgb,var(--c) 13%,transparent);color:var(--c);font:700 11.5px Vazirmatn,Tahoma;text-decoration:none;border:0;cursor:pointer}.pop .pa svg.i{width:19px;height:19px}
 .chipf{border:0;cursor:pointer;font:inherit;border-radius:14px;padding:8px 13px;background:var(--bg);box-shadow:var(--upS);color:var(--tx);display:inline-flex;align-items:center;gap:7px;font-weight:700;font-size:13px}
 .chipf i{font-style:normal;background:var(--line);border-radius:99px;padding:0 7px;font-size:11px}
@@ -1200,7 +1201,7 @@ function initMap(){
  MAP=L.map(el,{zoomControl:true,attributionControl:true}).setView([34.5281,69.1723],13);
  setMapLayer(META.mapLayer||'street',true);
  ML=L.layerGroup().addTo(MAP);
- MAP.on('zoomend',()=>{ const m=$('#map'); m&&m.classList.toggle('lbl',MAP.getZoom()>=15); });
+ MAP.on('zoomend',()=>{ const m=$('#map'); m&&m.classList.toggle('lbl',MAP.getZoom()>=15); renderMk(); });
  MAP.on('click',e=>{ if(!PICK) return; const c=cust(PICK); if(c){ save('customer',Object.assign({},c,{lat:+e.latlng.lat.toFixed(6),lng:+e.latlng.lng.toFixed(6),gpsAt:nowIso()})); toast('📍 لوکیشن «'+c.name+'» ثبت شد'); } PICK=null; render(); });
  MAP.on('contextmenu',e=>{ const ll=e.latlng; L.popup().setLatLng(ll).setContent(`<div class="pop"><b>اینجا</b><div class="mu">${ll.lat.toFixed(5)}, ${ll.lng.toFixed(5)}${MYPOS?' — '+distTxt(hav(MYPOS.lat,MYPOS.lng,ll.lat,ll.lng))+' از شما':''}</div><div class="row"><button class="btn sm" onclick="newShopAt(${ll.lat.toFixed(6)},${ll.lng.toFixed(6)})">＋ دکان جدید اینجا</button>${(()=>{ const nl=DB.customers.filter(x=>!x.deleted&&!x.lat&&!x.walkin); return nl.length?`<button class="btn sm alt" onclick="setLocPick(${ll.lat.toFixed(6)},${ll.lng.toFixed(6)})">جای یک دکان ثبت‌شده</button>`:''; })()}</div></div>`).openOn(MAP); });
  const wantFit=!ROUTE&&!MYPOS; drawMarkers(wantFit);
@@ -1226,20 +1227,28 @@ function shopPopup(x){ const c=C().CU[x.id]||{bal:0,oldest:0,last:null}, st=cust
   <div class="pa"><button style="--c:#16a37a" onclick="receiptForm('${x.id}')">${I('cash')}دریافت پول</button><button style="--c:#13806b" onclick="saleForm('${x.id}')">${I('receipt')}بل فروش</button><a style="--c:#3b6fd8" href="${gmaps(x.lat,x.lng)}" target="_blank" rel="noopener">${I('truck')}مسیر</a>${x.phone?`<a style="--c:#8b5cf6" href="tel:${esc(x.phone)}">${I('phone')}تماس</a><a style="--c:#25b05a" href="${waLink(x.phone,c.bal>0.5?remindText(x.id):'سلام')}" target="_blank" rel="noopener">${I('wa')}واتس‌اپ</a>`:''}<button style="--c:#7d8796" onclick="go('customer','${x.id}')">${I('book')}حساب</button>${can('edit')?`<button style="--c:#f08c2e" onclick="dragShop('${x.id}')">${I('pin')}جابجا کردن</button>`:''}</div></div></div>`; }
 function drawMarkers(fit){
  document.querySelectorAll('.mapbar .chipf').forEach(b=>b.classList.toggle('on',b.dataset.f===MAPF));
- drawNear(); if(!MAP||!ML){ const el=$('#map'); if(el&&typeof L==='undefined') mapFallback(el); return; } ML.clearLayers(); MK={}; const pts=[]; let debt=0, n=0;
- for(const x of mapShops()){ if(!x.lat) continue; const c=C().CU[x.id]||{bal:0,oldest:0}, st=custSt(x.id);
-  const m=L.marker([x.lat,x.lng],{icon:shopIcon(x,c,st),riseOnHover:true}).addTo(ML);
-  m.bindTooltip(esc(x.name)+(c.bal>0.5?' — '+kfmt(c.bal):''),{direction:'top',permanent:true,className:'mlbl',offset:[0,-12]});
-  m.bindPopup(()=>shopPopup(x),{maxWidth:300,minWidth:250,autoPanPaddingTopLeft:[20,80],autoPanPaddingBottomRight:[70,20]}); MK[x.id]=m; pts.push([x.lat,x.lng]); n++; debt+=Math.max(0,c.bal); }
- const ms=$('#mstat'); if(ms) ms.innerHTML=`<b>${fm(n)}</b> دکان${debt>0.5?` — طلب <b>${kfmt(debt)}</b>`:''}`;
- if(fit&&pts.length) fitAll();
+ drawNear(); if(!MAP||!ML){ const el=$('#map'); if(el&&typeof L==='undefined') mapFallback(el); return; }
+ let debt=0; MAPDATA=mapShops().filter(x=>x.lat).map(x=>{ const c=C().CU[x.id]||{bal:0,oldest:0}; debt+=Math.max(0,c.bal); return {x,c,st:custSt(x.id)}; });
+ const ms=$('#mstat'); if(ms) ms.innerHTML=`<b>${fm(MAPDATA.length)}</b> دکان${debt>0.5?` — طلب <b>${kfmt(debt)}</b>`:''}`;
+ renderMk(); if(fit&&MAPDATA.length) fitAll();
 }
-function fitAll(){ if(!MAP) return; const pts=Object.values(MK).map(m=>m.getLatLng()); if(!pts.length) return; try{ MAP.fitBounds(L.latLngBounds(pts),{padding:[50,50],maxZoom:16,animate:false}); }catch(e){} }
+let MAPDATA=[];
+function singleMk(d){ const {x,c,st}=d; const m=L.marker([x.lat,x.lng],{icon:shopIcon(x,c,st),riseOnHover:true}).addTo(ML);
+ m.bindTooltip(esc(x.name)+(c.bal>0.5?' — '+kfmt(c.bal):''),{direction:'top',permanent:true,className:'mlbl',offset:[0,-12]});
+ m.bindPopup(()=>shopPopup(x),{maxWidth:300,minWidth:250,autoPanPaddingTopLeft:[20,80],autoPanPaddingBottomRight:[70,20]}); MK[x.id]=m; }
+function renderMk(){ if(!MAP||!ML) return; ML.clearLayers(); MK={}; const z=MAP.getZoom();
+ if(z>=15||MAPDATA.length<=12){ MAPDATA.forEach(singleMk); return; }
+ const G={}, S=58; MAPDATA.forEach(d=>{ const p=MAP.project([d.x.lat,d.x.lng],z), k=Math.floor(p.x/S)+':'+Math.floor(p.y/S); (G[k]=G[k]||[]).push(d); });
+ Object.values(G).forEach(g=>{ if(g.length===1) return singleMk(g[0]);
+  const lat=g.reduce((s,d)=>s+d.x.lat,0)/g.length, lng=g.reduce((s,d)=>s+d.x.lng,0)/g.length, debt=g.reduce((s,d)=>s+Math.max(0,d.c.bal),0), col=g.some(d=>d.st.cls==='neg')?'#c0392b':g.some(d=>d.c.bal>0.5)?'#d98a00':'#1e8e5a', sz=Math.min(64,34+g.length*2);
+  L.marker([lat,lng],{icon:L.divIcon({className:'spin',html:`<div class="mkc" style="--c:${col};width:${sz}px;height:${sz}px"><b>${fm(g.length)}</b>${debt>0.5?`<i>${kfmt(debt)}</i>`:''}</div>`,iconSize:[sz,sz],iconAnchor:[sz/2,sz/2]})}).addTo(ML).on('click',()=>{ try{ MAP.fitBounds(L.latLngBounds(g.map(d=>[d.x.lat,d.x.lng])),{padding:[60,60],maxZoom:17}); }catch(e){ MAP.setView([lat,lng],z+2); } });
+ }); }
+function fitAll(){ if(!MAP) return; const pts=MAPDATA.map(d=>[d.x.lat,d.x.lng]); if(!pts.length) return; try{ MAP.fitBounds(L.latLngBounds(pts),{padding:[50,50],maxZoom:16,animate:false}); }catch(e){} }
 function mapSearch(){ const el=$('#mres'); if(!el) return; const q=MAPQ.trim().toLowerCase(); if(!q){ el.innerHTML=''; return; }
  const a=DB.customers.filter(x=>!x.deleted&&!x.walkin&&[x.name,x.owner,x.area,x.phone].join(' ').toLowerCase().includes(q)).slice(0,8);
  el.innerHTML=`<div class="mresl">${a.map(x=>`<div onclick="mapGo('${x.id}')"><b>${esc(x.name)}</b> <span class="mu">${esc(x.area||'')}${x.lat?'':' — بدون لوکیشن'}</span></div>`).join('')||'<div class="mu">پیدا نشد</div>'}</div>`; }
 function mapGo(id){ const x=cust(id); MAPQ=''; const q=$('#mq'); if(q) q.value=''; $('#mres').innerHTML=''; if(!x.lat){ return pickOnMap(id); } if(!MAP) return go('customer',id);
- if(!MK[id]){ MAPF='all'; MAPA=''; drawMarkers(false); } if(MAP){ MAP.flyTo([x.lat,x.lng],17,{duration:.8}); setTimeout(()=>MK[id]&&MK[id].openPopup(),850); } }
+ if(!MAPDATA.some(d=>d.x.id===id)){ MAPF='all'; MAPA=''; drawMarkers(false); } MAPMOVED=true; MAP.flyTo([x.lat,x.lng],17,{duration:.8}); setTimeout(()=>{ if(!MK[id]) renderMk(); MK[id]&&MK[id].openPopup(); },950); }
 function newShopAt(lat,lng){ if(MAP) MAP.closePopup(); customerForm(); setTimeout(()=>{ if($('#f_lat')){ $('#f_lat').value=lat; $('#f_lng').value=lng; } const g=$('#gpsInfo'); if(g) g.innerHTML='📍 جای دکان از روی نقشه انتخاب شد ✓'; },50); }
 function setLocPick(lat,lng){ if(MAP) MAP.closePopup(); const nl=DB.customers.filter(x=>!x.deleted&&!x.lat&&!x.walkin);
  openModal('این جا، دکانِ کدام است؟',`<div class="hint" style="margin-bottom:10px">دکان‌هایی که هنوز لوکیشن ندارند:</div><div class="list">${nl.map(x=>`<div class="it" onclick="save('customer',Object.assign({},cust('${x.id}'),{lat:${lat},lng:${lng},gpsAt:nowIso()}));closeModal();toast('📍 لوکیشن «'+cust('${x.id}').name+'» ثبت شد');render()"><div class="m"><div class="t">${esc(x.name)}</div><div class="d">${esc([x.owner,x.area].filter(Boolean).join('، '))}</div></div></div>`).join('')}</div>`); }
