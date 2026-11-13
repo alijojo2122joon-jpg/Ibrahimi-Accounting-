@@ -773,10 +773,16 @@ function compute(){ const E=makeEngine(); const tx=DB.txns.filter(t=>!t.void).sl
  return {J:E.J,P:E.P,CU:E.CU,SU:E.SU,costs:E.costs,E,sorted:tx,memo:{},lastKey:tx.length?tkey(tx[tx.length-1]):'',day:td}; }
 /* fast path: a brand-new transaction that comes after everything already counted is added without recounting all history */
 function computeAppend(t){ const c=_C; if(!c||!c.E||t.void||c.day!==today()||tkey(t)<c.lastKey) return false;
- try{ const bal0=c.J.length; c.E.apply(t); c.sorted.push(t); c.lastKey=tkey(t); c.memo={}; if(c.byP) (c.byP[t.party]||(c.byP[t.party]=[])).push(t);
+ try{ const bal0=c.J.length; c.E.apply(t); c.sorted.push(t); c.lastKey=tkey(t); c.memo={}; if(c.byP) (c.byP[t.party]||(c.byP[t.party]=[])).push(t); if(c.byPid&&t.items){ const seen=new Set(); for(const i of t.items){ if(seen.has(i.pid)) continue; seen.add(i.pid); (c.byPid[i.pid]||(c.byPid[i.pid]=[])).push(t); } } c.anyExp=0; c.buysP=null;
   if(t.party&&c.CU[t.party]) c.E.agingFor(c.CU[t.party],c.day); return true; }catch(e){ return false; } }
+function lastDays(n){ const c=C(), from=addDays(today(),-(n-1)), to=today(), out=[]; for(let k=c.sorted.length-1;k>=0;k--){ const t=c.sorted[k]; if(t.date<from) break; if(t.date<=to) out.push(t); } return out; }
+function txOfP(pid){ const c=C(); if(!c.byPid){ c.byPid={}; for(const t of c.sorted){ if(!t.items) continue; const seen=new Set(); for(const i of t.items){ if(seen.has(i.pid)) continue; seen.add(i.pid); (c.byPid[i.pid]||(c.byPid[i.pid]=[])).push(t); } } } return c.byPid[pid]||[]; }
 function txOf(p){ const c=C(); if(!c.byP){ c.byP={}; for(const t of c.sorted) if(t.party) (c.byP[t.party]||(c.byP[t.party]=[])).push(t); } return c.byP[p]||[]; }
-function sums(from,to){ const c=C(), k=(from||'')+'|'+(to||''); if(c.memo[k]) return c.memo[k]; const S={}; for(const j of c.J){ if(from&&j.d<from) continue; if(to&&j.d>to) continue; S[j.acc]=(S[j.acc]||0)+j.dr-j.cr; } return (c.memo[k]=S); }
+function jSorted(c){ if(c.jsN===c.J.length) return c.jsOK; let ok=true; for(let i=Math.max(1,c.jsN||1);i<c.J.length;i++) if(c.J[i].d<c.J[i-1].d){ ok=false; break; } c.jsOK=(c.jsN?c.jsOK:true)&&ok; c.jsN=c.J.length; return c.jsOK; }
+function sums(from,to){ const c=C(), k=(from||'')+'|'+(to||''); if(c.memo[k]) return c.memo[k]; const S={}, J=c.J; let i=0;
+ if(from&&jSorted(c)){ let lo=0, hi=J.length; while(lo<hi){ const m=(lo+hi)>>1; if(J[m].d<from) lo=m+1; else hi=m; } i=lo; }
+ const srt=jSorted(c);
+ for(;i<J.length;i++){ const j=J[i]; if(to&&j.d>to){ if(srt) break; else continue; } if(from&&j.d<from) continue; S[j.acc]=(S[j.acc]||0)+j.dr-j.cr; } return (c.memo[k]=S); }
 function balOf(code,to){ return sums(null,to)[code]||0; }
 function pnl(from,to){ const S=sums(from,to), g=k=>S[k]||0;
  const sales=-g('4100'), ret=g('4200'), netSales=sales-ret, cogs=g('5100'), gross=netSales-cogs, other=-g('4300');
@@ -952,12 +958,20 @@ function render(){
  if(MAP&&R.v!=='map'){ try{MAP.remove();}catch(e){} MAP=null; }
  const v=$('#view');
  const views={dash:viewDash,map:viewMap,customers:viewCustomers,customer:viewCustomer,products:viewProducts,product:viewProduct,suppliers:viewSuppliers,supplier:viewSupplier,txns:viewTxns,reports:viewReports,settings:viewSettings,more:viewMore,help:viewHelp,truck:truckView,persons:viewPersons,person:viewPerson};
- v.innerHTML=(views[R.v]||viewDash)();
- if(R.v==='map') setTimeout(initMap,30);
- if(R.v==='customers') drawCList();
- if(R.v==='txns') drawTList();
- if(R.v==='products') drawPList();
+ try{ v.innerHTML=(views[R.v]||viewDash)();
+  if(R.v==='map') setTimeout(initMap,30);
+  if(R.v==='customers') drawCList();
+  if(R.v==='txns') drawTList();
+  if(R.v==='products') drawPList();
+  if(R.v==='settings') setTimeout(storageInfo,50);
+ }catch(e){ logErr(e,'view '+R.v); v.innerHTML=`<div class="card" style="text-align:center;padding:30px"><b>این صفحه باز نشد</b><div class="mu" style="margin:8px 0 14px">اطلاعات شما سالم است. صفحهٔ دیگری را باز کنید یا دوباره امتحان کنید.</div><div class="row" style="justify-content:center"><button class="btn" onclick="go('dash')">خانه</button><button class="btn alt" onclick="location.reload()">دوباره</button></div><div class="mu" style="font-size:11px;margin-top:10px;direction:ltr">${esc(String(e&&e.message||e).slice(0,160))}</div></div>`; }
 }
+async function storageInfo(){ const el=$('#stinfo'); if(!el) return; try{ const e=navigator.storage&&navigator.storage.estimate?await navigator.storage.estimate():null; const pz=navigator.storage&&navigator.storage.persisted?await navigator.storage.persisted():false;
+ el.innerHTML=`${I('box')} ${fm(recCount())} سند ذخیره است${e?` — ${fm(Math.round(e.usage/1048576))} MB از ${fm(Math.round(e.quota/1048576))} MB جای مرورگر`:''}${pz?' — حافظهٔ دائمی ✓':''}${(META.errLog||[]).length?` — <a href="javascript:void 0" onclick="alert(JSON.stringify(META.errLog.slice(-5),null,1))">${fm(META.errLog.length)} خطای ثبت‌شده</a>`:''}`;
+ if(e&&e.quota&&e.usage/e.quota>.8) el.innerHTML+='<div class="neg">⚠️ جای مرورگر کم است — بکاپ بگیرید و همگام‌سازی را روشن کنید.</div>'; }catch(_){} }
+function logErr(e,where){ try{ const l=(META.errLog||[]).slice(-19); l.push({at:nowIso(),v:VERSION,w:where||'',m:String(e&&e.message||e).slice(0,200)}); META.errLog=l; localStorage.setItem(LS+'_meta',JSON.stringify(META)); }catch(_){} }
+window.addEventListener('error',e=>{ logErr(e.error||e.message,'global'); });
+window.addEventListener('unhandledrejection',e=>{ logErr(e.reason,'promise'); });
 function openModal(title,html){ $('#mTitle').textContent=title; $('#mBody').innerHTML=html; $('#modal').classList.remove('hide'); document.body.classList.add('mopen'); }
 function closeModal(){ document.body.classList.remove('mopen'); $('#modal').classList.add('hide'); $('#mBody').innerHTML=''; F={}; }
 function quickMenu(){
@@ -1055,9 +1069,9 @@ function viewDash(){
  const p30=pnl(addDays(td,-29),td);
  const debtors=DB.customers.filter(x=>!x.deleted&&(c.CU[x.id]||{}).bal>0.5).sort((a,b)=>c.CU[b.id].bal-c.CU[a.id].bal);
  const low=DB.products.filter(p=>!p.deleted&&num(p.minQty)>0&&(c.P[p.id]||{qty:0}).qty<=num(p.minQty));
- const recent=DB.txns.filter(t=>!t.void).sort((a,b)=>(b.date+b.createdAt).localeCompare(a.date+a.createdAt)).slice(0,8);
+ const recent=c.sorted.slice(-8).reverse();
  const old=debtors.filter(x=>c.CU[x.id].oldest>30).length;
- const recv30=DB.txns.filter(t=>!t.void&&t.date>=addDays(td,-29)&&t.date<=td).reduce((s,t)=>s+(t.type==='receipt'?num(t.amount):t.type==='sale'?num(t.paid):0),0);
+ const recv30=lastDays(30).reduce((s,t)=>s+(t.type==='receipt'?num(t.amount):t.type==='sale'?num(t.paid):0),0);
  const rate=p30.netSales>0?Math.min(100,recv30/p30.netSales*100):0;
  return `
  ${can('settings')&&DB.txns.length>15&&!META.sync.url&&(!META.lastBackup||daysBetween(META.lastBackup.slice(0,10),today())>=7)?`<div class="card banner"><div class="ic" style="--c:#e5484d">${I('alert')}</div><div style="flex:1"><b>${META.lastBackup?'آخرین بکاپ '+fm(daysBetween(META.lastBackup.slice(0,10),today()))+' روز پیش بود':'هنوز از اطلاعات بکاپ نگرفته‌اید'}</b><div class="hint">اگر گوشی گم یا خراب شود، حساب‌ها از بین می‌رود. یک فایل بکاپ بگیرید و در تلگرام یا گوگل‌درایو نگه دارید.</div></div><button class="btn sm red" onclick="exportJSON();render()">بکاپ</button></div>`:''}
@@ -1294,6 +1308,7 @@ function initMap(){
  setMapLayer(META.mapLayer||'street',true);
  ML=L.layerGroup().addTo(MAP); RL=L.layerGroup().addTo(MAP);
  MAP.on('zoomend',()=>{ const m=$('#map'); m&&m.classList.toggle('lbl',MAP.getZoom()>=15); renderMk(); });
+ MAP.on('moveend',()=>{ if(MAP.getZoom()>=15&&MAPDATA.length>300&&!ROUTE){ clearTimeout(window._mvT); window._mvT=setTimeout(renderMk,120); } });
  MAP.on('click',e=>{ if(!PICK) return; const c=cust(PICK); if(c){ save('customer',Object.assign({},c,{lat:+e.latlng.lat.toFixed(6),lng:+e.latlng.lng.toFixed(6),gpsAt:nowIso()})); toast('📍 لوکیشن «'+c.name+'» ثبت شد'); } PICK=null; render(); });
  MAP.on('contextmenu',e=>{ const ll=e.latlng; L.popup().setLatLng(ll).setContent(`<div class="pop"><b>اینجا</b><div class="mu">${ll.lat.toFixed(5)}, ${ll.lng.toFixed(5)}${MYPOS?' — '+distTxt(hav(MYPOS.lat,MYPOS.lng,ll.lat,ll.lng))+' از شما':''}</div><div class="row"><button class="btn sm" onclick="newShopAt(${ll.lat.toFixed(6)},${ll.lng.toFixed(6)})">＋ دکان جدید اینجا</button>${(()=>{ const nl=DB.customers.filter(x=>!x.deleted&&!x.lat&&!x.walkin); return nl.length?`<button class="btn sm alt" onclick="setLocPick(${ll.lat.toFixed(6)},${ll.lng.toFixed(6)})">جای یک دکان ثبت‌شده</button>`:''; })()}</div></div>`).openOn(MAP); });
  const wantFit=!ROUTE&&!MYPOS; drawMarkers(wantFit);
@@ -1335,7 +1350,7 @@ function singleMk(d){ const {x,c,st}=d; const m=L.marker([x.lat,x.lng],{icon:sho
  m.bindTooltip(esc(x.name)+(c.bal>0.5?' — '+kfmt(c.bal):''),{direction:'top',permanent:true,className:'mlbl',offset:[0,-12]});
  m.bindPopup(()=>shopPopup(x),{maxWidth:300,minWidth:250,autoPanPaddingTopLeft:[20,80],autoPanPaddingBottomRight:[70,20]}); MK[x.id]=m; }
 function renderMk(){ if(!MAP||!ML) return; ML.clearLayers(); MK={}; const z=MAP.getZoom();
- if(z>=15||MAPDATA.length<=12||ROUTE){ MAPDATA.forEach(singleMk); return; }
+ if(z>=15||MAPDATA.length<=12||ROUTE){ if(MAPDATA.length>300&&!ROUTE){ const b=MAP.getBounds().pad(.35); MAPDATA.forEach(d=>{ if(b.contains([d.x.lat,d.x.lng])) singleMk(d); }); } else MAPDATA.forEach(singleMk); return; }
  const G={}, S=66; MAPDATA.forEach(d=>{ const p=MAP.project([d.x.lat,d.x.lng],z), k=Math.floor(p.x/S)+':'+Math.floor(p.y/S); (G[k]=G[k]||[]).push(d); });
  Object.values(G).forEach(g=>{ if(g.length===1) return singleMk(g[0]);
   const lat=g.reduce((s,d)=>s+d.x.lat,0)/g.length, lng=g.reduce((s,d)=>s+d.x.lng,0)/g.length, debt=g.reduce((s,d)=>s+Math.max(0,d.c.bal),0), col=g.some(d=>d.st.cls==='neg')?'#c0392b':g.some(d=>d.c.bal>0.5)?'#d98a00':'#1e8e5a', sz=Math.min(64,34+g.length*2);
@@ -1411,7 +1426,7 @@ function viewCustomer(){
    ${x.promiseDate?`<div class="promise ${x.promiseDate<today()?'late':''}" onclick="promiseForm('${x.id}')">${I('clock')} قول پرداخت: <b>${fd(x.promiseDate)}</b>${x.promiseAmt?' — '+money(x.promiseAmt):''}${x.promiseNote?'، '+esc(x.promiseNote):''}${x.promiseDate<today()?'، <b>گذشته!</b>':''}</div>`:''}
    ${x.note?`<div class="hint" style="margin-top:8px">📝 ${esc(x.note)}</div>`:''}</div></div>
  <div class="grid k4" style="margin-top:18px">${kpi('trend','#13a389','مجموع خرید از ما',money(c.sales),fm(c.cnt)+' بل فروش')}${kpi('cash','#16a37a','مجموع پرداخت',money(c.recv),c.sales?fm(Math.round(c.recv/c.sales*100))+'٪ وصول':'','pos')}${(()=>{ const sc=payScore(x.id); return kpi('clock','#f0b429','خوش‌حسابی',sc?stars(sc.st)+' '+sc.lb:'تازه',(sc&&sc.avg!==null?'معمولاً '+fm(Math.round(sc.avg))+' روزه می‌پردازد، ':'')+'قدیمی‌ترین بدهی '+fm(c.oldest||0)+' روز'); })()}${kpi('alert','#e5484d','سقف اعتبار',lim?money(lim):'تعیین نشده',lim&&c.bal>lim?'<span class="neg">از سقف گذشته</span>':'')}</div>
- ${(()=>{ const ms=persianMonths(6).filter(m=>m.to>=DB.settings.startDate); if(!ms.length||!c.cnt) return ''; const sv=ms.map(m=>DB.txns.filter(t=>!t.void&&t.party===x.id&&t.type==='sale'&&t.date>=m.from&&t.date<=m.to).reduce((a,t)=>a+txnTotal(t),0)), rv=ms.map(m=>DB.txns.filter(t=>!t.void&&t.party===x.id&&t.date>=m.from&&t.date<=m.to).reduce((a,t)=>a+(t.type==='receipt'?num(t.amount):t.type==='sale'?num(t.paid):0),0));
+ ${(()=>{ const ms=persianMonths(6).filter(m=>m.to>=DB.settings.startDate); if(!ms.length||!c.cnt) return ''; const sv=ms.map(m=>txOf(x.id).filter(t=>true&&t.type==='sale'&&t.date>=m.from&&t.date<=m.to).reduce((a,t)=>a+txnTotal(t),0)), rv=ms.map(m=>txOf(x.id).filter(t=>true&&t.date>=m.from&&t.date<=m.to).reduce((a,t)=>a+(t.type==='receipt'?num(t.amount):t.type==='sale'?num(t.paid):0),0));
   return `<div class="card" style="margin-top:18px"><h3>${I('chart')} خرید و پرداخت ماهانه</h3>${barChart(ms.map(m=>m.label),[{name:'خرید از ما',color:'#13a389',values:sv},{name:'پول داده',color:'#f08c2e',values:rv}],200)}</div>`; })()}
  ${planCard(x)}
  ${(x.visits||[]).length?`<div class="card" style="margin-top:18px"><h3>${I('pin')} ویزیت‌ها و قول‌ها</h3><div class="slist">${x.visits.slice().reverse().slice(0,8).map(v=>`<div class="sr" style="cursor:default"><div class="m"><b>${esc(v.note||'ویزیت — پول نداد')}</b><div class="mu">${new Date(v.at).toLocaleDateString('fa-AF-u-ca-persian',{month:'long',day:'numeric'})}، ${esc(v.by||'')}</div></div></div>`).join('')}</div></div>`:''}
@@ -1424,7 +1439,7 @@ function viewCustomer(){
 }
 function stmtRows(cid){ const x=cust(cid), rows=[]; let bal=0;
  if(num(x.openBal)){ bal=num(x.openBal); rows.push({d:DB.settings.startDate,desc:'طلب اول دوره',no:'',dr:bal>0?bal:0,cr:bal<0?-bal:0,bal}); }
- const tx=DB.txns.filter(t=>!t.void&&t.party===cid&&['sale','sreturn','receipt'].includes(t.type)).sort((a,b)=>(a.date+a.createdAt).localeCompare(b.date+b.createdAt));
+ const tx=txOf(cid).filter(t=>true&&['sale','sreturn','receipt'].includes(t.type)).sort((a,b)=>(a.date+a.createdAt).localeCompare(b.date+b.createdAt));
  for(const t of tx){ const tot=txnTotal(t);
   if(t.type==='sale'){ bal+=tot; rows.push({by:t.by,id:t.id,d:t.date,desc:'بل فروش ('+(t.items||[]).map(i=>pname(i.pid)).slice(0,3).join('، ')+')',no:t.no,dr:tot,cr:0,bal}); if(num(t.paid)){ bal-=num(t.paid); rows.push({by:t.by,id:t.id,d:t.date,desc:'نقد هنگام فروش',no:t.no,dr:0,cr:num(t.paid),bal}); } }
   if(t.type==='sreturn'){ bal-=tot; rows.push({by:t.by,id:t.id,d:t.date,desc:'مرجوعی جنس',no:t.no,dr:0,cr:tot,bal}); if(num(t.paid)){ bal+=num(t.paid); rows.push({by:t.by,id:t.id,d:t.date,desc:'پس‌دادن پول',no:t.no,dr:num(t.paid),cr:0,bal}); } }
@@ -1478,13 +1493,13 @@ function drawPList(){ const el=$('#plist'); if(!el) return; const c=C(), q=PQ.tr
 /* ---------- product detail & stock card (کاردکس) ---------- */
 function kardex(pid){ const p=prod(pid)||{}; let q=num(p.openQty); const rows=[]; if(q) rows.push({d:DB.settings.startDate,desc:'موجودی اول دوره',in:q,out:0,bal:q,price:num(p.openCost)});
  const lab={sale:'فروش',sreturn:'مرجوعی از دکان',purchase:'خرید',preturn:'مرجوعی به عمده‌فروش',adjust:'اصلاح موجودی'};
- for(const t of DB.txns.filter(t=>!t.void&&(t.items||[]).some(i=>i.pid===pid)).sort((a,b)=>(a.date+a.createdAt).localeCompare(b.date+b.createdAt)))
+ for(const t of txOfP(pid))
   for(const i of t.items.filter(i=>i.pid===pid)){ const n=num(i.qty), inc=['purchase','sreturn'].includes(t.type)||(t.type==='adjust'&&n>0), amt=Math.abs(n);
    q+=inc?amt:-amt; rows.push({id:t.id,d:t.date,no:t.no,desc:lab[t.type]+(partyName(t)?' — '+partyName(t):''),in:inc?amt:0,out:inc?0:amt,bal:q,price:num(i.price),type:t.type}); }
  return rows; }
 function viewProduct(){ const p=prod(R.id); if(!p) return '<div class="empty">پیدا نشد</div>'; const s=C().P[p.id]||{qty:0,avg:0,soldQty:0,rev:0,cogs:0,lastBuy:0}; const k=kardex(p.id);
  const d30=addDays(today(),-29); const sold30=k.filter(r=>r.type==='sale'&&r.d>=d30).reduce((a,r)=>a+r.out,0), perDay=sold30/30, days=perDay>0?Math.floor(s.qty/perDay):null;
- const buyers={}; DB.txns.forEach(t=>{ if(!t.void&&t.type==='sale') (t.items||[]).forEach(i=>{ if(i.pid===p.id) buyers[t.party]=(buyers[t.party]||0)+num(i.qty); }); });
+ const buyers={}; txOfP(p.id).forEach(t=>{ if(t.type==='sale') (t.items||[]).forEach(i=>{ if(i.pid===p.id) buyers[t.party]=(buyers[t.party]||0)+num(i.qty); }); });
  const top=Object.entries(buyers).sort((a,b)=>b[1]-a[1]).slice(0,5);
  return `<div class="row" style="margin-bottom:16px"><button class="btn alt sm" onclick="go('products')">${I('chev','flip')} همه اجناس</button><span style="flex:1"></span><button class="btn sm alt" onclick="productForm('${p.id}')">${I('edit')} ویرایش</button><button class="btn sm bl" onclick="purchaseForm();setTimeout(()=>addCart('${p.id}'),50)">${I('cart')} خرید</button></div>
  <div class="card">${p.photo?`<img class="cphoto" style="float:left;margin:0" src="${p.photo}" onclick="viewPhoto(this.src)">`:''}<div class="ctt">${esc(p.name)}</div><div class="mu">${esc([p.code,p.cat,p.unit].filter(Boolean).join('، '))}</div></div>
@@ -1535,7 +1550,7 @@ function viewSuppliers(){ const c=C(); const a=DB.suppliers.filter(s=>!s.deleted
  <div class="row" style="margin:18px 0 12px"><span style="flex:1" class="hint">تجارتخانه‌ها و عمده‌فروش‌ها در مندوی، شهرنو و…</span><button class="btn" onclick="supplierForm()">${I('plus')} عمده‌فروش جدید</button><button class="btn alt" onclick="bulkForm('s')">${I('in')} ورود گروهی</button></div>
  <div class="list">${a.map(s=>{ const u=c.SU[s.id]||{bal:0,last:''}; return `<div class="it" onclick="go('supplier','${s.id}')"><div class="av" style="--c:${colorOf(s.name)}">${esc(s.name[0]||'؟')}</div><div class="m"><div class="t">${esc(s.name)}</div><div class="d">${esc([s.owner,s.phone,s.area].filter(Boolean).join('، '))}${u.last?'، آخرین معامله '+fd(u.last):''}</div></div><div class="a ${u.bal>0.5?'neg':'pos'}">${money(u.bal)}</div></div>`; }).join('')||'<div class="card empty">عمده‌فروشی ثبت نشده</div>'}</div>`; }
 function suppRows(sid){ const s=supp(sid);
- const tx=DB.txns.filter(t=>!t.void&&t.party===sid).sort((a,b)=>(a.date+a.createdAt).localeCompare(b.date+b.createdAt)); let bal=num(s.openBal);
+ const tx=txOf(sid).filter(t=>true).sort((a,b)=>(a.date+a.createdAt).localeCompare(b.date+b.createdAt)); let bal=num(s.openBal);
  const rows=[]; if(bal) rows.push({d:DB.settings.startDate,desc:'قرض اول دوره',no:'',dr:0,cr:bal,bal});
  for(const t of tx){ const tot=txnTotal(t);
   if(t.type==='purchase'){ const owed=tot-num(t.extra); bal+=owed; rows.push({id:t.id,d:t.date,desc:'خرید جنس ('+(t.items||[]).map(i=>pname(i.pid)).slice(0,3).join('، ')+')',no:t.no,dr:0,cr:owed,bal}); if(num(t.paid)){ bal-=num(t.paid); rows.push({id:t.id,d:t.date,desc:'پرداخت هنگام خرید',no:t.no,dr:num(t.paid),cr:0,bal}); } }
@@ -1600,8 +1615,8 @@ const gpsBox=()=>`<div class="gstrip"><button type="button" class="btn sm bl" on
 
 /* ---------- point-of-sale cart ---------- */
 function cartBox(){ return sec('box','اجناس',`<div class="sbox">${I('search')}<input id="gq" placeholder="جستجوی جنس یا کد… (Enter = اضافه)" oninput="drawGrid()" onkeydown="gqKey(event)" autocomplete="off">${canScan()?`<button type="button" class="mic" title="اسکن بارکد" onclick="scanToCart()">${I('scan')}</button>`:''}</div><div id="usual"></div><div class="pgrid" id="pgrid"></div><div id="cart" class="cart"></div>`,`<span class="mu" id="cartCnt"></span>`); }
-function lastPrice(cid,pid){ if(!cid||cid==='__new') return 0; const t=DB.txns.filter(t=>!t.void&&t.type==='sale'&&t.party===cid&&(t.items||[]).some(i=>i.pid===pid)).sort((a,b)=>(b.date+b.createdAt).localeCompare(a.date+a.createdAt))[0]; return t?num(t.items.find(i=>i.pid===pid).price):0; }
-function lpDate(cid,pid){ const t=DB.txns.filter(t=>!t.void&&t.type==='sale'&&t.party===cid&&(t.items||[]).some(i=>i.pid===pid)).sort((a,b)=>(b.date+b.createdAt).localeCompare(a.date+a.createdAt))[0]; return t?t.date:''; }
+function lastPrice(cid,pid){ if(!cid||cid==='__new') return 0; const t=txOf(cid).filter(t=>t.type==='sale'&&(t.items||[]).some(i=>i.pid===pid)).sort((a,b)=>(b.date+b.createdAt).localeCompare(a.date+a.createdAt))[0]; return t?num(t.items.find(i=>i.pid===pid).price):0; }
+function lpDate(cid,pid){ const t=txOf(cid).filter(t=>t.type==='sale'&&(t.items||[]).some(i=>i.pid===pid)).sort((a,b)=>(b.date+b.createdAt).localeCompare(a.date+a.createdAt))[0]; return t?t.date:''; }
 function defPrice(pid){ const p=prod(pid)||{}; if(F.type==='sale'||F.type==='sreturn'){ const c=cust(fv('party')), adj=num((c||{}).priceAdj), base=adj?Math.round(num(p.price)*(1+adj/100)):num(p.price); const lp=lastPrice(fv('party'),pid); return lp&&(!p.priceAt||lpDate(fv('party'),pid)>=p.priceAt.slice(0,10))?lp:base; } if(F.type==='adjust') return 0; const afn=Math.round((C().P[pid]||{}).lastBuy||num(p.openCost)), rt=typeof fxRate==='function'&&$('#f_cur')?fxRate():1; return rt>0&&rt!==1?r2(afn/rt):afn; }
 function popularity(){ if(F._pop) return F._pop; const m={}; DB.txns.forEach(t=>{ if(!t.void)(t.items||[]).forEach(i=>m[i.pid]=(m[i.pid]||0)+1); }); return F._pop=m; }
 function drawGrid(){ const el=$('#pgrid'); if(!el) return; const q=(($('#gq')||{}).value||'').trim().toLowerCase(), pop=popularity();
@@ -1613,7 +1628,7 @@ function gqKey(e){ if(e.key!=='Enter') return; e.preventDefault(); const f=docum
 function quickProduct(){ const nm=($('#gq').value||'').trim(); if(!nm) return; const box=$('#pgrid');
  box.innerHTML=`<div class="card" style="grid-column:1/-1;width:100%"><b>جنس جدید: ${esc(nm)}</b><div class="f2" style="margin-top:10px">${fl('واحد',`<input class="in" id="qp_unit" value="کارتن">`)}${fl('قیمت فروش',`<input class="in" id="qp_price" inputmode="decimal">`)}</div><button type="button" class="btn" onclick="saveQuickProduct('${esc(nm).replace(/'/g,'')}')">${I('check')} ثبت و اضافه به بل</button></div>`; $('#qp_price').focus(); }
 function saveQuickProduct(nm){ const r=save('product',{code:nextNo('P'),name:nm,unit:($('#qp_unit').value||'دانه').trim(),price:num($('#qp_price').value)}); F._pop=null; $('#gq').value=''; addCart(r.id); toast('جنس «'+nm+'» ثبت شد — بعداً موجودی و قیمت خریدش را کامل کنید'); }
-function usualItems(cid){ const since=addDays(today(),-120), m={}; DB.txns.forEach(t=>{ if(t.void||t.type!=='sale'||t.party!==cid||t.date<since) return; (t.items||[]).forEach(i=>{ const o=m[i.pid]||(m[i.pid]={n:0,q:[],last:''}); o.n++; if(t.date>=o.last){ o.last=t.date; o.lq=num(i.qty); } }); });
+function usualItems(cid){ const since=addDays(today(),-120), m={}; txOf(cid).forEach(t=>{ if(t.void||t.type!=='sale'||t.date<since) return; (t.items||[]).forEach(i=>{ const o=m[i.pid]||(m[i.pid]={n:0,q:[],last:''}); o.n++; if(t.date>=o.last){ o.last=t.date; o.lq=num(i.qty); } }); });
  return Object.entries(m).filter(([pid,o])=>prod(pid)&&!prod(pid).deleted&&o.n>=2).sort((a,b)=>b[1].n-a[1].n).slice(0,6).map(([pid,o])=>({pid,n:o.n,q:o.lq||1})); }
 function drawUsual(){ const el=$('#usual'); if(!el) return; const v=fv('party'); if(F.type!=='sale'&&F.type!=='order'||!v||v==='__new'||v==='walkin'){ el.innerHTML=''; return; } const u=usualItems(v); if(!u.length){ el.innerHTML=''; return; }
  el.innerHTML=`<div class="mu" style="font-size:12px;margin:8px 0 6px">این دکان معمولاً می‌خرد (لمس = اضافه با تعداد دفعهٔ قبل):</div><div class="chips">${u.map(o=>`<button type="button" onclick="addUsual('${o.pid}',${o.q})">${esc(pname(o.pid))} × ${fm(o.q)}</button>`).join('')}<button type="button" onclick="usualItems(fv('party')).forEach(o=>addUsual(o.pid,o.q,1));drawCart();drawGrid();calcForm()">همه</button></div>`; }
@@ -1627,10 +1642,10 @@ function drawCart(){ const el=$('#cart'); if(!el) return; const adj=F.type==='ad
   <button type="button" class="x" onclick="F.cart.splice(${i},1);drawCart();drawGrid();calcForm()">✕</button></div>`; }).join('')||`<div class="hint" style="text-align:center;padding:6px">روی جنس بزنید تا به ${F.type==='adjust'?'لیست':'بل'} اضافه شود</div>`;
  const c=$('#cartCnt'); if(c) c.textContent=F.cart.length?fm(F.cart.length)+' قلم':''; }
 const belowCost=it=>{ const a=(C().P[it.pid]||{avg:0}).avg; return a>0&&num(it.price)>0&&num(it.price)<a-0.01; };
-function lastPricesTxt(pid,ix){ const cid=fv('party'); if(!cid||cid==='__new'||cid==='walkin') return ''; const ps=[...new Set(DB.txns.filter(t=>!t.void&&t.type==='sale'&&t.party===cid&&(t.items||[]).some(i=>i.pid===pid)).sort((a,b)=>(b.date+b.createdAt).localeCompare(a.date+a.createdAt)).slice(0,3).map(t=>num(t.items.find(i=>i.pid===pid).price)))];
+function lastPricesTxt(pid,ix){ const cid=fv('party'); if(!cid||cid==='__new'||cid==='walkin') return ''; const ps=[...new Set(txOf(cid).filter(t=>t.type==='sale'&&(t.items||[]).some(i=>i.pid===pid)).sort((a,b)=>(b.date+b.createdAt).localeCompare(a.date+a.createdAt)).slice(0,3).map(t=>num(t.items.find(i=>i.pid===pid).price)))];
  return ps.length?'، قبلاً به همین دکان: '+ps.map(v=>ix===undefined?fm(v):`<a href="javascript:void 0" style="font-weight:700" onclick="usePrice(${ix},${v})">${fm(v)}</a>`).join(' / '):''; }
 function drawRBills(){ const el=$('#rbills'); if(!el) return; const v=fv('party'); const ty=F.type==='sreturn'?'sale':F.type==='preturn'?'purchase':null; if(!ty||!v||v==='__new'){ el.innerHTML=''; return; }
- const bs=DB.txns.filter(t=>!t.void&&t.type===ty&&t.party===v).sort((a,b)=>(b.date+b.createdAt).localeCompare(a.date+a.createdAt)).slice(0,6);
+ const bs=txOf(v).filter(t=>t.type===ty).sort((a,b)=>(b.date+b.createdAt).localeCompare(a.date+a.createdAt)).slice(0,6);
  el.innerHTML=bs.length?`<div class="mu" style="font-size:12px;margin:10px 0 6px">از کدام بل برمی‌گردد؟ (اختیاری — اجناس همان بل با همان قیمت می‌آید)</div><div class="chips">${bs.map(t=>`<button type="button" class="${F.fromBill===t.id?'on':''}" onclick="retFromBill('${t.id}')">${fd(t.date)} — ${kfmt(txnTotal(t))}</button>`).join('')}</div>`:''; }
 function retFromBill(id){ const t=DB.txns.find(x=>x.id===id); if(!t) return; F.fromBill=id; F.cart=(t.items||[]).map(i=>({pid:i.pid,qty:num(i.qty),price:num(i.price)})); drawCart(); drawGrid(); calcForm(); drawRBills(); toast('اجناس بل '+t.no+' آمد — تعداد برگشتی را درست کنید'); }
 function usePrice(i,v){ const it=F.cart[i]; if(!it) return; if(it.u2){ it.u2=false; } it.price=v; drawCart(); calcForm(); }
@@ -1837,7 +1852,7 @@ function setupCard(){ if(META.setupDone||!can('settings')) return ''; const s=DB
  <div class="hint" style="margin-top:10px">برای امتحان می‌توانید از تنظیمات «دادهٔ آزمایشی» را بارگذاری کنید.</div></div>`; }
 
 /* ---------- repeat last bill ---------- */
-function lastSale(cid){ return DB.txns.filter(t=>!t.void&&t.type==='sale'&&t.party===cid).sort((a,b)=>(b.date+b.createdAt).localeCompare(a.date+a.createdAt))[0]; }
+function lastSale(cid){ return txOf(cid).filter(t=>t.type==='sale').sort((a,b)=>(b.date+b.createdAt).localeCompare(a.date+a.createdAt))[0]; }
 function repeatLast(){ const t=lastSale(fv('party')); if(!t) return; F.cart=t.items.map(i=>i.u2?{pid:i.pid,u2:true,q2:num(i.q2),p2:num((prod(i.pid)||{}).price2)||num(i.p2),qty:num(i.q2)/pk(prod(i.pid)),price:(num((prod(i.pid)||{}).price2)||num(i.p2))*pk(prod(i.pid))}:{pid:i.pid,qty:num(i.qty),price:num((prod(i.pid)||{}).price)||num(i.price)}).filter(i=>prod(i.pid)&&!prod(i.pid).deleted); drawCart(); drawGrid(); calcForm(); toast('اجناس بل قبلی اضافه شد — تعداد را بررسی کنید'); }
 function repeatChip(){ const el=$('#repeatBox'); if(!el) return; const t=F.type==='sale'&&fv('party')&&fv('party')!=='__new'?lastSale(fv('party')):null;
  el.innerHTML=t?`<button type="button" class="btn sm alt" onclick="repeatLast()">${I('sync')} تکرار بل قبلی (${fd(t.date)}، ${fm(t.items.length)} قلم)</button>`:''; }
@@ -1856,7 +1871,7 @@ function printCollect(){ const c=C(), g=x=>c.CU[x.id]||{bal:0,oldest:0};
  let a=DB.customers.filter(x=>!x.deleted&&g(x).bal>0.5); if(CA) a=a.filter(x=>(x.area||'').split(/[،,]/)[0].trim()===CA);
  if(ROUTE&&ROUTE.ids&&ROUTE.ids.length){ const o={}; ROUTE.ids.forEach((id,i)=>o[id]=i+1); a.sort((x,y)=>(o[x.id]||999)-(o[y.id]||999)||g(y).bal-g(x).bal); } else a.sort((x,y)=>(x.area||'').localeCompare(y.area||'','fa')||g(y).bal-g(x).bal);
  if(!a.length) return toast('دکان بدهکاری نیست');
- const lastPay=id=>{ const t=DB.txns.filter(t=>!t.void&&t.party===id&&(t.type==='receipt'||(t.type==='sale'&&num(t.paid)>0))).sort((p,q)=>q.date.localeCompare(p.date))[0]; return t?fd(t.date):'—'; };
+ const lastPay=id=>{ const t=txOf(id).filter(t=>true&&(t.type==='receipt'||(t.type==='sale'&&num(t.paid)>0))).sort((p,q)=>q.date.localeCompare(p.date))[0]; return t?fd(t.date):'—'; };
  const tot=a.reduce((s,x)=>s+g(x).bal,0);
  $('#printArea').innerHTML=`<div class="inv">${pHead('لیست وصولی طلب‌ها',(CA?'ساحه: '+esc(CA)+'، ':'')+fm(a.length)+' دکان')}
  <table class="itbl"><thead><tr><th>#</th><th>دکان</th><th>صاحب / شماره</th><th>ساحه</th><th>طلب</th><th>روز</th><th>آخرین پول</th><th style="width:90px">گرفته شد</th><th style="width:70px">امضا</th></tr></thead><tbody>${a.map((x,i)=>`<tr><td>${fm(i+1)}</td><td><b>${esc(x.name)}</b></td><td>${esc(x.owner||'')}<br><span dir="ltr">${esc(x.phone||'')}</span></td><td>${esc(x.area||'')}</td><td><b>${fm(g(x).bal)}</b></td><td>${fm(g(x).oldest)}</td><td>${lastPay(x.id)}</td><td></td><td></td></tr>`).join('')}</tbody></table>
@@ -1910,7 +1925,7 @@ function changesCard(){ if(roleOf(META.user)!=='owner') return ''; const since=a
  return `<div class="card" style="margin-bottom:18px"><h3>${I('alert')} ثبت‌ها و تغییرات دیگران که باید ببینید<span class="sp"></span><button class="btn sm alt" onclick="R={v:'reports',tab:'log'};render()">همه</button></h3><div class="slist">${unRow}${ev.slice(0,5).map(e=>`<div class="sr" ${e.id?`onclick="showTxn('${e.id}')"`:'style="cursor:default"'}><span class="badge" style="--c:${e.c}">${e.k}</span><div class="m"><b style="font-weight:600">${esc(e.txt)}</b><div class="mu">${who(e.by)} ${new Date(e.at).toLocaleString('fa-AF-u-ca-persian',{month:'long',day:'numeric',hour:'2-digit',minute:'2-digit'})}</div></div></div>`).join('')}</div></div>`; }
 
 /* ---------- supplier statement & payment due dates ---------- */
-function suppDue(sid){ const t=DB.txns.filter(t=>!t.void&&t.type==='purchase'&&t.party===sid&&t.due).sort((a,b)=>(b.date+b.createdAt).localeCompare(a.date+a.createdAt))[0]; return t?t.due:null; }
+function suppDue(sid){ const t=txOf(sid).filter(t=>t.type==='purchase'&&t.due).sort((a,b)=>(b.date+b.createdAt).localeCompare(a.date+a.createdAt))[0]; return t?t.due:null; }
 function suppStmtText(sid){ const s=supp(sid), rows=suppRows(sid).slice(-12), bal=(C().SU[sid]||{bal:0}).bal;
  return `سلام ${s.owner||s.name}، صورت‌حساب ${DB.settings.biz||'ابراهیمی'} نزد شما تا ${fd(today())}:\n`+rows.map(r=>`${fd(r.d)}، ${r.desc}: ${r.dr?'پرداخت '+fm(Math.round(r.dr)):'خرید '+fm(Math.round(r.cr))} — مانده ${fm(Math.round(r.bal))}`).join('\n')+`\n\nمانده قرض ما: ${money(bal)}\nلطفاً با حساب خود مقایسه کنید.`; }
 function printSuppStatement(sid){ const x=supp(sid), rows=suppRows(sid), bal=(C().SU[sid]||{bal:0}).bal;
@@ -1945,7 +1960,7 @@ function printYear(){ const ys=yearData(), cp=can('profit'); let T={s:0,g:0,e:0,
 let FCD=14;
 function pDay(d){ try{ return parseInt(new Intl.DateTimeFormat('en-u-ca-persian',{day:'numeric'}).format(new Date(d+'T12:00:00')),10); }catch(e){ return +d.slice(8); } }
 function repForecast(){ const td=today(), N=FCD, c=C(), start=balOf('1010')+balOf('1020');
- const past=DB.txns.filter(t=>!t.void&&t.date>addDays(td,-30)&&t.date<=td);
+ const past=lastDays(30);
  const avgIn=past.reduce((s,t)=>s+(t.type==='receipt'?num(t.amount):t.type==='sale'?num(t.paid):0),0)/30;
  const avgVar=past.filter(t=>t.type==='expense'&&!t.fixed).reduce((s,t)=>s+num(t.amount),0)/30;
  const days=[]; for(let i=1;i<=N;i++) days.push({d:addDays(td,i),ins:[],outs:[]});
@@ -2074,7 +2089,7 @@ function fixOrphans(){ const l=orphanTxns(); let n=0, u=0; batch(()=>l.forEach(t
  closeModal(); toast('✓ '+fm(n)+' سند به دکان درست منتقل شد'+(u?'، '+fm(u)+' دکان حذف‌شده برگردانده شد':'')); render(); }
 
 /* ---------- installment plans for big debts ---------- */
-function planPaid(x){ const at=x.plan.at; return DB.txns.filter(t=>!t.void&&t.party===x.id&&(t.createdAt||t.date)>=at&&(t.type==='receipt'||t.type==='sale')).reduce((s,t)=>s+(t.type==='receipt'?num(t.amount)+num(t.discount):num(t.paid)),0); }
+function planPaid(x){ const at=x.plan.at; return txOf(x.id).filter(t=>true&&(t.createdAt||t.date)>=at&&(t.type==='receipt'||t.type==='sale')).reduce((s,t)=>s+(t.type==='receipt'?num(t.amount)+num(t.discount):num(t.paid)),0); }
 function planStatus(x){ const td=today(), paid=planPaid(x); let cum=0, due=0, firstLate=null; const items=x.plan.items.map(it=>{ cum+=it.amt; const ok=paid>=cum-0.5; if(it.d<=td){ due=cum; if(!ok&&!firstLate) firstLate=it.d; } return Object.assign({},it,{ok}); });
  return {items,paid,due,behind:Math.max(0,due-paid),lateDays:firstLate?daysBetween(firstLate,td):0,done:paid>=cum-0.5}; }
 function planForm(id){ if(!can('edit')) return toast('قسط‌بندی را مالک تعیین می‌کند'); const x=cust(id), b=(C().CU[id]||{bal:0}).bal; if(b<=0.5) return toast('این دکان بدهی ندارد'); F={type:'plan',id,n:4,every:7,start:addDays(today(),7),total:Math.round(b)};
@@ -2246,8 +2261,8 @@ const fxRate=()=>{ const c=fv('cur'); return c&&c!=='AFN'?num(fv('rate')):1; };
 
 /* ---------- activity log ---------- */
 let ALU='';
-function repLog(){ const ev=[]; const nm=t=>(TT[t.type]||[''])[0]+' '+(t.no||'')+(partyName(t)?' — '+partyName(t):'');
- DB.txns.forEach(t=>{ ev.push({at:t.createdAt,by:t.by,txt:'ثبت '+nm(t),amt:txnTotal(t),id:t.id,k:'new'}); (t.history||[]).forEach(h=>ev.push({at:h.at,by:h.by,txt:'ویرایش '+nm(t),id:t.id,k:'edit'})); if(t.void) ev.push({at:t.voidAt,by:t.voidBy,txt:'ابطال '+nm(t)+(t.voidReason?' ('+t.voidReason+')':''),id:t.id,k:'void'}); });
+function repLog(){ const ev=[]; const nm=t=>(TT[t.type]||[''])[0]+' '+(t.no||'')+(partyName(t)?' — '+partyName(t):''); const lim=DB.txns.length>3000?addDays(today(),-45):'';
+ DB.txns.forEach(t=>{ if(lim&&(t.createdAt||'')<lim&&!(t.history&&t.history.length)&&!t.void) return; ev.push({at:t.createdAt,by:t.by,get txt(){ return 'ثبت '+nm(t); },get amt(){ return txnTotal(t); },id:t.id,k:'new'}); (t.history||[]).forEach(h=>ev.push({at:h.at,by:h.by,txt:'ویرایش '+nm(t),id:t.id,k:'edit'})); if(t.void) ev.push({at:t.voidAt,by:t.voidBy,txt:'ابطال '+nm(t)+(t.voidReason?' ('+t.voidReason+')':''),id:t.id,k:'void'}); });
  [['customer',DB.customers,'دکان'],['product',DB.products,'جنس'],['supplier',DB.suppliers,'عمده‌فروش']].forEach(([k,a,l])=>a.forEach(x=>{ if(x.createdAt) ev.push({at:x.createdAt,by:x.by,txt:l+' جدید: '+x.name,k:'ent'}); if(x.deleted) ev.push({at:x.updatedAt,by:x.updatedBy||'',txt:l+' حذف شد: '+x.name,k:'void'}); (x.priceHist||[]).forEach(h=>ev.push({at:h.at,by:h.by,txt:'قیمت «'+x.name+'» از '+fm(h.old)+' به '+fm(h.new)+' تغییر کرد',k:'edit'})); }));
  const list=ev.filter(e=>e.at&&(!ALU||e.by===ALU)).sort((a,b)=>b.at.localeCompare(a.at)).slice(0,250);
  const col={new:'#13a389',edit:'#f08c2e',void:'#e5484d',ent:'#3b6fd8'};
@@ -2435,7 +2450,7 @@ function viewPersons(){ const a=(DB.persons||[]).filter(x=>!x.deleted);
  <div class="row" style="margin:18px 0 12px"><span class="hint" style="flex:1">کارگرها (معاش و پیشکی) و اشخاصی که از آن‌ها قرض گرفته یا به آن‌ها قرض داده‌اید — جدا از دکان‌ها.</span><button class="btn" onclick="personForm()">${I('plus')} شخص جدید</button></div>
  <div class="list">${a.map(x=>{ const b=personBal(x.id); return `<div class="it" onclick="go('person','${x.id}')"><div class="av" style="--c:${colorOf(x.name)}">${esc(x.name[0]||'؟')}</div><div class="m"><div class="t">${esc(x.name)} <span class="badge" style="--c:${x.role==='worker'?'#3b6fd8':'#8b5cf6'}">${x.role==='worker'?'کارگر':'شخص'}</span></div><div class="d">${x.role==='worker'&&num(x.salary)?'معاش '+money(x.salary):esc(x.phone||'')}</div></div><div class="a ${b>0.5?'warn':b<-0.5?'neg':'pos'}">${Math.abs(b)<0.5?'تصفیه':(b>0?'طلب ما ':'قرض ما ')+money(Math.abs(b))}</div></div>`; }).join('')||'<div class="card empty">هنوز کسی ثبت نشده</div>'}</div>`; }
 function viewPerson(){ const x=(DB.persons||[]).find(p=>p.id===R.id); if(!x) return '<div class="empty">پیدا نشد</div>'; const b=personBal(x.id);
- const tx=DB.txns.filter(t=>!t.void&&t.party===x.id&&PTYPES.includes(t.type)).sort((a,b)=>(b.date+b.createdAt).localeCompare(a.date+a.createdAt));
+ const tx=txOf(x.id).filter(t=>true&&PTYPES.includes(t.type)).sort((a,b)=>(b.date+b.createdAt).localeCompare(a.date+a.createdAt));
  const lab={wage:'معاش',advance:'پیشکی / قرض دادیم',advret:'پس داد',borrow:'قرض گرفتیم',repay:'قرض را پس دادیم'};
  return `<div class="row" style="margin-bottom:16px"><button class="btn alt sm" onclick="go('persons')">${I('chev','flip')} همه اشخاص</button></div>
  <div class="card chero"><div class="ring sm">${ringSvg(Math.abs(b)>0.5?60:100,b>0.5?'#f08c2e':b<-0.5?'#e5484d':'#16a37a')}<div class="in"><b class="${b>0.5?'warn':b<-0.5?'neg':'pos'}">${money(Math.abs(b))}</b><span>${Math.abs(b)<0.5?'تصفیه است':b>0?'به ما بدهکار است':'ما بدهکاریم'}</span></div></div>
@@ -2543,7 +2558,7 @@ function viewTxns(){ const types=[['','همه'],['sale','فروش'],['receipt','
  <div id="tlist"></div>`; }
 let WD; try{ WD=new Intl.DateTimeFormat('fa-AF',{weekday:'long'}); }catch(e){}
 function drawTList(){ const el=$('#tlist'); if(!el) return; const q=TQ.q.trim().toLowerCase();
- let a=DB.txns.filter(t=>TQ.type==='void'?t.void:(!t.void&&(!TQ.type||t.type===TQ.type||(TQ.type==='sreturn'&&t.type==='preturn')||(TQ.type==='load'&&t.type==='unload'))));
+ let a=(TQ.type==='void'?DB.txns:C().sorted.slice().reverse()).filter(t=>TQ.type==='void'?t.void:(!t.void&&(!TQ.type||t.type===TQ.type||(TQ.type==='sreturn'&&t.type==='preturn')||(TQ.type==='load'&&t.type==='unload'))));
  if(TQ.from) a=a.filter(t=>t.date>=TQ.from); if(TQ.to) a=a.filter(t=>t.date<=TQ.to);
  { const cnt={}; a.forEach(t=>{ if(t.by) cnt[t.by]=(cnt[t.by]||0)+1; }); const us=[...new Set([...(DB.settings.users||[]),...Object.keys(cnt)])]; const uc=$('#uchips');
    if(uc) uc.innerHTML=`<span class="mu" style="align-self:center;font-size:12px">ثبت‌کننده:</span><button class="${!TQ.user?'on':''}" style="--c:var(--g)" onclick="TQ.user='';drawTList()">همه <i>${fm(a.length)}</i></button>`+us.map(u=>`<button class="${TQ.user===u?'on':''}" style="--c:${colorOf(u)}" onclick="TQ.user=this.dataset.u;drawTList()" data-u="${esc(u)}">${esc(u)} <i>${fm(cnt[u]||0)}</i></button>`).join(''); }
@@ -2690,7 +2705,7 @@ function viewSettings(){ const s=DB.settings, sc=META.sync;
  <button class="btn" onclick="saveSettings()">${I('check')} ذخیره</button><div class="hint" style="margin-top:8px">کد این دستگاه: <b>${META.device}</b> (در نمبر بل‌ها می‌آید تا بل‌های گوشی و کامپیوتر قاطی نشوند)</div></div>
  <div class="card"><h3>${I('in')} پشتیبان (بکاپ)</h3><div class="hint">همه اطلاعات در همین مرورگر ذخیره است. هر هفته یک بکاپ بگیرید و در گوگل‌درایو/تلگرام نگه دارید.</div>
  <div class="row" style="margin-top:10px"><button class="btn" onclick="exportJSON()">${I('in')} دانلود بکاپ کامل</button><label class="btn alt">${I('out')} بازیابی از بکاپ<input type="file" accept=".json,application/json" style="display:none" onchange="importJSON(this.files[0])"></label></div>
- <div class="row" style="margin-top:8px"><button class="btn sm" style="--c:#1d6f42" onclick="exportExcel()">${I('in')} Excel کامل</button><button class="btn alt sm" onclick="exportCSV('cust')">CSV طلب‌ها</button><button class="btn alt sm" onclick="exportCSV('tx')">CSV معاملات</button><button class="btn alt sm" onclick="exportCSV('stock')">CSV موجودی</button><button class="btn alt sm" onclick="window.print()">${I('print')} چاپ صفحه</button></div>
+ <div class="hint" id="stinfo" style="margin-top:8px"></div><div class="row" style="margin-top:8px"><button class="btn sm" style="--c:#1d6f42" onclick="exportExcel()">${I('in')} Excel کامل</button><button class="btn alt sm" onclick="exportCSV('cust')">CSV طلب‌ها</button><button class="btn alt sm" onclick="exportCSV('tx')">CSV معاملات</button><button class="btn alt sm" onclick="exportCSV('stock')">CSV موجودی</button><button class="btn alt sm" onclick="window.print()">${I('print')} چاپ صفحه</button></div>
  <div class="row" style="margin-top:14px"><button class="btn or sm" onclick="confirmBtn(this,loadDemo)">بارگذاری دادهٔ آزمایشی</button><button class="btn red sm" onclick="confirmBtn(this,wipeAll)">پاک کردن همه</button></div></div>
  <div class="card" style="grid-column:1/-1"><h3>${I('sync')} همگام‌سازی گوشی ⇄ کامپیوتر (Supabase — رایگان)</h3>
  <div class="hint">با این بخش، هر چیزی که با گوشی در دکان ثبت می‌شود، شب روی کامپیوتر هم دیده می‌شود (و برعکس). بدون انترنت هم کار می‌کند و وقتی انترنت آمد خودش همگام می‌کند.<br>
