@@ -245,6 +245,10 @@ svg.flip{transform:scaleX(-1)}
 #side .keys{font-size:11px;color:var(--mu);margin-top:14px;text-align:center;direction:rtl}
 /* printable invoice */
 #printArea{display:none}
+.urow{padding:12px;border-radius:18px;box-shadow:var(--upS);margin-bottom:12px}
+.uh{display:flex;align-items:center;gap:12px}.uh .m{flex:1;min-width:0}.uh .t{font-weight:700}.uh .d{font-size:12.5px;color:var(--mu)}
+.uc{display:flex;gap:8px;margin-top:10px;align-items:center;flex-wrap:wrap}.uc select{flex:1;min-width:150px}
+
 .dayh{display:flex;justify-content:space-between;align-items:flex-end;gap:10px;flex-wrap:wrap;margin:18px 4px 10px}
 .dayh .mu{font-size:12.5px}.dsum{display:flex;gap:12px;font-size:12.5px;color:var(--mu)}.dsum b{font-weight:800}
 
@@ -375,7 +379,7 @@ svg.flip{transform:scaleX(-1)}
 <script id="engine">
 'use strict';
 const LS = 'ebrahimi_acc_v1';
-const VERSION = '2.3';
+const VERSION = '2.4';
 
 /* ---- Chart of accounts (کدینگ حساب‌ها) ----
    nature: A=asset (debit), L=liability (credit), E=equity (credit), E-=contra equity (debit),
@@ -778,10 +782,10 @@ function needUnlock(){ if(!hasPins()) return false; try{ return sessionStorage.g
 ['pointerdown','keydown'].forEach(ev=>document.addEventListener(ev,()=>{ lastAct=Date.now(); },{passive:true}));
 setInterval(()=>{ const m=num(DB.settings.autoLock); if(m>0&&hasPins()&&$('#lock').classList.contains('hide')&&Date.now()-lastAct>m*60000){ try{ sessionStorage.removeItem('ia_unlock'); }catch(e){} LK={user:META.user,pin:'',mode:'unlock'}; drawLock(); } },15000);
 function usersCard(){ const s=DB.settings, me=META.user;
- return `<div class="card"><h3>${I('user')} کاربران، نقش و رمز</h3><div class="list">${(s.users||[]).map(u=>`<div class="it" style="cursor:default"><div class="av" style="--c:${colorOf(u)}">${esc(u[0]||'؟')}</div><div class="m"><div class="t">${esc(u)} ${u===me?'<span class="badge" style="--c:var(--g2)">شما</span>':''}</div>
-  <div class="d">${(s.pins||{})[u]?'🔒 رمز دارد':'بدون رمز'}</div></div>
+ return `<div class="card"><h3>${I('user')} کاربران، نقش و رمز</h3><div class="list">${(s.users||[]).map(u=>`<div class="urow"><div class="uh"><div class="av" style="--c:${colorOf(u)}">${esc(u[0]||'؟')}</div><div class="m"><div class="t">${esc(u)} ${u===me?'<span class="badge" style="--c:var(--g2)">شما</span>':''}</div>
+  <div class="d">${(s.pins||{})[u]?'🔒 رمز دارد':'بدون رمز'}</div></div></div><div class="uc">
   <select class="in" style="width:auto;padding:8px" onchange="setRole('${esc(u).replace(/'/g,'')}',this.value)">${Object.entries(ROLE_N).map(([k,v])=>`<option value="${k}" ${roleOf(u)===k?'selected':''}>${v}</option>`).join('')}</select>
-  <button class="btn sm alt" onclick="setPin('${esc(u).replace(/'/g,'')}')">${(s.pins||{})[u]?'تغییر رمز':'گذاشتن رمز'}</button>${(s.pins||{})[u]?`<button class="btn sm alt" onclick="confirmBtn(this,()=>removePin('${esc(u).replace(/'/g,'')}'))">✕</button>`:''}</div>`).join('')}</div>
+  <button class="btn sm alt" onclick="setPin('${esc(u).replace(/'/g,'')}')">${(s.pins||{})[u]?'تغییر رمز':'گذاشتن رمز'}</button>${(s.pins||{})[u]?`<button class="btn sm alt" onclick="confirmBtn(this,()=>removePin('${esc(u).replace(/'/g,'')}'))">✕</button>`:''}</div></div>`).join('')}</div>
   <div class="row" style="margin-top:6px"><input class="in" id="s_newuser" placeholder="نام کاربر جدید" style="flex:1;min-width:140px"><button class="btn sm" onclick="addUser()">＋ افزودن</button></div>
   ${fl('قفل خودکار بعد از بی‌کاری',`<select class="in" id="s_autolock" onchange="save('settings',Object.assign({},DB.settings,{autoLock:num(this.value)}));toast('ذخیره شد')">${[[0,'هرگز'],[2,'۲ دقیقه'],[5,'۵ دقیقه'],[15,'۱۵ دقیقه'],[30,'۳۰ دقیقه']].map(o=>`<option value="${o[0]}" ${num(s.autoLock)===o[0]?'selected':''}>${o[1]}</option>`).join('')}</select>`)}
   <div class="hint">«فروشنده» می‌تواند بل، دریافت، خرید و مصرف ثبت کند؛ ولی ویرایش و ابطال سند، گزارش‌های سود و زیان، قیمت تمام‌شده و تنظیمات را نمی‌بیند. با رمز، گوشی را اگر کسی دیگر بردارد حساب‌ها را نمی‌بیند.</div></div>`; }
@@ -1573,17 +1577,17 @@ function viewSettings(){ const s=DB.settings, sc=META.sync;
  ${usersCard()}
  <div class="card"><h3>${I('sun')} نمایش</h3>${fl('اندازهٔ متن',`<div class="seg">${[['','عادی'],['lg','بزرگ'],['xl','خیلی بزرگ']].map(o=>`<button type="button" class="${(META.font||'')===o[0]?'on':''}" onclick="setFont('${o[0]}')">${o[1]}</button>`).join('')}</div>`)}${fl('حالت',`<div class="seg"><button type="button" class="${META.theme!=='dark'?'on':''}" onclick="setTheme('light');render()">${I('sun')} روز</button><button type="button" class="${META.theme==='dark'?'on':''}" onclick="setTheme('dark');render()">${I('moon')} شب</button></div>`)}
  <button class="btn alt" style="width:100%" onclick="healthCheck()">${I('check')} بررسی سلامت حساب‌ها</button>${typeof deferredInstall!=='undefined'&&deferredInstall?`<button class="btn" style="width:100%;margin-top:10px" onclick="installApp()">${I('in')} نصب اپ روی گوشی</button>`:''}</div>
- <div class="card"><h3>🏢 کسب‌وکار</h3>${fl('نام',`<input class="in" id="s_biz" value="${esc(s.biz)}">`)}<div class="f2">${fl('شماره تماس (روی بل چاپی)',`<input class="in" id="s_phone" dir="ltr" value="${esc(s.phone||'')}">`)}${fl('آدرس (روی بل چاپی)',`<input class="in" id="s_addr" value="${esc(s.addr||'')}">`)}</div><div class="f2">${fl('پول نقد در صندوق در روز شروع',`<input class="in" id="s_ocash" inputmode="decimal" value="${s.openCash||''}" placeholder="۰">`)}${fl('پول در بانک/حواله در روز شروع',`<input class="in" id="s_obank" inputmode="decimal" value="${s.openBank||''}" placeholder="۰">`)}</div>${fl('تاریخ شروع حساب‌ها (اول دوره)',`<input class="in" type="date" id="s_start" value="${s.startDate}">`)}
- <button class="btn" onclick="saveSettings()">💾 ذخیره</button><div class="hint" style="margin-top:8px">کد این دستگاه: <b>${META.device}</b> (در نمبر بل‌ها می‌آید تا بل‌های گوشی و کامپیوتر قاطی نشوند)</div></div>
- <div class="card"><h3>💾 پشتیبان (بکاپ)</h3><div class="hint">همه اطلاعات در همین مرورگر ذخیره است. هر هفته یک بکاپ بگیرید و در گوگل‌درایو/تلگرام نگه دارید.</div>
- <div class="row" style="margin-top:10px"><button class="btn" onclick="exportJSON()">⬇️ دانلود بکاپ کامل</button><label class="btn alt">⬆️ بازیابی از بکاپ<input type="file" accept=".json,application/json" style="display:none" onchange="importJSON(this.files[0])"></label></div>
- <div class="row" style="margin-top:8px"><button class="btn alt sm" onclick="exportCSV('cust')">CSV طلب‌ها</button><button class="btn alt sm" onclick="exportCSV('tx')">CSV معاملات</button><button class="btn alt sm" onclick="exportCSV('stock')">CSV موجودی</button><button class="btn alt sm" onclick="window.print()">🖨️ چاپ صفحه</button></div>
- <div class="row" style="margin-top:14px"><button class="btn or sm" onclick="confirmBtn(this,loadDemo)">🧪 بارگذاری دادهٔ آزمایشی</button><button class="btn red sm" onclick="confirmBtn(this,wipeAll)">🗑️ پاک کردن همه</button></div></div>
- <div class="card" style="grid-column:1/-1"><h3>☁️ همگام‌سازی گوشی ⇄ کامپیوتر (Supabase — رایگان)</h3>
+ <div class="card"><h3>${I('shop')} کسب‌وکار</h3>${fl('نام',`<input class="in" id="s_biz" value="${esc(s.biz)}">`)}<div class="f2">${fl('شماره تماس (روی بل چاپی)',`<input class="in" id="s_phone" dir="ltr" value="${esc(s.phone||'')}">`)}${fl('آدرس (روی بل چاپی)',`<input class="in" id="s_addr" value="${esc(s.addr||'')}">`)}</div><div class="f2">${fl('پول نقد در صندوق در روز شروع',`<input class="in" id="s_ocash" inputmode="decimal" value="${s.openCash||''}" placeholder="۰">`)}${fl('پول در بانک/حواله در روز شروع',`<input class="in" id="s_obank" inputmode="decimal" value="${s.openBank||''}" placeholder="۰">`)}</div>${fl('تاریخ شروع حساب‌ها (اول دوره)',`<input class="in" type="date" id="s_start" value="${s.startDate}">`)}
+ <button class="btn" onclick="saveSettings()">${I('check')} ذخیره</button><div class="hint" style="margin-top:8px">کد این دستگاه: <b>${META.device}</b> (در نمبر بل‌ها می‌آید تا بل‌های گوشی و کامپیوتر قاطی نشوند)</div></div>
+ <div class="card"><h3>${I('in')} پشتیبان (بکاپ)</h3><div class="hint">همه اطلاعات در همین مرورگر ذخیره است. هر هفته یک بکاپ بگیرید و در گوگل‌درایو/تلگرام نگه دارید.</div>
+ <div class="row" style="margin-top:10px"><button class="btn" onclick="exportJSON()">${I('in')} دانلود بکاپ کامل</button><label class="btn alt">${I('out')} بازیابی از بکاپ<input type="file" accept=".json,application/json" style="display:none" onchange="importJSON(this.files[0])"></label></div>
+ <div class="row" style="margin-top:8px"><button class="btn alt sm" onclick="exportCSV('cust')">CSV طلب‌ها</button><button class="btn alt sm" onclick="exportCSV('tx')">CSV معاملات</button><button class="btn alt sm" onclick="exportCSV('stock')">CSV موجودی</button><button class="btn alt sm" onclick="window.print()">${I('print')} چاپ صفحه</button></div>
+ <div class="row" style="margin-top:14px"><button class="btn or sm" onclick="confirmBtn(this,loadDemo)">بارگذاری دادهٔ آزمایشی</button><button class="btn red sm" onclick="confirmBtn(this,wipeAll)">پاک کردن همه</button></div></div>
+ <div class="card" style="grid-column:1/-1"><h3>${I('sync')} همگام‌سازی گوشی ⇄ کامپیوتر (Supabase — رایگان)</h3>
  <div class="hint">با این بخش، هر چیزی که با گوشی در دکان ثبت می‌شود، شب روی کامپیوتر هم دیده می‌شود (و برعکس). بدون انترنت هم کار می‌کند و وقتی انترنت آمد خودش همگام می‌کند.<br>
  ۱) در supabase.com یک پروژهٔ رایگان بسازید. ۲) یک «رمز همگام‌سازی» دلخواه پایین بنویسید. ۳) کد SQL زیر را کاپی کرده در SQL Editor اجرا کنید. ۴) Project URL و anon key را از Settings › API اینجا بگذارید. ۵) روی همهٔ دستگاه‌ها همین سه مقدار را وارد کنید.</div>
  <div class="grid k3" style="margin-top:10px">${fl('Project URL',`<input class="in" id="s_url" dir="ltr" value="${esc(sc.url||'')}" placeholder="https://xxxx.supabase.co">`)}${fl('anon / publishable key',`<input class="in" id="s_key" dir="ltr" value="${esc(sc.key||'')}">`)}${fl('رمز همگام‌سازی (طولانی و مخفی)',`<input class="in" id="s_secret" dir="ltr" value="${esc(sc.secret||'')}" oninput="$('#sqlBox').textContent=syncSQL(this.value)">`)}</div>
- <div class="row"><button class="btn" onclick="saveSync()">💾 ذخیره و همگام‌سازی</button><button class="btn alt" onclick="doSync(true)">🔄 همین حالا همگام کن</button><button class="btn alt sm" onclick="navigator.clipboard.writeText($('#sqlBox').textContent).then(()=>toast('SQL کاپی شد'))">📋 کاپی SQL</button></div>
+ <div class="row"><button class="btn" onclick="saveSync()">${I('check')} ذخیره و همگام‌سازی</button><button class="btn alt" onclick="doSync(true)">${I('sync')} همین حالا همگام کن</button><button class="btn alt sm" onclick="navigator.clipboard.writeText($('#sqlBox').textContent).then(()=>toast('SQL کاپی شد'))">کاپی SQL</button></div>
  <div class="hint" style="margin-top:6px">وضعیت: ${syncState==='ok'?'✅ همگام':syncState==='err'?'❌ '+esc(META.lastSyncErr||''):syncState==='off'?'خاموش':'…'} ${META.lastSyncAt?' · آخرین همگام‌سازی: '+new Date(META.lastSyncAt).toLocaleString('fa-AF'):''} · ${fm(META.dirty.length)} ثبت ارسال‌نشده</div>
  <details style="margin-top:8px"><summary class="mu">نمایش کد SQL</summary><pre class="code" id="sqlBox">${esc(syncSQL(sc.secret))}</pre></details></div>
  </div><div class="hint" style="margin-top:10px;text-align:center">ابراهیمی اکانتینگ نسخهٔ ${VERSION}</div>`; }
