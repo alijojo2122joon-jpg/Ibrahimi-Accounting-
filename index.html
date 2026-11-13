@@ -272,12 +272,15 @@ button:active,.qa:active,.item:active,.dtoday>div:active,.dsum .card:active{tran
 #modal:not(.hide) .sheet{animation:min .4s var(--ease) both}
 @keyframes min{from{opacity:0;transform:translateY(24px) scale(.98)}to{opacity:1;transform:none}}
 #side a.on,#bnav a.on,#bnav a.on b,.tabs button.on,.seg button.on,.chips button.on,.chipf.on,.rpk.on,.days button.on,.uchips button.on,.lusers button.on,.etiles button.on,.pc.on,.mctl button.on{position:relative;isolation:isolate;outline:none}
-.sb{position:absolute;left:-3px;top:-3px;pointer-events:none;overflow:visible;z-index:2;filter:drop-shadow(0 0 3px var(--saber1)) drop-shadow(0 0 7px color-mix(in srgb,var(--saber2) 55%,transparent))}
-.sb rect{fill:none;stroke-linecap:round;animation-duration:var(--sbd,3.6s);animation-timing-function:cubic-bezier(.33,.12,.67,.88);animation-iteration-count:infinite;animation-delay:var(--sbdel,0s)}
-.sb .t1{stroke:var(--saber2);stroke-width:2.2;opacity:.35;stroke-dasharray:30 70;animation-name:sb1}
-.sb .t2{stroke:var(--saber1);stroke-width:2.4;opacity:.8;stroke-dasharray:14 86;animation-name:sb2}
-.sb .t3{stroke:#fff;stroke-width:2.6;stroke-dasharray:4 96;animation-name:sb3}
-@keyframes sb1{from{stroke-dashoffset:0}to{stroke-dashoffset:-100}}@keyframes sb2{from{stroke-dashoffset:-16}to{stroke-dashoffset:-116}}@keyframes sb3{from{stroke-dashoffset:-26}to{stroke-dashoffset:-126}}
+.sb{position:absolute;left:-3px;top:-3px;pointer-events:none;overflow:visible;z-index:2;filter:drop-shadow(0 0 4px var(--saber1)) drop-shadow(0 0 8px color-mix(in srgb,var(--saber2) 60%,transparent))}
+.sb rect{fill:none;stroke-linecap:butt;animation-duration:var(--sbd,3.6s);animation-timing-function:cubic-bezier(.45,.3,.55,.7);animation-iteration-count:infinite;animation-delay:var(--sbdel,0s)}
+.sb .t1{stroke:var(--saber2);stroke-width:2.4;opacity:0.18;stroke-dasharray:32 68;animation-name:sb1}
+.sb .t2{stroke:var(--saber2);stroke-width:2.4;opacity:0.32;stroke-dasharray:26 74;animation-name:sb2}
+.sb .t3{stroke:color-mix(in srgb,var(--saber2) 50%,var(--saber1));stroke-width:2.4;opacity:0.5;stroke-dasharray:20 80;animation-name:sb3}
+.sb .t4{stroke:var(--saber1);stroke-width:2.4;opacity:0.7;stroke-dasharray:14 86;animation-name:sb4}
+.sb .t5{stroke:var(--saber1);stroke-width:2.5;opacity:0.95;stroke-dasharray:9 91;animation-name:sb5}
+.sb .t6{stroke:#fff;stroke-width:2.6;opacity:1;stroke-dasharray:4 96;animation-name:sb6}
+@keyframes sb1{from{stroke-dashoffset:0}to{stroke-dashoffset:-100}}@keyframes sb2{from{stroke-dashoffset:-6}to{stroke-dashoffset:-106}}@keyframes sb3{from{stroke-dashoffset:-12}to{stroke-dashoffset:-112}}@keyframes sb4{from{stroke-dashoffset:-18}to{stroke-dashoffset:-118}}@keyframes sb5{from{stroke-dashoffset:-23}to{stroke-dashoffset:-123}}@keyframes sb6{from{stroke-dashoffset:-28}to{stroke-dashoffset:-128}}
 [data-theme=dark]{--saber1:#5eead4;--saber2:#c084fc}
 @media (prefers-reduced-motion:reduce){*{animation-duration:.01s!important;transition-duration:.01s!important}}
 .dtoday{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
@@ -557,7 +560,7 @@ body.mopen #snack{bottom:auto;top:16px;transform:translate(-50%,-20px)}body.mope
 <script id="engine">
 'use strict';
 const LS = 'ebrahimi_acc_v1';
-const VERSION = '9.5';
+const VERSION = '9.6';
 
 /* ---- Chart of accounts (کدینگ حساب‌ها) ----
    nature: A=asset (debit), L=liability (credit), E=equity (credit), E-=contra equity (debit),
@@ -2325,7 +2328,7 @@ function saberize(){ SBQ=0; const del=-(performance.now()%SB_MS)+'ms';
  document.querySelectorAll('svg.sb').forEach(sv=>{ const el=sv.parentNode; if(!el||!el.matches||!el.matches(SB_SEL)) sv.remove(); else sbFit(el,sv); });
  document.querySelectorAll(SB_SEL).forEach(el=>{ if(el.querySelector(':scope>svg.sb')) return;
   const sv=document.createElementNS('http://www.w3.org/2000/svg','svg'); sv.setAttribute('class','sb'); sv.setAttribute('aria-hidden','true'); sv.style.setProperty('--sbdel',del); sv.style.setProperty('--sbd',SB_MS+'ms');
-  sv.innerHTML='<rect class="t1" pathLength="100"/><rect class="t2" pathLength="100"/><rect class="t3" pathLength="100"/>'; el.appendChild(sv); sbFit(el,sv); }); }
+  sv.innerHTML=[1,2,3,4,5,6].map(i=>'<rect class="t'+i+'" pathLength="100"/>').join(''); el.appendChild(sv); sbFit(el,sv); }); }
 function sbQueue(){ if(!SBQ) SBQ=requestAnimationFrame(saberize); }
 const sbMine=n=>n.nodeType!==1||(n.classList&&n.classList.contains('sb'));
 try{ new MutationObserver(ms=>{ for(const m of ms){ if(m.type==='attributes'&&!(m.target.closest&&m.target.closest('svg.sb'))){ sbQueue(); return; } if([...m.addedNodes].some(n=>!sbMine(n))||[...m.removedNodes].some(n=>!sbMine(n))){ sbQueue(); return; } } }).observe(document.documentElement,{subtree:true,childList:true,attributes:true,attributeFilter:['class']}); }catch(e){}
