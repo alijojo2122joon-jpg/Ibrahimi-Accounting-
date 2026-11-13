@@ -511,7 +511,7 @@ body.mopen #snack{bottom:auto;top:16px;transform:translate(-50%,-20px)}body.mope
 <script id="engine">
 'use strict';
 const LS = 'ebrahimi_acc_v1';
-const VERSION = '8.5';
+const VERSION = '9.0';
 
 /* ---- Chart of accounts (کدینگ حساب‌ها) ----
    nature: A=asset (debit), L=liability (credit), E=equity (credit), E-=contra equity (debit),
@@ -593,23 +593,49 @@ function load(){
  if(!Array.isArray(META.dirty)) META.dirty=[];
  if(!META.sync) META.sync={};
 }
-/* storage: IndexedDB (large, durable) + localStorage copy while small */
-let _idb=null;
-function idbOpen(){ return _idb||(_idb=new Promise((res,rej)=>{ try{ const r=indexedDB.open('ibrahimi-acc',1); r.onupgradeneeded=()=>r.result.createObjectStore('kv'); r.onsuccess=()=>res(r.result); r.onerror=()=>rej(r.error); }catch(e){ rej(e); } })); }
+/* storage v2: every record is its own row in IndexedDB, so saving one bill writes one row (fast at any size);
+   localStorage keeps a quick copy only while the data is small */
+let _idb=null, IDBREADY=false, PMAP=new Map(), PSQ=[], PFULL=false, PTIMER=null, LSBIG=false;
+function idbOpen(){ return _idb||(_idb=new Promise((res,rej)=>{ try{ const r=indexedDB.open('ibrahimi-acc',2); r.onupgradeneeded=()=>{ const d=r.result; if(!d.objectStoreNames.contains('kv')) d.createObjectStore('kv'); if(!d.objectStoreNames.contains('rec')) d.createObjectStore('rec',{keyPath:'id'}); }; r.onsuccess=()=>res(r.result); r.onerror=()=>rej(r.error); r.onblocked=()=>rej(new Error('blocked')); }catch(e){ rej(e); } })); }
 async function idbGet(k){ const d=await idbOpen(); return new Promise((res,rej)=>{ const q=d.transaction('kv').objectStore('kv').get(k); q.onsuccess=()=>res(q.result); q.onerror=()=>rej(q.error); }); }
 async function idbSet(k,v){ const d=await idbOpen(); return new Promise((res,rej)=>{ const tx=d.transaction('kv','readwrite'); tx.objectStore('kv').put(v,k); tx.oncomplete=()=>res(true); tx.onerror=()=>rej(tx.error); }); }
+async function idbDel(k){ const d=await idbOpen(); return new Promise((res,rej)=>{ const tx=d.transaction('kv','readwrite'); tx.objectStore('kv').delete(k); tx.oncomplete=()=>res(true); tx.onerror=()=>rej(tx.error); }); }
+async function idbAllRecs(){ const d=await idbOpen(); return new Promise((res,rej)=>{ const q=d.transaction('rec').objectStore('rec').getAll(); q.onsuccess=()=>res(q.result||[]); q.onerror=()=>rej(q.error); }); }
+async function idbWriteRecs(put,del){ for(let i=0;i<put.length;i+=3000) await idbWriteChunk(put.slice(i,i+3000),[]); if(del.length) await idbWriteChunk([],del); return true; }
+async function idbWriteChunk(put,del){ const d=await idbOpen(); return new Promise((res,rej)=>{ const tx=d.transaction('rec','readwrite'), st=tx.objectStore('rec'); put.forEach(r=>st.put(r)); del.forEach(id=>st.delete(id)); tx.oncomplete=()=>res(true); tx.onerror=()=>rej(tx.error); tx.onabort=()=>rej(tx.error||new Error('abort')); }); }
 let idbOK=typeof indexedDB!=='undefined';
-function persist(){ DB.savedAt=nowIso(); let ok=false;
- try{ localStorage.setItem(LS+'_meta',JSON.stringify(META)); }catch(e){}
- if(idbOK){ idbSet('db',DB).catch(()=>{ idbOK=false; }); ok=true; }
- try{ const j=JSON.stringify(DB); if(j.length<3500000){ localStorage.setItem(LS,j); ok=true; } else { localStorage.removeItem(LS); } }
- catch(e){ try{ localStorage.removeItem(LS); }catch(_){} }
- if(!ok&&typeof toast==='function') toast('⚠️ خطا در ذخیره‌سازی — فوراً بکاپ بگیرید');
- return ok; }
-async function loadIDB(){ if(!idbOK) return false; try{ const v=await idbGet('db');
-  if(v&&Array.isArray(v.txns)&&(!DB.savedAt||(v.savedAt||'')>DB.savedAt)){ DB=v; ['products','customers','suppliers','txns','devices','persons','orders'].forEach(k=>{ if(!Array.isArray(DB[k])) DB[k]=[]; }); invalidate(); return true; }
-  if(!v&&DB.savedAt) idbSet('db',DB).catch(()=>{});
- }catch(e){ idbOK=false; } return false; }
+function recCount(){ return DB.products.length+DB.customers.length+DB.suppliers.length+DB.txns.length+(DB.devices||[]).length+(DB.persons||[]).length+(DB.orders||[]).length; }
+function persist(rec){ DB.savedAt=nowIso();
+ try{ META.recCount=recCount(); localStorage.setItem(LS+'_meta',JSON.stringify(META)); }catch(e){}
+ if(rec) PSQ.push(rec); else PFULL=true;
+ clearTimeout(PTIMER); PTIMER=setTimeout(flushRecs,120);
+ return true; }
+const pver=r=>(r.updatedAt||'')+'|'+(r.void?1:0);
+let FLUSHING=null, FLUSHMS=0;
+function flushRecs(){ FLUSHING=(FLUSHING||Promise.resolve()).then(flushRecs1).catch(()=>{}); return FLUSHING; }
+async function flushRecs1(){ PTIMER=null; const t0=performance.now();
+ if(idbOK&&IDBREADY){ let put=[], del=[];
+  if(PFULL){ PFULL=false; const seen=new Set(); for(const r of allRecords()){ if(!r||!r.id) continue; seen.add(r.id); if(PMAP.get(r.id)!==pver(r)) put.push(r); } for(const id of PMAP.keys()) if(!seen.has(id)) del.push(id); PSQ=[]; }
+  else { const m=new Map(); PSQ.forEach(r=>m.set(r.id,r)); PSQ=[]; put=[...m.values()]; }
+  if(put.length||del.length){ try{ await idbWriteRecs(put,del); put.forEach(r=>PMAP.set(r.id,pver(r))); del.forEach(id=>PMAP.delete(id)); }
+   catch(e){ PFULL=true; if(typeof toast==='function') toast('⚠️ ذخیره در حافظهٔ گوشی ممکن نشد — جای خالی گوشی را بررسی کنید و بکاپ بگیرید'); } } }
+ const n=recCount(); if(n<4000||!idbOK){ try{ localStorage.setItem(LS,JSON.stringify(DB)); LSBIG=false; }catch(e){ try{ localStorage.removeItem(LS); }catch(_){} if(!idbOK&&typeof toast==='function') toast('⚠️ حافظهٔ مرورگر پر است — فوراً بکاپ بگیرید'); } }
+ else if(!LSBIG){ LSBIG=true; try{ localStorage.removeItem(LS); }catch(e){} }
+ FLUSHMS=Math.round(performance.now()-t0);
+}
+window.addEventListener('pagehide',()=>{ if(PTIMER){ clearTimeout(PTIMER); flushRecs(); } });
+document.addEventListener('visibilitychange',()=>{ if(document.hidden&&PTIMER){ clearTimeout(PTIMER); flushRecs(); } });
+function dbFromRecs(recs){ const d=defaultDB(); for(const r of recs){ if(r.kind==='settings'||r.id==='settings') d.settings=r; else if(KIND[r.kind]) d[KIND[r.kind]].push(r); } return d; }
+async function loadIDB(){ if(!idbOK){ return false; }
+ try{ const recs=await idbAllRecs();
+  if(!recs.length){ const v=await idbGet('db').catch(()=>null);
+   if(v&&Array.isArray(v.txns)&&(!DB.savedAt||(v.savedAt||'')>=DB.savedAt)){ DB=v; ['products','customers','suppliers','txns','devices','persons','orders'].forEach(k=>{ if(!Array.isArray(DB[k])) DB[k]=[]; }); }
+   IDBREADY=true; PMAP=new Map(); PFULL=true; await flushRecs(); if(v) idbDel('db').catch(()=>{}); invalidate(); return !!v; }
+  const fromIdb=dbFromRecs(recs); fromIdb.savedAt=DB.savedAt;
+  const byId=new Map(recs.map(r=>[r.id,r])); let newer=0;
+  for(const r of allRecords()){ if(!r||!r.id) continue; const o=byId.get(r.id); if(!o||(r.updatedAt||'')>(o.updatedAt||'')){ newer++; if(r.kind==='settings'||r.id==='settings') fromIdb.settings=r; else if(KIND[r.kind]){ const a=fromIdb[KIND[r.kind]], i=o?a.findIndex(x=>x.id===r.id):-1; if(i>=0) a[i]=r; else a.push(r); } } }
+  DB=fromIdb; PMAP=new Map(recs.map(r=>[r.id,pver(r)])); IDBREADY=true; if(num(META.recCount)>recCount()+5&&META.sync&&META.sync.url){ META.lastPull=''; } if(newer){ PFULL=true; flushRecs(); } invalidate(); return true;
+ }catch(e){ idbOK=false; return false; } }
 const KIND = {product:'products',customer:'customers',supplier:'suppliers',txn:'txns',device:'devices',person:'persons',order:'orders'};
 let _C=null; function invalidate(){ _C=null; }
 function C(){ return _C||(_C=compute()); }
@@ -628,31 +654,46 @@ function save(kind,rec){
  if(['product','customer','supplier'].includes(kind)){ rec.updatedBy=META.user; const o=(DB[KIND[kind]]||[]).find(x=>x.id===rec.id);
   if(kind==='product'&&o&&o.createdAt&&num(o.price)!==num(rec.price)) rec.priceHist=[...(o.priceHist||[]).slice(-19),{at:rec.updatedAt,by:META.user,old:num(o.price),new:num(rec.price)}]; }
  if(FMERGE.has(kind)){ if(kind==='settings') rec.id='settings'; const old=(kind==='settings'?DB.settings:(DB[KIND[kind]]||[]).find(x=>x.id===rec.id))||{}, ft=Object.assign({},old._ft||{}); new Set([...Object.keys(rec),...Object.keys(old)]).forEach(k=>{ if(SKIPF.has(k)) return; if(stab(rec[k])!==stab(old[k])) ft[k]=rec.updatedAt; }); rec._ft=ft; }
- if(kind==='settings'){ DB.settings=rec; }
- else { if(!Array.isArray(DB[KIND[kind]])) DB[KIND[kind]]=[]; const arr=DB[KIND[kind]]; const i=arr.findIndex(x=>x.id===rec.id); if(i>=0) arr[i]=rec; else arr.push(rec); }
- if(!META.dirty.includes(rec.id)) META.dirty.push(rec.id);
- if(BATCH){ invalidate(); return rec; }
- persist(); invalidate(); if(onSaved) onSaved();
+ let PREV=null;
+ if(kind==='settings'){ PREV=DB.settings; DB.settings=rec; }
+ else { if(!Array.isArray(DB[KIND[kind]])) DB[KIND[kind]]=[]; const arr=DB[KIND[kind]]; const ex=idxGet(KIND[kind],rec.id), i=ex?arr.indexOf(ex):-1; if(i>=0){ PREV=arr[i]; arr[i]=rec; } else arr.push(rec); idxPut(KIND[kind],rec); }
+ noSeen(rec.no); noSeen(rec.code);
+ if(META.sync&&META.sync.url&&!META.dirty.includes(rec.id)) META.dirty.push(rec.id);
+ if(!(kind==='txn'&&!PREV&&computeAppend(rec))&&affectsCompute(kind,PREV,rec)) invalidate();
+ if(BATCH){ PSQ.push(rec); return rec; }
+ persist(rec); if(onSaved) onSaved();
  return rec;
 }
+function affectsCompute(kind,o,r){ if(kind==='txn') return true; o=o||{};
+ if(kind==='customer'||kind==='supplier') return num(o.openBal)!==num(r.openBal)||!!o.deleted!==!!r.deleted||!o.id;
+ if(kind==='product') return num(o.openQty)!==num(r.openQty)||num(o.openCost)!==num(r.openCost)||!!o.deleted!==!!r.deleted||!o.id;
+ if(kind==='settings') return o.startDate!==r.startDate||num(o.openCash)!==num(r.openCash)||num(o.openBank)!==num(r.openBank);
+ return false; }
 let BATCH=0;
-function batch(fn){ BATCH++; try{ fn(); } finally { BATCH--; if(!BATCH){ persist(); invalidate(); if(onSaved) onSaved(); } } }
+function batch(fn){ BATCH++; try{ fn(); } finally { BATCH--; if(!BATCH){ invalidate(); clearTimeout(PTIMER); PTIMER=setTimeout(flushRecs,120); try{ localStorage.setItem(LS+'_meta',JSON.stringify(META)); }catch(e){} if(onSaved) onSaved(); } } }
 function allRecords(){ return [DB.settings,...DB.products,...DB.customers,...DB.suppliers,...DB.txns,...(DB.devices||[]),...(DB.persons||[]),...(DB.orders||[])]; }
 function findRec(id){ return allRecords().find(r=>r.id===id); }
-function nextNo(prefix){
- const re=new RegExp('^'+prefix+'-'+META.device+'(\\d+)$'); let mx=0;
- for(const r of [...DB.txns,...DB.customers,...DB.suppliers,...DB.products,...(DB.persons||[]),...(DB.orders||[])]){ const m=re.exec(r.no||r.code||''); if(m) mx=Math.max(mx,+m[1]); }
- return prefix+'-'+META.device+String(mx+1).padStart(4,'0');
-}
-const cust = id => DB.customers.find(x=>x.id===id);
-const supp = id => DB.suppliers.find(x=>x.id===id);
-const prod = id => DB.products.find(x=>x.id===id);
+let NOMAX={};
+function nextNo(prefix){ const key=prefix+'-'+META.device;
+ if(NOMAX[key]===undefined){ const re=new RegExp('^'+prefix+'-'+META.device+'(\\d+)$'); let mx=0;
+  for(const arr of [DB.txns,DB.customers,DB.suppliers,DB.products,DB.persons||[],DB.orders||[]]) for(const r of arr){ const v=r.no||r.code; if(v&&v.charCodeAt(0)===prefix.charCodeAt(0)){ const m=re.exec(v); if(m&&+m[1]>mx) mx=+m[1]; } }
+  NOMAX[key]=mx; }
+ return key+String(NOMAX[key]+1).padStart(4,'0'); }
+function noSeen(v){ if(!v||typeof v!=='string') return; const m=/^(.*?)(\d+)$/.exec(v); if(m&&NOMAX[m[1]]!==undefined&&+m[2]>NOMAX[m[1]]) NOMAX[m[1]]=+m[2]; }
+/* fast lookups by id (rebuilt automatically when the lists change) */
+const IDX={};
+function idxGet(k,id){ const a=DB[k]; let x=IDX[k]; if(!x||x.a!==a||x.n!==a.length){ x=IDX[k]={a,n:a.length,m:new Map()}; for(const r of a) x.m.set(r.id,r); } const r=x.m.get(id); if(r&&r.id!==id){ IDX[k]=null; return a.find(z=>z.id===id); } return r; }
+function idxPut(k,r){ const x=IDX[k]; if(x&&x.a===DB[k]){ x.m.set(r.id,r); x.n=DB[k].length; } }
+function idxReset(){ for(const k in IDX) IDX[k]=null; NOMAX={}; }
+const cust = id => idxGet('customers',id);
+const supp = id => idxGet('suppliers',id);
+const prod = id => idxGet('products',id);
 const pname = id => (prod(id)||{}).name||'؟';
 const partyName = t => { if(t.type==='load'||t.type==='unload') return t.driver?'موتر — '+t.driver:'موتر'; if(t.type==='handover') return (t.from||'؟')+' ← '+(t.to||'؟'); if(['wage','advance','advret','borrow','repay'].includes(t.type)){ const x=(DB.persons||[]).find(p=>p.id===t.party); return x?x.name:''; } const p=(['purchase','preturn','payment'].includes(t.type)?supp:cust)(t.party); return p?p.name:''; };
 
 /* ---- Core: replay every transaction in date order and build the double-entry journal ----
    Inventory valued with weighted-average cost (میانگین موزون). Receivables aged FIFO. */
-function compute(){
+function makeEngine(){
  const s=DB.settings, sd=s.startDate||'2000-01-01';
  const J=[], P={}, CU={}, SU={}, costs={};
  const post=(t,acc,amt,memo)=>{ amt=r2(amt); if(Math.abs(amt)<0.005) return;
@@ -672,8 +713,7 @@ function compute(){
  for(const v of DB.suppliers){ if(v.deleted) continue; const b=num(v.openBal); const x=gs(v.id);
   if(b){ x.bal=b; post(op,'3900',b,'قرض اول دوره: '+v.name); post(op,'2100',-b,'قرض اول دوره: '+v.name); } }
 
- const tx=DB.txns.filter(t=>!t.void).slice().sort((a,b)=>(a.date+(a.createdAt||'')).localeCompare(b.date+(b.createdAt||'')));
- for(const t of tx){
+ function apply(t){
   const cash=CASH[t.method]||'1010', items=t.items||[], nm=partyName(t);
   switch(t.type){
    case 'sale':{ let gross=0,cost=0;
@@ -724,13 +764,19 @@ function compute(){
      post(t,'1200',v,'اصلاح موجودی '+pname(it.pid)); post(t,'6800',-v,'اصلاح موجودی '+pname(it.pid)); } break; }
   }
  }
- // aging per customer
- const td=today();
- for(const id in CU){ const c=CU[id]; c.b=[0,0,0,0]; c.oldest=0;
-  for(const o of c.open){ const age=Math.max(0,daysBetween(o.d,td)); c.oldest=Math.max(c.oldest,age); c.b[age<=30?0:age<=60?1:age<=90?2:3]+=o.amt; } }
- return {J,P,CU,SU,costs};
+ function agingFor(c,td){ c.b=[0,0,0,0]; c.oldest=0; for(const o of c.open){ const age=Math.max(0,daysBetween(o.d,td)); c.oldest=Math.max(c.oldest,age); c.b[age<=30?0:age<=60?1:age<=90?2:3]+=o.amt; } }
+ return {J,P,CU,SU,costs,apply,agingFor};
 }
-function sums(from,to){ const S={}; for(const j of C().J){ if(from&&j.d<from) continue; if(to&&j.d>to) continue; S[j.acc]=(S[j.acc]||0)+j.dr-j.cr; } return S; }
+const tkey=t=>t.date+(t.createdAt||'');
+function compute(){ const E=makeEngine(); const tx=DB.txns.filter(t=>!t.void).slice().sort((a,b)=>tkey(a).localeCompare(tkey(b)));
+ for(const t of tx) E.apply(t); const td=today(); for(const id in E.CU) E.agingFor(E.CU[id],td);
+ return {J:E.J,P:E.P,CU:E.CU,SU:E.SU,costs:E.costs,E,sorted:tx,memo:{},lastKey:tx.length?tkey(tx[tx.length-1]):'',day:td}; }
+/* fast path: a brand-new transaction that comes after everything already counted is added without recounting all history */
+function computeAppend(t){ const c=_C; if(!c||!c.E||t.void||c.day!==today()||tkey(t)<c.lastKey) return false;
+ try{ const bal0=c.J.length; c.E.apply(t); c.sorted.push(t); c.lastKey=tkey(t); c.memo={}; if(c.byP) (c.byP[t.party]||(c.byP[t.party]=[])).push(t);
+  if(t.party&&c.CU[t.party]) c.E.agingFor(c.CU[t.party],c.day); return true; }catch(e){ return false; } }
+function txOf(p){ const c=C(); if(!c.byP){ c.byP={}; for(const t of c.sorted) if(t.party) (c.byP[t.party]||(c.byP[t.party]=[])).push(t); } return c.byP[p]||[]; }
+function sums(from,to){ const c=C(), k=(from||'')+'|'+(to||''); if(c.memo[k]) return c.memo[k]; const S={}; for(const j of c.J){ if(from&&j.d<from) continue; if(to&&j.d>to) continue; S[j.acc]=(S[j.acc]||0)+j.dr-j.cr; } return (c.memo[k]=S); }
 function balOf(code,to){ return sums(null,to)[code]||0; }
 function pnl(from,to){ const S=sums(from,to), g=k=>S[k]||0;
  const sales=-g('4100'), ret=g('4200'), netSales=sales-ret, cogs=g('5100'), gross=netSales-cogs, other=-g('4300');
@@ -768,26 +814,26 @@ async function syncNow(){
  const base=sc.url.replace(/\/+$/,'')+'/rest/v1/records';
  try{
   { const did='dev-'+META.device, d=(DB.devices||[]).find(x=>x.id===did); if(!d||Date.now()-new Date(d.updatedAt).getTime()>5*60000||d.user!==META.user){ const ua=navigator.userAgent, nm=/Android/i.test(ua)?'گوشی Android':/iPhone|iPad/i.test(ua)?'آیفون':/Windows/i.test(ua)?'کامپیوتر Windows':/Mac/i.test(ua)?'Mac':'دستگاه'; save('device',Object.assign({},d||{},{id:did,name:(d&&d.custom)||nm,user:META.user,docs:DB.txns.length})); } }
-  const ids=META.dirty.slice(); const recs=ids.map(findRec).filter(Boolean);
+  const ids=META.dirty.slice(), idset=new Set(ids), recs=allRecords().filter(r=>r&&idset.has(r.id));
   for(let i=0;i<recs.length;i+=200){
    const chunk=recs.slice(i,i+200).map(r=>({id:r.id,kind:r.kind,data:r}));
    const res=await fetch(base,{method:'POST',headers:Object.assign(syncHeaders(),{Prefer:'resolution=merge-duplicates,return=minimal'}),body:JSON.stringify(chunk)});
    if(!res.ok) throw new Error('push '+res.status+' '+(await res.text()).slice(0,140));
   }
-  META.dirty=META.dirty.filter(id=>!ids.includes(id));
+  { const done=new Set(ids); META.dirty=META.dirty.filter(id=>!done.has(id)); }
   let since=META.lastPull?new Date(new Date(META.lastPull).getTime()-120000).toISOString():'1970-01-01T00:00:00Z', got=0, changed=false;
   for(let page=0;page<50;page++){
    const res=await fetch(base+'?select=id,kind,data,updated_at&updated_at=gt.'+encodeURIComponent(since)+'&order=updated_at.asc&limit=1000',{headers:syncHeaders()});
    if(!res.ok) throw new Error('pull '+res.status+' '+(await res.text()).slice(0,140));
    const rows=await res.json(); got+=rows.length;
    for(const row of rows){ const r=row.data; if(!r||!r.id) continue;
-    const local=findRec(r.id);
-    if(FMERGE.has(r.kind)&&local&&(r.kind==='settings'||local._ft||r._ft)){ const m=mergeSettings(local,r), same=o=>sameSettings(o,m), put=v=>{ if(r.kind==='settings') DB.settings=v; else { const arr=DB[KIND[r.kind]]; const i=arr.findIndex(x=>x.id===r.id); if(i>=0) arr[i]=v; else arr.push(v); } };
+    const local=r.kind==='settings'||r.id==='settings'?DB.settings:(KIND[r.kind]&&Array.isArray(DB[KIND[r.kind]])?idxGet(KIND[r.kind],r.id):findRec(r.id));
+    if(FMERGE.has(r.kind)&&local&&(r.kind==='settings'||local._ft||r._ft)){ const m=mergeSettings(local,r), same=o=>sameSettings(o,m), put=v=>{ if(r.kind==='settings') DB.settings=v; else { const arr=DB[KIND[r.kind]]; const ex=idxGet(KIND[r.kind],r.id), i=ex?arr.indexOf(ex):-1; if(i>=0) arr[i]=v; else arr.push(v); idxPut(KIND[r.kind],v); } };
      if(!same(local)){ put(m); changed=true; } if(!same(r)){ put(Object.assign({},m,{updatedAt:nowIso()})); if(!META.dirty.includes(r.id)) META.dirty.push(r.id); }
      if(!META.lastPull||row.updated_at>META.lastPull) META.lastPull=row.updated_at; continue; }
     if(META.dirty.includes(r.id) && local && local.updatedAt>=r.updatedAt) continue;
     if(!local || (r.updatedAt||'')>(local.updatedAt||'')){
-     if(r.kind==='settings') DB.settings=r; else if(KIND[r.kind]){ if(!Array.isArray(DB[KIND[r.kind]])) DB[KIND[r.kind]]=[]; const arr=DB[KIND[r.kind]]; const i=arr.findIndex(x=>x.id===r.id); if(i>=0) arr[i]=r; else arr.push(r); }
+     if(r.kind==='settings') DB.settings=r; else if(KIND[r.kind]){ if(!Array.isArray(DB[KIND[r.kind]])) DB[KIND[r.kind]]=[]; const arr=DB[KIND[r.kind]]; const ex=idxGet(KIND[r.kind],r.id), i=ex?arr.indexOf(ex):-1; if(i>=0) arr[i]=r; else arr.push(r); idxPut(KIND[r.kind],r); noSeen(r.no); noSeen(r.code); }
      changed=true; }
     if(!META.lastPull||row.updated_at>META.lastPull) META.lastPull=row.updated_at;
    }
@@ -898,7 +944,9 @@ function drawTop(){
  <button class="chip" onclick="setTheme('${dark?'light':'dark'}')" title="حالت شب/روز">${I(dark?'sun':'moon')}</button>
  <button class="chip" onclick="searchAll()" title="جستجو">${I('search')}</button>${hasPins()?`<button class="chip" onclick="lockNow()" title="قفل">${I('lock')}</button>`:''}<button class="chip" onclick="userMenu()">${I('user')} ${esc(META.user)}</button>`;
 }
+let BOOTED=false;
 function render(){
+ if(!BOOTED&&idbOK&&!DB.txns.length&&num(META.recCount)>=4000){ const v=$('#view'); if(v) v.innerHTML='<div class="card" style="text-align:center;padding:40px"><b>در حال باز کردن حساب‌ها…</b><div class="mu" style="margin-top:8px">'+fm(META.recCount)+' سند</div></div>'; return; }
  if(!can(R.v)) R={v:'dash',id:null,tab:null};
  drawSide(); drawTop();
  if(MAP&&R.v!=='map'){ try{MAP.remove();}catch(e){} MAP=null; }
@@ -1851,7 +1899,7 @@ function approveTxn(id){ const t=DB.txns.find(x=>x.id===id); if(!t||roleOf(META.
 function unapproved(){ const me=META.user, since=addDays(today(),-30); return DB.txns.filter(t=>!t.void&&(t.type==='expense'||t.type==='wage')&&!t.okBy&&t.by&&t.by!==me&&t.date>=since); }
 function approveAll(){ const l=unapproved(); batch(()=>l.forEach(t=>save('txn',Object.assign({},t,{okBy:META.user,okAt:nowIso()})))); toast('همه تأیید شد ✓'); render(); }
 function changesCard(){ if(roleOf(META.user)!=='owner') return ''; const since=addDays(today(),-2), me=META.user, ev=[], d=iso=>iso&&iso.slice(0,10)>=since;
- DB.txns.forEach(t=>{ const nm=(TT[t.type]||[''])[0]+' '+(t.no||'')+(partyName(t)?' — '+partyName(t):'');
+ DB.txns.forEach(t=>{ if(!t.void&&!(t.history&&t.history.length)) return; const nm=(TT[t.type]||[''])[0]+' '+(t.no||'')+(partyName(t)?' — '+partyName(t):'');
   if(t.void&&d(t.voidAt)&&t.voidBy&&t.voidBy!==me) ev.push({at:t.voidAt,by:t.voidBy,k:'ابطال',c:'#e5484d',txt:nm+(t.voidReason?' ('+t.voidReason+')':''),id:t.id});
   (t.history||[]).forEach(h=>{ if(d(h.at)&&h.by&&h.by!==me) ev.push({at:h.at,by:h.by,k:'ویرایش',c:'#f08c2e',txt:nm+' — قبلاً '+money(txnTotal(h.prev||{}))+'، حالا '+money(txnTotal(t)),id:t.id}); }); });
  farEntries(3).forEach(t=>{ if(t.by&&t.by!==me) ev.push({at:t.createdAt,by:t.by,k:'دور از دکان',c:'#0369a1',txt:(TT[t.type]||[''])[0]+' '+(t.no||'')+' — '+partyName(t)+'، '+geoTxt(t),id:t.id}); });
@@ -2410,9 +2458,11 @@ function savePersonTx(type,id){ const a=num(fv('amount')), d=num(fv('deduct')); 
  const r=save('txn',t); closeModal(); snack('✓ '+TT[type][0]+' ثبت شد — '+r.no,()=>undoTxn(r.id)); render(); }
 
 /* ---------- expiry tracking (per purchase line) ---------- */
-function expiringBatches(days=60){ const lim=addDays(today(),days), out=[];
- for(const p of DB.products.filter(p=>!p.deleted)){ let left=(C().P[p.id]||{qty:0}).qty; if(left<=0) continue;
-  const buys=DB.txns.filter(t=>!t.void&&t.type==='purchase'&&(t.items||[]).some(i=>i.pid===p.id)).sort((a,b)=>(b.date+b.createdAt).localeCompare(a.date+a.createdAt));
+function expiringBatches(days=60){ const lim=addDays(today(),days), out=[], c=C();
+ if(!c.anyExp){ c.anyExp=DB.txns.some(t=>t.type==='purchase'&&(t.items||[]).some(i=>i.exp))?1:2; } if(c.anyExp===2) return out;
+ if(!c.buysP){ c.buysP={}; for(let k=c.sorted.length-1;k>=0;k--){ const t=c.sorted[k]; if(t.type!=='purchase') continue; for(const i of t.items||[]) (c.buysP[i.pid]||(c.buysP[i.pid]=[])).includes(t)||c.buysP[i.pid].push(t); } }
+ for(const p of DB.products.filter(p=>!p.deleted)){ let left=(c.P[p.id]||{qty:0}).qty; if(left<=0) continue;
+  const buys=c.buysP[p.id]||[];
   for(const t of buys){ if(left<=0) break; for(const i of t.items.filter(i=>i.pid===p.id)){ if(left<=0) break; const q=Math.min(left,num(i.qty)); left-=q; if(i.exp&&i.exp<=lim) out.push({p,q,exp:i.exp,days:daysBetween(today(),i.exp),no:t.no}); } } }
  return out.sort((a,b)=>a.exp.localeCompare(b.exp)); }
 function expiryCard(){ const a=expiringBatches(60); if(!a.length) return '';
@@ -2718,9 +2768,8 @@ window.addEventListener('online',()=>doSync(false));
 document.addEventListener('visibilitychange',()=>{ if(!document.hidden) doSync(false); });
 setInterval(()=>doSync(false),60000);
 { const h=location.hash.slice(1); if(NAV.some(n=>n[0]===h)||h==='more') R.v=h; }
-render(); doSync(false);
-setTimeout(checkJoin,300); setTimeout(notifyDue,2500); setTimeout(whatsNew,1200);
-loadIDB().then(ch=>{ if(ch) render(); });
+render();
+loadIDB().then(()=>{ BOOTED=true; render(); doSync(false); setTimeout(checkJoin,300); setTimeout(notifyDue,2500); setTimeout(whatsNew,1200); });
 try{ navigator.storage&&navigator.storage.persist&&navigator.storage.persist(); }catch(e){}
 if(needUnlock()){ LK={user:META.user,pin:'',mode:'unlock'}; drawLock(); }
 </script>
