@@ -448,7 +448,7 @@ body.mopen #snack{bottom:auto;top:16px;transform:translate(-50%,-20px)}body.mope
 <script id="engine">
 'use strict';
 const LS = 'ebrahimi_acc_v1';
-const VERSION = '6.8';
+const VERSION = '6.9';
 
 /* ---- Chart of accounts (کدینگ حساب‌ها) ----
    nature: A=asset (debit), L=liability (credit), E=equity (credit), E-=contra equity (debit),
@@ -1353,7 +1353,7 @@ function drawPL(){ const el=$('#plst'); if(!el) return; const q=($('#pq').value|
 function pickWalkin(){ if(!cust('walkin')) save('customer',{id:'walkin',code:'C-0000',name:'مشتری گذری (نقدی)',walkin:true,area:''}); pickParty('walkin'); const p=$('#f_paid'); if(p){ p.closest('label')&&(p.closest('label').style.opacity=.5); } toast('فروش نقدی — پول کامل حساب می‌شود'); }
 function pickParty(id){ const q=(($('#pq')||{}).value||'').trim(); $('#f_party').value=id; drawParty(); partyChanged();
  if(id==='__new'){ const n=$('#f_nc_name'); if(n){ n.value=q; n.focus(); } } }
-function partyChanged(){ const v=fv('party'); const nb=$('#newParty'); if(nb) nb.style.display=v==='__new'?'block':'none';
+function partyChanged(){ const v=fv('party'); drawRBills(); const nb=$('#newParty'); if(nb) nb.style.display=v==='__new'?'block':'none';
  const gi=$('#gpsInfo'); if(gi&&!F.gps){ const c=cust(v); gi.innerHTML=v==='__new'?'اگر در همین دکان هستید، لوکیشن را بگیرید':c&&!c.lat?'<b class="warn">این دکان هنوز لوکیشن ندارد</b> — اگر آنجا هستید بزنید':c&&c.lat?'لوکیشن این دکان ثبت است ✓':'وقتی در دکان هستید بزنید'; }
  if(F.cart) drawGrid(); repeatChip(); calcForm(); }
 const newCustFields=()=>`<div id="newParty" style="display:none" class="card" ><b>دکان جدید</b><div class="f2" style="margin-top:10px">${fl('نام دکان *',inp('nc_name'))}${fl('صاحب دکان',inp('nc_owner'))}</div><div class="f2">${fl('شماره',inp('nc_phone','','inputmode="tel"'))}${fl('ساحه',inp('nc_area'))}</div>${F.type==='receipt'?fl('بدهی قبلی این دکان (پیش از ثبت در سیستم)',inp('nc_open','','inputmode="decimal" placeholder="مثلاً ۱۵۰۰۰"')):''}</div>`;
@@ -1378,14 +1378,19 @@ function saveQuickProduct(nm){ const r=save('product',{code:nextNo('P'),name:nm,
 function addCart(pid){ const it=F.cart.find(i=>i.pid===pid); if(it) it.qty=r2(it.qty+(F.type==='adjust'&&it.qty<0?-1:1)); else F.cart.push({pid,qty:F.type==='adjust'?-1:1,price:defPrice(pid)}); drawCart(); drawGrid(); calcForm(); }
 function drawCart(){ const el=$('#cart'); if(!el) return; const adj=F.type==='adjust';
  el.innerHTML=F.cart.map((it,i)=>{ const p=prod(it.pid)||{}, st=(C().P[it.pid]||{qty:0}).qty, over=F.type==='sale'&&it.qty>st;
-  return `<div class="cl"><div class="cn"><b>${esc(p.name)}</b> ${pk(p)>1&&p.unit2?`<button type="button" class="ut" onclick="toggleU(${i})">${it.u2?esc(p.unit2):esc(p.unit||'')} ⇄</button>`:''}<div class="mu ${over?'neg':''}" id="cs${i}">موجود ${qtyTxt(p,st)}${over?' — کافی نیست':''}${F.type==='sale'?lastPricesTxt(it.pid):''}</div></div>
+  return `<div class="cl"><div class="cn"><b>${esc(p.name)}</b> ${pk(p)>1&&p.unit2?`<button type="button" class="ut" onclick="toggleU(${i})">${it.u2?esc(p.unit2):esc(p.unit||'')} ⇄</button>`:''}<div class="mu ${over?'neg':''}" id="cs${i}">موجود ${qtyTxt(p,st)}${over?' — کافی نیست':''}${F.type==='sale'?lastPricesTxt(it.pid,i):''}</div></div>
   <div class="stp"><button type="button" onclick="stepQ(${i},1)">+</button><input inputmode="decimal" value="${it.u2?it.q2:it.qty}" oninput="setQ(${i},this.value)" onfocus="this.select()"><button type="button" onclick="stepQ(${i},-1)">−</button></div>
   ${F.type==='purchase'?`<label class="cp ex"><span class="mu">انقضا</span><input type="date" value="${it.exp||''}" onchange="F.cart[${i}].exp=this.value"></label>`:''}${adj?'':`<label class="cp"><span class="mu">فی ${it.u2?esc(p.unit2):''}</span><input inputmode="decimal" value="${it.u2?it.p2:it.price}" oninput="setP(${i},this.value)" onfocus="this.select()"></label><div class="ct" id="ct${i}">${fm(it.qty*it.price)}</div>`}${F.type==='sale'?`<div class="bc" id="bc${i}" style="${belowCost(it)?'':'display:none'}">${I('alert')} زیر قیمت خرید${can('cost')?' ('+money((C().P[it.pid]||{}).avg*(it.u2?1/pk(p):1))+')':''}</div>`:''}
   <button type="button" class="x" onclick="F.cart.splice(${i},1);drawCart();drawGrid();calcForm()">✕</button></div>`; }).join('')||`<div class="hint" style="text-align:center;padding:6px">روی جنس بزنید تا به ${F.type==='adjust'?'لیست':'بل'} اضافه شود</div>`;
  const c=$('#cartCnt'); if(c) c.textContent=F.cart.length?fm(F.cart.length)+' قلم':''; }
 const belowCost=it=>{ const a=(C().P[it.pid]||{avg:0}).avg; return a>0&&num(it.price)>0&&num(it.price)<a-0.01; };
-function lastPricesTxt(pid){ const cid=fv('party'); if(!cid||cid==='__new') return ''; const ps=DB.txns.filter(t=>!t.void&&t.type==='sale'&&t.party===cid&&(t.items||[]).some(i=>i.pid===pid)).sort((a,b)=>(b.date+b.createdAt).localeCompare(a.date+a.createdAt)).slice(0,3).map(t=>fm(num(t.items.find(i=>i.pid===pid).price)));
- return ps.length?'، قبلاً به همین دکان: '+ps.join(' / '):''; }
+function lastPricesTxt(pid,ix){ const cid=fv('party'); if(!cid||cid==='__new'||cid==='walkin') return ''; const ps=[...new Set(DB.txns.filter(t=>!t.void&&t.type==='sale'&&t.party===cid&&(t.items||[]).some(i=>i.pid===pid)).sort((a,b)=>(b.date+b.createdAt).localeCompare(a.date+a.createdAt)).slice(0,3).map(t=>num(t.items.find(i=>i.pid===pid).price)))];
+ return ps.length?'، قبلاً به همین دکان: '+ps.map(v=>ix===undefined?fm(v):`<a href="javascript:void 0" style="font-weight:700" onclick="usePrice(${ix},${v})">${fm(v)}</a>`).join(' / '):''; }
+function drawRBills(){ const el=$('#rbills'); if(!el) return; const v=fv('party'); const ty=F.type==='sreturn'?'sale':F.type==='preturn'?'purchase':null; if(!ty||!v||v==='__new'){ el.innerHTML=''; return; }
+ const bs=DB.txns.filter(t=>!t.void&&t.type===ty&&t.party===v).sort((a,b)=>(b.date+b.createdAt).localeCompare(a.date+a.createdAt)).slice(0,6);
+ el.innerHTML=bs.length?`<div class="mu" style="font-size:12px;margin:10px 0 6px">از کدام بل برمی‌گردد؟ (اختیاری — اجناس همان بل با همان قیمت می‌آید)</div><div class="chips">${bs.map(t=>`<button type="button" class="${F.fromBill===t.id?'on':''}" onclick="retFromBill('${t.id}')">${fd(t.date)} — ${kfmt(txnTotal(t))}</button>`).join('')}</div>`:''; }
+function retFromBill(id){ const t=DB.txns.find(x=>x.id===id); if(!t) return; F.fromBill=id; F.cart=(t.items||[]).map(i=>({pid:i.pid,qty:num(i.qty),price:num(i.price)})); drawCart(); drawGrid(); calcForm(); drawRBills(); toast('اجناس بل '+t.no+' آمد — تعداد برگشتی را درست کنید'); }
+function usePrice(i,v){ const it=F.cart[i]; if(!it) return; if(it.u2){ it.u2=false; } it.price=v; drawCart(); calcForm(); }
 function stepQ(i,d){ const it=F.cart[i]; if(it.u2){ it.q2=Math.max(0,it.q2+d); it.qty=it.q2/pk(prod(it.pid)); if(it.q2<=0) F.cart.splice(i,1); drawCart(); drawGrid(); calcForm(); return; } it.qty=r2(it.qty+d); if(F.type!=='adjust'&&it.qty<=0) F.cart.splice(i,1); drawCart(); drawGrid(); calcForm(); }
 function setQ(i,v){ const it=F.cart[i]; if(it.u2){ it.q2=num(v); it.qty=it.q2/pk(prod(it.pid)); } else it.qty=num(v); const ct=$('#ct'+i); if(ct) ct.textContent=fm(F.cart[i].qty*F.cart[i].price); calcForm(); }
 function setP(i,v){ const it=F.cart[i]; if(it.u2){ it.p2=num(v); it.price=it.p2*pk(prod(it.pid)); } else it.price=num(v); const bce=$('#bc'+i); if(bce) bce.style.display=belowCost(it)?'':'none'; const ct=$('#ct'+i); if(ct) ct.textContent=fm(F.cart[i].qty*F.cart[i].price); calcForm(); }
@@ -1435,7 +1440,7 @@ function paymentForm(sid){ F={type:'payment'};
  sec('bank','ارز پرداخت',curBox())+sec('cash','مبلغ',`<input class="in big" id="f_amount" inputmode="decimal" placeholder="۰" oninput="calcForm()">${chips([['تمام قرض',"$('#f_amount').value=r2(Math.max(0,pBal(fv('party'))));calcForm()"]])}${fl('تخفیف گرفته‌شده',ninp('discount','','۰'))}<div class="sum" id="sum"></div>`+more(fl('روش',methodSel())+dateInp()+fl('یادداشت',inp('note')),'روش، تاریخ و یادداشت'))+saveBar('payment','ثبت پرداخت','#8b5cf6'));
  drawParty(!sid); partyChanged(); }
 function returnForm(type){ F={type,cart:[]}; const isS=type==='sreturn';
- openModal(TT[type][0],sec(isS?'shop':'truck',isS?'دکان':'عمده‌فروش',partyBox(isS?'c':'s','',true))+cartBox()+
+ openModal(TT[type][0],sec(isS?'shop':'truck',isS?'دکان':'عمده‌فروش',partyBox(isS?'c':'s','',true)+'<div id="rbills"></div>')+cartBox()+
  sec('cash','پول',`${fl(isS?'پول نقد پس داده شد':'پول نقد پس گرفته شد',ninp('paid','','۰'))}<div class="sum" id="sum"></div>`+more(fl('روش',methodSel())+dateInp()+fl('دلیل مرجوعی',inp('note','','placeholder="خراب، تاریخ‌گذشته، اضافه…"')),'روش، تاریخ و دلیل'))+saveBar(type,'ثبت مرجوعی','var(--or)'));
  drawParty(true); drawGrid(); drawCart(); partyChanged(); }
 const EXP_IC={'6100':'fuel','6200':'gear','6300':'shop','6400':'user','6500':'box','6600':'trend','6700':'bank','6900':'menu'};
@@ -1486,6 +1491,7 @@ function saveTxn(type){
  if(['discount','paid','extra','amount'].some(k=>t[k]<0)) return toast('مبلغ منفی مجاز نیست');
  if(['receipt','payment','expense','capital','drawing','transfer'].includes(type)&&!t.amount) return toast('مبلغ را بنویسید');
  if(F.photo) t.photo=F.photo; else if(F.photo===undefined&&F.editId){ const o=DB.txns.find(x=>x.id===F.editId); if(o&&o.photo) t.photo=o.photo; }
+ if((type==='sreturn'||type==='preturn')&&F.fromBill) t.ref=F.fromBill;
  if(type==='purchase'){ const du=fv('due'); t.due=du&&txnTotal(t)-num(t.paid)>0.5?du:null; }
  if(type==='expense') t.acc=fv('acc'); if(type==='transfer'){ t.to=fv('to'); if(t.to===t.method) return toast('مبدأ و مقصد یکی است'); }
  if(type==='sale'&&t.party==='walkin') t.paid=txnTotal(t);
@@ -2105,7 +2111,7 @@ function showTxn(id,fresh){ const t=DB.txns.find(x=>x.id===id); if(!t) return; c
  openModal(tt[0]+' — '+t.no,`${fresh?`<div class="okbar">${I('check')} ثبت شد — می‌توانید عکس بل را برای دکان‌دار بفرستید</div>`:''}
  ${t.void?`<div class="card" style="margin-bottom:12px;color:var(--red)">❌ این سند باطل شده — ${esc(t.voidBy||'')}، ${esc(t.voidReason||'')}</div>`:''}
  <div class="thero"><div class="ic" style="--c:${tt[2]}">${I(({sale:'receipt',sreturn:'in',purchase:'cart',preturn:'out',receipt:'cash',payment:'out',expense:'fuel',capital:'bank',drawing:'home',transfer:'sync',adjust:'box',cashcount:'wallet'})[t.type]||'book')}</div><div class="m"><div class="mu">${tt[0]}، ${esc(t.no)}</div>${party?`<a href="#" class="tp" onclick="closeModal();go('${isP?'person':isC?'customer':'supplier'}','${party.id}');return false">${esc(party.name)}</a>`:`<b class="tp">${esc(t.type==='expense'?ACC[t.acc||'6900'].name:tt[0])}</b>`}</div><div class="tv"><b>${t.type==='adjust'?fm(txnTotal(t)):money(txnTotal(t))}</b></div></div>
- <div class="tchips"><span>${I('clock')} ${fd(t.date)}</span><span>${I('user')} ${esc(t.by||'')}${t.createdAt?' — '+hm(t.createdAt):''}</span>${t.okBy?`<span class="pos">${I('check')} تأیید ${esc(t.okBy)}</span>`:''}<span>${I(t.method==='bank'?'bank':'cash')} ${t.method==='bank'?'بانک/حواله':'نقد'}</span>${t.editedAt?`<span>${I('edit')} ویرایش‌شده</span>`:''}</div>
+ <div class="tchips"><span>${I('clock')} ${fd(t.date)}</span><span>${I('user')} ${esc(t.by||'')}${t.createdAt?' — '+hm(t.createdAt):''}</span>${t.okBy?`<span class="pos">${I('check')} تأیید ${esc(t.okBy)}</span>`:''}${t.ref?(()=>{ const r=DB.txns.find(x=>x.id===t.ref); return r?`<span style="cursor:pointer" onclick="showTxn('${r.id}')">${I('receipt')} از بل ${esc(r.no)}</span>`:''; })():''}<span>${I(t.method==='bank'?'bank':'cash')} ${t.method==='bank'?'بانک/حواله':'نقد'}</span>${t.editedAt?`<span>${I('edit')} ویرایش‌شده</span>`:''}</div>
  ${items.length?`<div class="tw nmin" style="margin-top:10px"><table class="tbl"><tr><th>جنس</th><th class="n">تعداد</th>${t.type==='adjust'?'':'<th class="n">فی</th><th class="n">جمع</th>'}</tr>${items.map(i=>`<tr><td>${esc(pname(i.pid))}</td><td class="n"><span dir="rtl">${t.type==='adjust'?fm(i.qty):iq(i)}</span></td>${t.type==='adjust'?'':`<td class="n">${fm(ip(i))}</td><td class="n">${fm(num(i.qty)*num(i.price))}</td>`}</tr>`).join('')}</table></div>`:''}
  <div class="sum"><div class="big"><span>مجموع</span><b>${t.type==='adjust'?fm(txnTotal(t)):money(txnTotal(t))}</b></div>${t.discount?`<div><span>تخفیف</span><b>${money(t.discount)}</b></div>`:''}${t.paid?`<div><span>نقد</span><b>${money(t.paid)}</b></div>`:''}${t.extra?`<div><span>کرایه/حمالی</span><b>${money(t.extra)}</b></div>`:''}${t.type==='sale'&&can('profit')&&C().costs[t.id]!==undefined?`<div><span>سود ناخالص این بل</span><b class="pos">${money(txnTotal(t)-C().costs[t.id])}</b></div>`:''}</div>
  ${t.type==='cashcount'?`<div class="sum"><div><span>باید می‌بود</span><b>${money(t.expected)}</b></div><div><span>شمرده شد</span><b>${money(t.counted)}</b></div><div class="big"><span>${num(t.diff)<0?'کسری':num(t.diff)>0?'اضافه':'برابر'}</span><b class="${num(t.diff)<0?'neg':'pos'}">${money(Math.abs(num(t.diff)))}</b></div></div>`:''}
