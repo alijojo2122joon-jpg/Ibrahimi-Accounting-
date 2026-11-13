@@ -554,18 +554,20 @@ let _C=null; function invalidate(){ _C=null; }
 function C(){ return _C||(_C=compute()); }
 let onSaved=null;
 const stab=v=>v&&typeof v==='object'?(Array.isArray(v)?'['+v.map(stab).join(',')+']':'{'+Object.keys(v).sort().map(k=>JSON.stringify(k)+':'+stab(v[k])).join(',')+'}'):JSON.stringify(v);
-const sameSettings=(a,b)=>stab(Object.assign({},a,{updatedAt:0,_ft:0,createdAt:0}))===stab(Object.assign({},b,{updatedAt:0,_ft:0,createdAt:0}));
+const sameSettings=(a,b)=>stab(Object.assign({},a,{updatedAt:0,_ft:0,createdAt:0,by:0,updatedBy:0}))===stab(Object.assign({},b,{updatedAt:0,_ft:0,createdAt:0,by:0,updatedBy:0}));
 const SKIPF=new Set(['id','kind','updatedAt','createdAt','by','updatedBy','_ft']);
 function mergeSettings(l,r){ const lf=l._ft||{}, rf=r._ft||{}, out={}, ft={}, rNewer=(r.updatedAt||'')>(l.updatedAt||'');
  new Set([...Object.keys(l),...Object.keys(r)]).forEach(k=>{ if(SKIPF.has(k)) return; const tl=lf[k]||'', tr=rf[k]||''; const useR=tr>tl||(tr===tl&&rNewer); const v=useR?r[k]:l[k]; if(v!==undefined) out[k]=v; const t=tr>tl?tr:tl; if(t) ft[k]=t; });
- return Object.assign(out,{id:'settings',kind:'settings',_ft:ft,createdAt:l.createdAt||r.createdAt,updatedAt:rNewer?r.updatedAt:l.updatedAt}); }
+ return Object.assign(out,{id:l.id||r.id,kind:l.kind||r.kind,_ft:ft,createdAt:l.createdAt||r.createdAt,by:l.by||r.by,updatedBy:rNewer?r.updatedBy:l.updatedBy,updatedAt:rNewer?r.updatedAt:l.updatedAt}); }
+const FMERGE=new Set(['settings','customer','product','supplier','person','order']);
 function save(kind,rec){
  rec=Object.assign({},rec); rec.kind=kind; rec.updatedAt=nowIso();
  if(!rec.id) rec.id=uid();
  if(!rec.createdAt){ rec.createdAt=rec.updatedAt; rec.by=META.user; }
  if(['product','customer','supplier'].includes(kind)){ rec.updatedBy=META.user; const o=(DB[KIND[kind]]||[]).find(x=>x.id===rec.id);
   if(kind==='product'&&o&&o.createdAt&&num(o.price)!==num(rec.price)) rec.priceHist=[...(o.priceHist||[]).slice(-19),{at:rec.updatedAt,by:META.user,old:num(o.price),new:num(rec.price)}]; }
- if(kind==='settings'){ rec.id='settings'; const old=DB.settings||{}, ft=Object.assign({},old._ft||{}); new Set([...Object.keys(rec),...Object.keys(old)]).forEach(k=>{ if(SKIPF.has(k)) return; if(stab(rec[k])!==stab(old[k])) ft[k]=rec.updatedAt; }); rec._ft=ft; DB.settings=rec; }
+ if(FMERGE.has(kind)){ if(kind==='settings') rec.id='settings'; const old=(kind==='settings'?DB.settings:(DB[KIND[kind]]||[]).find(x=>x.id===rec.id))||{}, ft=Object.assign({},old._ft||{}); new Set([...Object.keys(rec),...Object.keys(old)]).forEach(k=>{ if(SKIPF.has(k)) return; if(stab(rec[k])!==stab(old[k])) ft[k]=rec.updatedAt; }); rec._ft=ft; }
+ if(kind==='settings'){ DB.settings=rec; }
  else { if(!Array.isArray(DB[KIND[kind]])) DB[KIND[kind]]=[]; const arr=DB[KIND[kind]]; const i=arr.findIndex(x=>x.id===rec.id); if(i>=0) arr[i]=rec; else arr.push(rec); }
  if(!META.dirty.includes(rec.id)) META.dirty.push(rec.id);
  if(BATCH){ invalidate(); return rec; }
@@ -719,8 +721,8 @@ async function syncNow(){
    const rows=await res.json(); got+=rows.length;
    for(const row of rows){ const r=row.data; if(!r||!r.id) continue;
     const local=findRec(r.id);
-    if(r.kind==='settings'&&local){ const m=mergeSettings(local,r), same=o=>sameSettings(o,m);
-     if(!same(local)){ DB.settings=m; changed=true; } if(!same(r)){ DB.settings=Object.assign({},m,{updatedAt:nowIso()}); if(!META.dirty.includes('settings')) META.dirty.push('settings'); }
+    if(FMERGE.has(r.kind)&&local&&(r.kind==='settings'||local._ft||r._ft)){ const m=mergeSettings(local,r), same=o=>sameSettings(o,m), put=v=>{ if(r.kind==='settings') DB.settings=v; else { const arr=DB[KIND[r.kind]]; const i=arr.findIndex(x=>x.id===r.id); if(i>=0) arr[i]=v; else arr.push(v); } };
+     if(!same(local)){ put(m); changed=true; } if(!same(r)){ put(Object.assign({},m,{updatedAt:nowIso()})); if(!META.dirty.includes(r.id)) META.dirty.push(r.id); }
      if(!META.lastPull||row.updated_at>META.lastPull) META.lastPull=row.updated_at; continue; }
     if(META.dirty.includes(r.id) && local && local.updatedAt>=r.updatedAt) continue;
     if(!local || (r.updatedAt||'')>(local.updatedAt||'')){
