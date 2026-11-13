@@ -1521,7 +1521,7 @@ function saveTxn(type){
   Object.assign(t,{id:o.id,no:o.no,createdAt:o.createdAt,by:o.by,editedBy:META.user,editedAt:nowIso(),history:[...(o.history||[]),{at:nowIso(),by:META.user,prev:snap}]}); }
  else t.no=nextNo(TT[type][1]);
  const oldLB=type==='purchase'&&!editing?Object.fromEntries((t.items||[]).map(i=>[i.pid,(C().P[i.pid]||{}).lastBuy||0])):null;
- const r=save('txn',t); closeModal(); if(editing) toast('✓ تغییرات ذخیره شد — '+r.no); else snack('✓ '+TT[type][0]+' ثبت شد — '+r.no,()=>undoTxn(r.id)); render(); if(oldLB&&can('edit')) setTimeout(()=>priceRiseCheck(oldLB),400);
+ const r=save('txn',t); closeModal(); if(editing) toast('✓ تغییرات ذخیره شد — '+r.no); else snack('✓ '+TT[type][0]+' ثبت شد — '+r.no,()=>undoTxn(r.id)); render(); if(oldLB&&can('edit')) priceRiseCheck(oldLB);
  if(editing){ showTxn(r.id); return; }
  if(fromOrder){ const o=(DB.orders||[]).find(x=>x.id===fromOrder); if(o) save('order',Object.assign({},o,{status:'done',txn:r.id,doneBy:META.user,doneAt:nowIso()})); }
  if(type==='sale') showTxn(r.id,true);
