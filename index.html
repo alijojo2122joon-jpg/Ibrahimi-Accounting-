@@ -1253,6 +1253,8 @@ function initMap(){
  drawRouteLine();
  [150,600].forEach(ms=>setTimeout(()=>{ if(!MAP) return; try{ MAP.invalidateSize(); if(wantFit&&!MAPMOVED) fitAll(); }catch(e){} },ms));
  MAPMOVED=false; MAP.on('dragstart zoomstart',()=>{ if(MAP._loaded) MAPMOVED=true; });
+ try{ if(window.MAPRO) MAPRO.disconnect(); window.MAPRO=new ResizeObserver(()=>{ if(MAP) try{ MAP.invalidateSize({pan:false}); }catch(e){} }); MAPRO.observe(el); }catch(e){}
+ window.addEventListener('load',()=>{ if(MAP) try{ MAP.invalidateSize(); }catch(e){} },{once:true});
 }
 function setMapLayer(k,init){ if(!MAP_LAYERS[k]) k='street'; META.mapLayer=k; persist(); const d=MAP_LAYERS[k]; if(MAPLAYER) try{ MAP.removeLayer(MAPLAYER); }catch(e){} MAPLAYER=null; TILEOK=0; TILEERR=0;
  const w=$('#mwarn'); if(w) w.classList.remove('on'); $('#map')&&$('#map').classList.toggle('sat',k==='sat');
