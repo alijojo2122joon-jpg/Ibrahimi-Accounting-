@@ -245,6 +245,8 @@ svg.flip{transform:scaleX(-1)}
 #side .keys{font-size:11px;color:var(--mu);margin-top:14px;text-align:center;direction:rtl}
 /* printable invoice */
 #printArea{display:none}
+.stars{color:#f0b429;letter-spacing:1px;white-space:nowrap}.stars i{font-style:normal;color:var(--line);filter:brightness(.8)}
+
 .bc{grid-column:1/-1;color:var(--red);font-size:12px;font-weight:700;display:flex;align-items:center;gap:5px}.bc svg.i{width:15px;height:15px}
 .chk{display:flex;align-items:center;gap:8px;margin-bottom:12px;cursor:pointer}.chk input{width:20px;height:20px;accent-color:#e5484d}
 
@@ -428,7 +430,7 @@ svg.flip{transform:scaleX(-1)}
 <script id="engine">
 'use strict';
 const LS = 'ebrahimi_acc_v1';
-const VERSION = '4.2';
+const VERSION = '4.3';
 
 /* ---- Chart of accounts (کدینگ حساب‌ها) ----
    nature: A=asset (debit), L=liability (credit), E=equity (credit), E-=contra equity (debit),
@@ -557,7 +559,7 @@ function compute(){
  const gc=id=>CU[id]||(CU[id]={bal:0,sales:0,recv:0,open:[],adv:0,last:null,lastSale:null,cnt:0});
  const gs=id=>SU[id]||(SU[id]={bal:0,buys:0,paid:0,last:null});
  const debitC=(c,amt,t)=>{ c.bal+=amt; let a=amt; if(c.adv>0){ const u=Math.min(c.adv,a); c.adv-=u; a-=u; } if(a>0.005) c.open.push({d:t.date,amt:a,no:t.no}); };
- const creditC=(c,amt)=>{ c.bal-=amt; let r=amt; while(r>0.005&&c.open.length){ const f=c.open[0]; if(f.amt<=r+0.005){ r-=f.amt; c.open.shift(); } else { f.amt-=r; r=0; } } if(r>0.005) c.adv+=r; };
+ const creditC=(c,amt,t)=>{ c.bal-=amt; let r=amt; while(r>0.005&&c.open.length){ const f=c.open[0], use=Math.min(f.amt,r), dd=t&&f.d?Math.max(0,daysBetween(f.d,t.date)):0; if(t&&t.type!=='sreturn'){ c.pdAmt=(c.pdAmt||0)+use; c.pdDays=(c.pdDays||0)+use*dd; } if(f.amt<=r+0.005){ r-=f.amt; c.open.shift(); } else { f.amt-=r; r=0; } } if(r>0.005) c.adv+=r; };
 
  { const oc=num(s.openCash), ob=num(s.openBank); if(oc){ post(op,'1010',oc,'نقد اول دوره'); post(op,'3900',-oc,'نقد اول دوره'); } if(ob){ post(op,'1020',ob,'بانک اول دوره'); post(op,'3900',-ob,'بانک اول دوره'); } }
  for(const p of DB.products){ if(p.deleted) continue; const q=num(p.openQty), c=num(p.openCost); const x=gp(p.id); x.qty=q; x.avg=c; x.lastBuy=c;
@@ -577,11 +579,11 @@ function compute(){
     post(t,'1100',net,'فروش به '+nm); if(disc) post(t,'4200',disc,'تخفیف فروش'); post(t,'4100',-gross,'فروش به '+nm);
     if(paid){ post(t,cash,paid,'دریافت نقد هنگام فروش'); post(t,'1100',-paid,'دریافت نقد هنگام فروش'); }
     post(t,'5100',cost,'قیمت تمام‌شده'); post(t,'1200',-cost,'خروج از گدام');
-    costs[t.id]=cost; const c=gc(t.party); debitC(c,net,t); if(paid) creditC(c,paid); c.sales+=net; c.recv+=paid; c.last=t.date; c.lastSale=t.date; c.cnt++; break; }
+    costs[t.id]=cost; const c=gc(t.party); debitC(c,net,t); if(paid) creditC(c,paid,t); c.sales+=net; c.recv+=paid; c.last=t.date; c.lastSale=t.date; c.cnt++; break; }
    case 'sreturn':{ let val=0,cost=0;
     for(const it of items){ const p=gp(it.pid),q=num(it.qty),pr=num(it.price); val+=q*pr; const c=q*p.avg; cost+=c; p.qty+=q; p.soldQty-=q; p.rev-=q*pr; p.cogs-=c; }
     post(t,'4200',val,'مرجوعی از '+nm); post(t,'1100',-val,'مرجوعی از '+nm); post(t,'1200',cost,'برگشت به گدام'); post(t,'5100',-cost,'برگشت قیمت تمام‌شده');
-    const c=gc(t.party); creditC(c,val); c.sales-=val; const paid=num(t.paid);
+    const c=gc(t.party); creditC(c,val,t); c.sales-=val; const paid=num(t.paid);
     if(paid){ post(t,'1100',paid,'پس‌دادن پول به '+nm); post(t,cash,-paid,'پس‌دادن پول'); debitC(c,paid,t); }
     costs[t.id]=-cost; c.last=t.date; break; }
    case 'purchase':{ let gross=0; for(const it of items) gross+=num(it.qty)*num(it.price);
@@ -601,7 +603,7 @@ function compute(){
     s2.last=t.date; break; }
    case 'receipt':{ const a=num(t.amount), d=num(t.discount);
     post(t,cash,a,'دریافت از '+nm); if(d) post(t,'4200',d,'تخفیف هنگام تصفیه'); post(t,'1100',-(a+d),'دریافت از '+nm);
-    const c=gc(t.party); creditC(c,a+d); c.recv+=a; c.last=t.date; break; }
+    const c=gc(t.party); creditC(c,a+d,t); c.recv+=a; c.last=t.date; break; }
    case 'payment':{ const a=num(t.amount), d=num(t.discount);
     post(t,'2100',a+d,'پرداخت به '+nm); post(t,cash,-a,'پرداخت به '+nm); if(d) post(t,'4300',-d,'تخفیف گرفته‌شده');
     const s2=gs(t.party); s2.bal-=a+d; s2.paid+=a; s2.last=t.date; break; }
@@ -941,6 +943,19 @@ async function notifyDue(){ try{ if(!META.notif||!('Notification' in window)||No
  const title='امروز '+fm(a.length)+' دکان قول پرداخت دارد';
  let reg=null; try{ reg=navigator.serviceWorker&&await navigator.serviceWorker.getRegistration(); }catch(_){}
  if(reg) reg.showNotification(title,{body,icon:'icons/icon-192.png',badge:'icons/icon-192.png',dir:'rtl',lang:'fa'}); else new Notification(title,{body,dir:'rtl'}); }catch(e){} }
+function payScore(id){ const u=C().CU[id]; if(!u) return null; const avg=u.pdAmt>0?u.pdDays/u.pdAmt:null;
+ if(avg===null&&!(u.bal>0.5)) return null; let st=avg===null?3:avg<=7?5:avg<=15?4:avg<=30?3:avg<=60?2:1; if(u.oldest>60) st=Math.min(st,2); if(u.oldest>90) st=1;
+ return {avg,st,lb:['','بدحساب','کندپرداز','متوسط','خوش‌حساب','عالی'][st]}; }
+const stars=n=>`<span class="stars">${'★'.repeat(n)}<i>${'★'.repeat(5-n)}</i></span>`;
+function repShops(){ const from=RP.from, to=RP.to, m={};
+ DB.txns.forEach(t=>{ if(t.void||t.date<from||t.date>to||!t.party) return; const o=m[t.party]||(m[t.party]={s:0,p:0,n:0});
+  if(t.type==='sale'){ o.s+=txnTotal(t); o.p+=txnTotal(t)-(C().costs[t.id]||0); o.n++; } if(t.type==='sreturn'){ o.s-=txnTotal(t); o.p-=txnTotal(t)+(C().costs[t.id]||0); } });
+ const rows=DB.customers.filter(x=>!x.deleted&&(m[x.id]||(C().CU[x.id]||{}).bal>0.5)).map(x=>({x,o:m[x.id]||{s:0,p:0,n:0},b:(C().CU[x.id]||{bal:0}).bal,sc:payScore(x.id)}));
+ const so={profit:(a,b)=>b.o.p-a.o.p,risk:(a,b)=>(a.sc?a.sc.st:3)-(b.sc?b.sc.st:3)||b.b-a.b,debt:(a,b)=>b.b-a.b}[SHS]; rows.sort(so);
+ return `<h3>${I('shop')} دکان‌ها — سود و خوش‌حسابی</h3><div class="hint" style="margin-bottom:10px">ستاره‌ها از میانگین روزهایی می‌آید که هر دکان طول می‌کشد تا پول بل را بدهد. دکانی که سود کم و پرداخت دیر دارد ریسک است.</div>
+ <div class="tabs">${[['profit','بیشترین سود'],['risk','پرریسک‌ترین'],['debt','بیشترین بدهی']].map(t=>`<button class="${SHS===t[0]?'on':''}" onclick="SHS='${t[0]}';render()">${t[1]}</button>`).join('')}</div>
+ <div class="tw"><table class="tbl"><tr><th>دکان</th><th>خوش‌حسابی</th><th class="n">میانگین پرداخت</th><th class="n">فروش</th>${can('profit')?'<th class="n">سود</th>':''}<th class="n">بدهی</th></tr>${rows.map(r=>`<tr class="click" onclick="go('customer','${r.x.id}')"><td>${esc(r.x.name)}${r.x.hold?' <span class="badge" style="--c:var(--red)">بسته</span>':''}</td><td>${r.sc?stars(r.sc.st):'<span class="mu">تازه</span>'}</td><td class="n">${r.sc&&r.sc.avg!==null?fm(Math.round(r.sc.avg))+' روز':'—'}</td><td class="n">${money(r.o.s)}</td>${can('profit')?`<td class="n pos">${money(r.o.p)}</td>`:''}<td class="n ${r.b>0.5?'warn':''}">${money(r.b)}</td></tr>`).join('')||'<tr><td colspan="6" class="empty">—</td></tr>'}</table></div>`; }
+let SHS='profit';
 function custItem(x){ const c=C().CU[x.id]||{bal:0,oldest:0}, st=custSt(x.id);
  return `<div class="it" onclick="go('customer','${x.id}')"><div class="av ${x.photo?'ph':''}" style="--c:${st.col}">${x.photo?`<img src="${x.photo}">`:esc((x.name||'؟')[0])}</div><div class="m"><div class="t">${esc(x.name)} ${x.lat?'📍':''}${x.promiseDate&&c.bal>0.5?` <span class="badge" style="--c:${x.promiseDate<today()?'var(--red)':'var(--g2)'}">قول ${fd(x.promiseDate)}</span>`:''}</div><div class="d">${esc([x.owner,x.area].filter(Boolean).join(' — '))}${c.bal>0.5?` · ${fm(c.oldest)} روز`:''}</div></div><div class="a ${st.cls}">${money(c.bal)}</div></div>`; }
 function txItem(t){ const tt=TT[t.type]||['','','#999'];
@@ -1109,7 +1124,7 @@ function viewCustomer(){
    <div class="qrow">${act('receipt','#13a389','فروش',`saleForm('${x.id}')`)}${act('cash','#16a37a','دریافت پول',`receiptForm('${x.id}')`)}${x.lat?act('map','#3b6fd8','مسیر','',gmaps(x.lat,x.lng)):act('pin','#f08c2e','ثبت لوکیشن',`captureCustLoc('${x.id}')`)}${x.phone?act('phone','#8b5cf6','تماس','','tel:'+x.phone):''}${act('wa','#25b05a','واتس‌اپ','',waLink(x.phone,stmtText(x.id)))}${c.bal>0.5?act('clock','#f0b429','قول پرداخت',`promiseForm('${x.id}')`)+act('alert','#e5484d','یادآوری','',waLink(x.phone,remindText(x.id))):''}${act('edit','#7d8796','ویرایش',`customerForm('${x.id}')`)}</div>
    ${x.promiseDate?`<div class="promise ${x.promiseDate<today()?'late':''}" onclick="promiseForm('${x.id}')">${I('clock')} قول پرداخت: <b>${fd(x.promiseDate)}</b>${x.promiseAmt?' — '+money(x.promiseAmt):''}${x.promiseNote?' · '+esc(x.promiseNote):''}${x.promiseDate<today()?' · <b>گذشته!</b>':''}</div>`:''}
    ${x.note?`<div class="hint" style="margin-top:8px">📝 ${esc(x.note)}</div>`:''}</div></div>
- <div class="grid k4" style="margin-top:18px">${kpi('trend','#13a389','مجموع خرید از ما',money(c.sales),fm(c.cnt)+' بل فروش')}${kpi('cash','#16a37a','مجموع پرداخت',money(c.recv),c.sales?fm(Math.round(c.recv/c.sales*100))+'٪ وصول':'','pos')}${kpi('clock','#f08c2e','قدیمی‌ترین بدهی',fm(c.oldest||0)+' روز',st.lb)}${kpi('alert','#e5484d','سقف اعتبار',lim?money(lim):'تعیین نشده',lim&&c.bal>lim?'<span class="neg">از سقف گذشته</span>':'')}</div>
+ <div class="grid k4" style="margin-top:18px">${kpi('trend','#13a389','مجموع خرید از ما',money(c.sales),fm(c.cnt)+' بل فروش')}${kpi('cash','#16a37a','مجموع پرداخت',money(c.recv),c.sales?fm(Math.round(c.recv/c.sales*100))+'٪ وصول':'','pos')}${(()=>{ const sc=payScore(x.id); return kpi('clock','#f0b429','خوش‌حسابی',sc?stars(sc.st)+' '+sc.lb:'تازه',(sc&&sc.avg!==null?'معمولاً '+fm(Math.round(sc.avg))+' روزه می‌پردازد · ':'')+'قدیمی‌ترین بدهی '+fm(c.oldest||0)+' روز'); })()}${kpi('alert','#e5484d','سقف اعتبار',lim?money(lim):'تعیین نشده',lim&&c.bal>lim?'<span class="neg">از سقف گذشته</span>':'')}</div>
  ${(()=>{ const ms=persianMonths(6).filter(m=>m.to>=DB.settings.startDate); if(!ms.length||!c.cnt) return ''; const sv=ms.map(m=>DB.txns.filter(t=>!t.void&&t.party===x.id&&t.type==='sale'&&t.date>=m.from&&t.date<=m.to).reduce((a,t)=>a+txnTotal(t),0)), rv=ms.map(m=>DB.txns.filter(t=>!t.void&&t.party===x.id&&t.date>=m.from&&t.date<=m.to).reduce((a,t)=>a+(t.type==='receipt'?num(t.amount):t.type==='sale'?num(t.paid):0),0));
   return `<div class="card" style="margin-top:18px"><h3>${I('chart')} خرید و پرداخت ماهانه</h3>${barChart(ms.map(m=>m.label),[{name:'خرید از ما',color:'#13a389',values:sv},{name:'پول داده',color:'#f08c2e',values:rv}],200)}</div>`; })()}
  ${(x.visits||[]).length?`<div class="card" style="margin-top:18px"><h3>${I('pin')} ویزیت‌ها و قول‌ها</h3><div class="slist">${x.visits.slice().reverse().slice(0,8).map(v=>`<div class="sr" style="cursor:default"><div class="m"><b>${esc(v.note||'ویزیت — پول نداد')}</b><div class="mu">${new Date(v.at).toLocaleDateString('fa-AF-u-ca-persian',{month:'long',day:'numeric'})} · ${esc(v.by||'')}</div></div></div>`).join('')}</div></div>`:''}
@@ -1784,10 +1799,10 @@ function drawSearch(){ const el=$('#gsr'); if(!el) return; const q=(fv('gsq')||$
 function monthStart(){ const t=today(); try{ const p=new Intl.DateTimeFormat('en-u-ca-persian',{day:'numeric'}).format(new Date(t+'T12:00:00')); const d=parseInt(p,10); if(d>0&&d<32) return addDays(t,-(d-1)); }catch(e){} return t.slice(0,8)+'01'; }
 let RP={from:'',to:''};
 function viewReports(){ const tab=R.tab||'month'; if(!RP.from){ RP.from=monthStart(); RP.to=today(); }
- const tabs=[['month','گزارش ماه'],['pnl','سود و زیان'],['cash','جریان نقدی'],['stock','گزارش گدام'],['users','کارکرد هر نفر'],['bs','بیلانس‌شیت'],['daily','گزارش روزانه / شبانه'],['aging','طلب‌ها و کهنگی'],['sales','فروش اجناس'],['custs','بهترین مشتری‌ها'],['tb','میزان (تراز آزمایشی)'],['gl','دفتر روزنامه'],['coa','کدینگ حساب‌ها'],['log','فعالیت کاربران']];
+ const tabs=[['month','گزارش ماه'],['pnl','سود و زیان'],['cash','جریان نقدی'],['stock','گزارش گدام'],['users','کارکرد هر نفر'],['shops','سود و ریسک دکان‌ها'],['bs','بیلانس‌شیت'],['daily','گزارش روزانه / شبانه'],['aging','طلب‌ها و کهنگی'],['sales','فروش اجناس'],['custs','بهترین مشتری‌ها'],['tb','میزان (تراز آزمایشی)'],['gl','دفتر روزنامه'],['coa','کدینگ حساب‌ها'],['log','فعالیت کاربران']];
  const range=`<div class="row noprint" style="margin-bottom:10px"><span class="mu">از</span><input class="in" type="date" style="width:auto" value="${RP.from}" onchange="RP.from=this.value;render()"><span class="mu">تا</span><input class="in" type="date" style="width:auto" value="${RP.to}" onchange="RP.to=this.value;render()">
  <button class="btn sm alt" onclick="RP.from=today();RP.to=today();render()">امروز</button><button class="btn sm alt" onclick="RP.from=monthStart();RP.to=today();render()">این ماه</button><button class="btn sm alt" onclick="RP.from=addDays(today(),-29);RP.to=today();render()">۳۰ روز</button><button class="btn sm alt" onclick="RP.from=DB.settings.startDate;RP.to=today();render()">از ابتدا</button></div><div class="hint" style="margin-bottom:8px">${fd(RP.from)} تا ${fd(RP.to)}</div>`;
- const body={pnl:()=>range+repPnl(),bs:()=>repBS(),daily:()=>repDaily(),aging:()=>repAging(),sales:()=>range+repSales(),custs:()=>range+repCusts(),tb:()=>range+repTB(),gl:()=>range+repGL(),coa:()=>repCOA(),log:()=>repLog(),month:()=>repMonth(),cash:()=>range+repCash(),stock:()=>range+repStock(),users:()=>range+repUsers()}[tab]();
+ const body={pnl:()=>range+repPnl(),bs:()=>repBS(),daily:()=>repDaily(),aging:()=>repAging(),sales:()=>range+repSales(),custs:()=>range+repCusts(),tb:()=>range+repTB(),gl:()=>range+repGL(),coa:()=>repCOA(),log:()=>repLog(),month:()=>repMonth(),cash:()=>range+repCash(),stock:()=>range+repStock(),users:()=>range+repUsers(),shops:()=>range+repShops()}[tab]();
  return `<div class="tabs noprint">${tabs.map(t=>`<button class="${tab===t[0]?'on':''}" onclick="R.tab='${t[0]}';render()">${t[1]}</button>`).join('')}</div>${tab==='pnl'||tab==='daily'||tab==='aging'||tab==='month'?body:`<div class="card">${body}</div>`}`; }
 const trow=(l,v,cls='',b)=>`<tr><td>${b?'<b>'+l+'</b>':l}</td><td class="n ${cls}">${b?'<b>'+money(v)+'</b>':money(v)}</td></tr>`;
 /* ---------- chart helpers ---------- */
