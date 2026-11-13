@@ -245,6 +245,9 @@ svg.flip{transform:scaleX(-1)}
 #side .keys{font-size:11px;color:var(--mu);margin-top:14px;text-align:center;direction:rtl}
 /* printable invoice */
 #printArea{display:none}
+.bc{grid-column:1/-1;color:var(--red);font-size:12px;font-weight:700;display:flex;align-items:center;gap:5px}.bc svg.i{width:15px;height:15px}
+.chk{display:flex;align-items:center;gap:8px;margin-bottom:12px;cursor:pointer}.chk input{width:20px;height:20px;accent-color:#e5484d}
+
 .days{display:flex;flex-wrap:wrap;gap:8px}
 .days button{border:0;background:var(--bg);border-radius:12px;padding:8px 12px;box-shadow:var(--upS);cursor:pointer;color:var(--mu);font-size:13px}
 .days button.on{box-shadow:var(--inS);color:var(--g2);font-weight:700}
@@ -425,7 +428,7 @@ svg.flip{transform:scaleX(-1)}
 <script id="engine">
 'use strict';
 const LS = 'ebrahimi_acc_v1';
-const VERSION = '4.1';
+const VERSION = '4.2';
 
 /* ---- Chart of accounts (کدینگ حساب‌ها) ----
    nature: A=asset (debit), L=liability (credit), E=equity (credit), E-=contra equity (debit),
@@ -1102,7 +1105,7 @@ function viewCustomer(){
  <div class="card chero">
   <div class="ring sm">${ringSvg(pct,st.col)}<div class="in"><b class="${st.cls}">${money(c.bal)}</b><span>${c.bal<-0.5?'پیش‌پرداخت':c.bal>0.5?'بدهی · '+fm(c.oldest)+' روز':'حساب تصفیه است'}</span></div></div>
   <div class="cinfo">${x.photo?`<img class="cphoto" src="${x.photo}" onclick="viewPhoto(this.src)">`:''}<div class="ctt">${esc(x.name)}</div><div class="mu">${esc([x.code,x.owner,x.phone].filter(Boolean).join(' · '))}</div>
-   <div class="mu" style="margin-top:4px">${I('pin')} ${esc(x.area||'—')} ${x.lat?'':'<span class="badge" style="--c:var(--or)">بدون لوکیشن</span>'} ${num(x.priceAdj)?`<span class="badge" style="--c:#8b5cf6">نرخ ویژه ${fm(x.priceAdj)}٪</span>`:''} · <a href="#" onclick="pickOnMap('${x.id}');return false">تعیین روی نقشه</a></div>
+   <div class="mu" style="margin-top:4px">${I('pin')} ${esc(x.area||'—')} ${x.lat?'':'<span class="badge" style="--c:var(--or)">بدون لوکیشن</span>'} ${x.hold?`<span class="badge" style="--c:var(--red)">قرض بسته</span>`:''} ${num(x.priceAdj)?`<span class="badge" style="--c:#8b5cf6">نرخ ویژه ${fm(x.priceAdj)}٪</span>`:''} · <a href="#" onclick="pickOnMap('${x.id}');return false">تعیین روی نقشه</a></div>
    <div class="qrow">${act('receipt','#13a389','فروش',`saleForm('${x.id}')`)}${act('cash','#16a37a','دریافت پول',`receiptForm('${x.id}')`)}${x.lat?act('map','#3b6fd8','مسیر','',gmaps(x.lat,x.lng)):act('pin','#f08c2e','ثبت لوکیشن',`captureCustLoc('${x.id}')`)}${x.phone?act('phone','#8b5cf6','تماس','','tel:'+x.phone):''}${act('wa','#25b05a','واتس‌اپ','',waLink(x.phone,stmtText(x.id)))}${c.bal>0.5?act('clock','#f0b429','قول پرداخت',`promiseForm('${x.id}')`)+act('alert','#e5484d','یادآوری','',waLink(x.phone,remindText(x.id))):''}${act('edit','#7d8796','ویرایش',`customerForm('${x.id}')`)}</div>
    ${x.promiseDate?`<div class="promise ${x.promiseDate<today()?'late':''}" onclick="promiseForm('${x.id}')">${I('clock')} قول پرداخت: <b>${fd(x.promiseDate)}</b>${x.promiseAmt?' — '+money(x.promiseAmt):''}${x.promiseNote?' · '+esc(x.promiseNote):''}${x.promiseDate<today()?' · <b>گذشته!</b>':''}</div>`:''}
    ${x.note?`<div class="hint" style="margin-top:8px">📝 ${esc(x.note)}</div>`:''}</div></div>
@@ -1139,13 +1142,13 @@ function customerForm(id){
  sec('shop','مشخصات',`${fl('نام دکان *',inp('name',x.name,'placeholder="مثلاً: سوپرمارکت برادران"'))}<div class="f2">${fl('نام صاحب دکان',inp('owner',x.owner))}${fl('شماره تماس',inp('phone',x.phone,'inputmode="tel" placeholder="07xxxxxxxx"'))}</div>${fl('ساحه / آدرس / نشانی',inp('area',x.area,'placeholder="مثلاً: کارته‌سه، نزدیک مسجد…"'))}`)+
  sec('truck','روز توزیع (کدام روزها به این دکان جنس می‌برید؟)',`<input type="hidden" id="f_days" value="${(x.days||[]).join(',')}"><div class="days">${WORD.map(d=>`<button type="button" class="${(x.days||[]).includes(d)?'on':''}" onclick="togDay(${d},this)">${WDN[d]}</button>`).join('')}</div>`)+sec('pin','لوکیشن دکان',`<div class="row"><button type="button" class="btn sm bl" onclick="formGPS()">${I('pin')} گرفتن لوکیشن فعلی</button>${id?`<button type="button" class="btn sm alt" onclick="pickOnMap('${id}')">${I('map')} انتخاب روی نقشه</button>`:''}</div><div class="gps" id="gpsInfo" style="margin:8px 2px">${x.lat?'لوکیشن ثبت است ✓':'وقتی داخل دکان هستید «گرفتن لوکیشن» را بزنید.'}</div>
   <details class="more"><summary>${I('menu')} مختصات دستی</summary><div class="f2" style="margin-top:10px">${fl('Latitude',inp('lat',x.lat||'','inputmode="decimal"'))}${fl('Longitude',inp('lng',x.lng||'','inputmode="decimal"'))}</div></details>`)+
- sec('shop','عکس دکان (برای پیدا کردن آسان)',photoBox(x.photo))+sec('cash','حساب',`${fl('نرخ ویژهٔ این دکان (٪ نسبت به قیمت عادی)',inp('padj',x.priceAdj||'','inputmode="decimal" placeholder="مثلاً ‎-3 یعنی ۳٪ ارزان‌تر — خالی یعنی قیمت عادی"'))}<div class="f2">${fl('سقف اعتبار (قرض مجاز)',inp('limit',x.limit||'','inputmode="decimal" placeholder="اختیاری"'))}${fl('طلب قبلی (پیش از این سیستم)',inp('openBal',x.openBal||'','inputmode="decimal" placeholder="۰"'))}</div>${fl('یادداشت',`<textarea class="in" id="f_note" rows="2">${esc(x.note||'')}</textarea>`)}`)+entBar('saveCustomer()',del));
+ sec('shop','عکس دکان (برای پیدا کردن آسان)',photoBox(x.photo))+sec('cash','حساب',`<label class="chk"><input type="checkbox" id="f_hold" ${x.hold?'checked':''}> <b>قرض بسته است</b> — به این دکان فقط نقد بفروش</label>${fl('دلیل (اختیاری)',inp('holdNote',x.holdNote||'','placeholder="مثلاً: سه ماه پول نداده"'))}${fl('نرخ ویژهٔ این دکان (٪ نسبت به قیمت عادی)',inp('padj',x.priceAdj||'','inputmode="decimal" placeholder="مثلاً ‎-3 یعنی ۳٪ ارزان‌تر — خالی یعنی قیمت عادی"'))}<div class="f2">${fl('سقف اعتبار (قرض مجاز)',inp('limit',x.limit||'','inputmode="decimal" placeholder="اختیاری"'))}${fl('طلب قبلی (پیش از این سیستم)',inp('openBal',x.openBal||'','inputmode="decimal" placeholder="۰"'))}</div>${fl('یادداشت',`<textarea class="in" id="f_note" rows="2">${esc(x.note||'')}</textarea>`)}`)+entBar('saveCustomer()',del));
  drawPhotoBox();
 }
 async function formGPS(){ const gi=$('#gpsInfo'); if(gi) gi.textContent='در حال گرفتن لوکیشن…'; try{ const g=await getGPS(); F.gps=g; if($('#f_lat')){ $('#f_lat').value=g.lat; $('#f_lng').value=g.lng; } if($('#gpsInfo')) $('#gpsInfo').innerHTML='✅ لوکیشن گرفته شد — دقت حدود '+fm(g.acc)+' متر'; }catch(e){ if($('#gpsInfo')) $('#gpsInfo').textContent='❌ '+e.message; } }
 function saveCustomer(){ const name=fv('name').trim(); if(!name) return toast('نام دکان لازم است');
  const old=F.id?cust(F.id):{code:nextNo('C')}; const lat=num(fv('lat')), lng=num(fv('lng'));
- const r=save('customer',Object.assign({},old,{name,owner:fv('owner').trim(),phone:fv('phone').trim(),area:fv('area').trim(),limit:num(fv('limit')),priceAdj:num(fv('padj')),days:(fv('days')||'').split(',').filter(x=>x!=='').map(Number),photo:photoVal(old),openBal:num(fv('openBal')),note:fv('note').trim(),lat:lat||null,lng:lng||null},F.gps?{gpsAcc:F.gps.acc,gpsAt:nowIso()}:{}));
+ const r=save('customer',Object.assign({},old,{name,owner:fv('owner').trim(),phone:fv('phone').trim(),area:fv('area').trim(),limit:num(fv('limit')),hold:!!($('#f_hold')&&$('#f_hold').checked),holdNote:fv('holdNote').trim(),priceAdj:num(fv('padj')),days:(fv('days')||'').split(',').filter(x=>x!=='').map(Number),photo:photoVal(old),openBal:num(fv('openBal')),note:fv('note').trim(),lat:lat||null,lng:lng||null},F.gps?{gpsAcc:F.gps.acc,gpsAt:nowIso()}:{}));
  closeModal(); toast('ذخیره شد ✓'); go('customer',r.id); }
 
 /* ---------- products ---------- */
@@ -1265,7 +1268,7 @@ function drawParty(open){ const el=$('#pbox'); if(!el) return; const id=fv('part
  if(id&&!open){
   if(id==='__new'){ el.innerHTML=`<div class="psel" onclick="drawParty(true)"><div class="av">${I('plus')}</div><div class="m"><b>${kind==='c'?'دکان جدید':'عمده‌فروش جدید'}</b><div class="mu">مشخصات را پایین بنویسید</div></div><span class="chg">تغییر</span></div>`; return; }
   const p=(kind==='c'?cust:supp)(id); if(!p){ $('#f_party').value=''; return drawParty(true); } const b=pBal(id);
-  el.innerHTML=`<div class="psel" onclick="drawParty(true)"><div class="av ${p.photo?'ph':''}" style="--c:${pCol(p)}">${p.photo?`<img src="${p.photo}">`:esc(p.name[0]||'؟')}</div><div class="m"><b>${esc(p.name)}</b><div class="mu">${esc([p.owner,p.area].filter(Boolean).join(' · '))}</div></div><div class="pb"><div class="mu">${kind==='c'?'بدهی فعلی':'قرض ما'}</div><b class="${b>0.5?(kind==='c'?'warn':'neg'):'pos'}">${money(b)}</b></div></div>`; return; }
+  el.innerHTML=`<div class="psel" onclick="drawParty(true)"><div class="av ${p.photo?'ph':''}" style="--c:${pCol(p)}">${p.photo?`<img src="${p.photo}">`:esc(p.name[0]||'؟')}</div><div class="m"><b>${esc(p.name)}</b> ${p.hold?'<span class="badge" style="--c:var(--red)">فقط نقد</span>':''}<div class="mu">${esc([p.owner,p.area].filter(Boolean).join(' · '))}</div></div><div class="pb"><div class="mu">${kind==='c'?'بدهی فعلی':'قرض ما'}</div><b class="${b>0.5?(kind==='c'?'warn':'neg'):'pos'}">${money(b)}</b></div></div>`; return; }
  el.innerHTML=`<div class="pdrop"><div class="sbox">${I('search')}<input id="pq" placeholder="${kind==='c'?'جستجوی نام دکان، صاحب یا ساحه…':'جستجوی عمده‌فروش…'}" oninput="drawPL()" onkeydown="if(event.key==='Enter'){event.preventDefault();const f=document.querySelector('#plst .pi:not(.new)')||document.querySelector('#plst .pi.new');f&&f.click();setTimeout(()=>{const g=$('#gq');g&&g.focus();},50);}" autocomplete="off">${micBtn('pq')}</div><div class="plist" id="plst"></div></div>`;
  drawPL(); if(window.innerWidth>860) setTimeout(()=>{ const q=$('#pq'); q&&q.focus(); },60); }
 function drawPL(){ const el=$('#plst'); if(!el) return; const q=($('#pq').value||'').trim().toLowerCase(), kind=F.pk;
@@ -1292,19 +1295,23 @@ function drawGrid(){ const el=$('#pgrid'); if(!el) return; const q=(($('#gq')||{
  if(!DB.products.some(p=>!p.deleted)){ el.innerHTML=`<div class="empty">هنوز جنسی ثبت نشده — <a href="#" onclick="closeModal();productForm();return false">جنس جدید</a></div>`; return; }
  const a=DB.products.filter(p=>!p.deleted&&(!q||[p.name,p.code,p.cat].join(' ').toLowerCase().includes(q))).sort((x,y)=>(pop[y.id]||0)-(pop[x.id]||0)||x.name.localeCompare(y.name,'fa'));
  el.innerHTML=a.slice(0,q?40:18).map(p=>{ const s=(C().P[p.id]||{qty:0}).qty, inC=F.cart.find(i=>i.pid===p.id);
-  return `<button type="button" class="pc ${inC?'on':''} ${p.photo?'hp':''}" onclick="addCart('${p.id}')">${p.photo?`<img src="${p.photo}">`:''}<b>${esc(p.name)}</b>${F.type==='adjust'?'':`<span>${fm(defPrice(p.id))} ؋</span>`}<i class="${s<=0?'neg':num(p.minQty)&&s<=num(p.minQty)?'warn':''}">موجود ${qtyTxt(p,s)}</i>${inC?`<em>${fm(inC.qty)}</em>`:''}</button>`; }).join('')||'<div class="empty">پیدا نشد</div>'; }
+  return `<button type="button" class="pc ${inC?'on':''} ${p.photo?'hp':''}" onclick="addCart('${p.id}')">${p.photo?`<img src="${p.photo}">`:''}<b>${esc(p.name)}</b>${F.type==='adjust'?'':`<span>${fm(defPrice(p.id))} ؋</span>`}<i class="${s<=0?'neg':num(p.minQty)&&s<=num(p.minQty)?'warn':''}">موجود ${qtyTxt(p,s)}</i>${inC?`<em>${fm(inC.qty)}</em>`:''}</button>`; }).join('')||`<div class="empty">پیدا نشد${q&&can('edit')?` — <button type="button" class="btn sm" onclick="quickProduct()">${I('plus')} «${esc(q)}» جنس جدید</button>`:''}</div>`; }
 function gqKey(e){ if(e.key!=='Enter') return; e.preventDefault(); const f=document.querySelector('#pgrid .pc'); if(!f) return; f.click(); const q=$('#gq'); q.value=''; drawGrid(); setTimeout(()=>{ const ins=document.querySelectorAll('#cart .stp input'); const last=[...document.querySelectorAll('#cart .cl')].find(r=>r.querySelector('b')&&f.querySelector('b')&&r.querySelector('b').textContent===f.querySelector('b').textContent); const i=last?last.querySelector('.stp input'):ins[ins.length-1]; if(i){ i.focus(); i.select(); i.onkeydown=ev=>{ if(ev.key==='Enter'){ ev.preventDefault(); q.focus(); } }; } },30); }
+function quickProduct(){ const nm=($('#gq').value||'').trim(); if(!nm) return; const box=$('#pgrid');
+ box.innerHTML=`<div class="card" style="grid-column:1/-1;width:100%"><b>جنس جدید: ${esc(nm)}</b><div class="f2" style="margin-top:10px">${fl('واحد',`<input class="in" id="qp_unit" value="کارتن">`)}${fl('قیمت فروش',`<input class="in" id="qp_price" inputmode="decimal">`)}</div><button type="button" class="btn" onclick="saveQuickProduct('${esc(nm).replace(/'/g,'')}')">${I('check')} ثبت و اضافه به بل</button></div>`; $('#qp_price').focus(); }
+function saveQuickProduct(nm){ const r=save('product',{code:nextNo('P'),name:nm,unit:($('#qp_unit').value||'دانه').trim(),price:num($('#qp_price').value)}); F._pop=null; $('#gq').value=''; addCart(r.id); toast('جنس «'+nm+'» ثبت شد — بعداً موجودی و قیمت خریدش را کامل کنید'); }
 function addCart(pid){ const it=F.cart.find(i=>i.pid===pid); if(it) it.qty=r2(it.qty+(F.type==='adjust'&&it.qty<0?-1:1)); else F.cart.push({pid,qty:F.type==='adjust'?-1:1,price:defPrice(pid)}); drawCart(); drawGrid(); calcForm(); }
 function drawCart(){ const el=$('#cart'); if(!el) return; const adj=F.type==='adjust';
  el.innerHTML=F.cart.map((it,i)=>{ const p=prod(it.pid)||{}, st=(C().P[it.pid]||{qty:0}).qty, over=F.type==='sale'&&it.qty>st;
   return `<div class="cl"><div class="cn"><b>${esc(p.name)}</b> ${pk(p)>1&&p.unit2?`<button type="button" class="ut" onclick="toggleU(${i})">${it.u2?esc(p.unit2):esc(p.unit||'')} ⇄</button>`:''}<div class="mu ${over?'neg':''}" id="cs${i}">موجود ${qtyTxt(p,st)}${over?' — کافی نیست':''}</div></div>
   <div class="stp"><button type="button" onclick="stepQ(${i},1)">+</button><input inputmode="decimal" value="${it.u2?it.q2:it.qty}" oninput="setQ(${i},this.value)" onfocus="this.select()"><button type="button" onclick="stepQ(${i},-1)">−</button></div>
-  ${adj?'':`<label class="cp"><span class="mu">فی ${it.u2?esc(p.unit2):''}</span><input inputmode="decimal" value="${it.u2?it.p2:it.price}" oninput="setP(${i},this.value)" onfocus="this.select()"></label><div class="ct" id="ct${i}">${fm(it.qty*it.price)}</div>`}
+  ${adj?'':`<label class="cp"><span class="mu">فی ${it.u2?esc(p.unit2):''}</span><input inputmode="decimal" value="${it.u2?it.p2:it.price}" oninput="setP(${i},this.value)" onfocus="this.select()"></label><div class="ct" id="ct${i}">${fm(it.qty*it.price)}</div>`}${F.type==='sale'?`<div class="bc" id="bc${i}" style="${belowCost(it)?'':'display:none'}">${I('alert')} زیر قیمت خرید${can('cost')?' ('+money((C().P[it.pid]||{}).avg*(it.u2?1/pk(p):1))+')':''}</div>`:''}
   <button type="button" class="x" onclick="F.cart.splice(${i},1);drawCart();drawGrid();calcForm()">✕</button></div>`; }).join('')||`<div class="hint" style="text-align:center;padding:6px">روی جنس بزنید تا به ${F.type==='adjust'?'لیست':'بل'} اضافه شود</div>`;
  const c=$('#cartCnt'); if(c) c.textContent=F.cart.length?fm(F.cart.length)+' قلم':''; }
+const belowCost=it=>{ const a=(C().P[it.pid]||{avg:0}).avg; return a>0&&num(it.price)>0&&num(it.price)<a-0.01; };
 function stepQ(i,d){ const it=F.cart[i]; if(it.u2){ it.q2=Math.max(0,it.q2+d); it.qty=it.q2/pk(prod(it.pid)); if(it.q2<=0) F.cart.splice(i,1); drawCart(); drawGrid(); calcForm(); return; } it.qty=r2(it.qty+d); if(F.type!=='adjust'&&it.qty<=0) F.cart.splice(i,1); drawCart(); drawGrid(); calcForm(); }
 function setQ(i,v){ const it=F.cart[i]; if(it.u2){ it.q2=num(v); it.qty=it.q2/pk(prod(it.pid)); } else it.qty=num(v); const ct=$('#ct'+i); if(ct) ct.textContent=fm(F.cart[i].qty*F.cart[i].price); calcForm(); }
-function setP(i,v){ const it=F.cart[i]; if(it.u2){ it.p2=num(v); it.price=it.p2*pk(prod(it.pid)); } else it.price=num(v); const ct=$('#ct'+i); if(ct) ct.textContent=fm(F.cart[i].qty*F.cart[i].price); calcForm(); }
+function setP(i,v){ const it=F.cart[i]; if(it.u2){ it.p2=num(v); it.price=it.p2*pk(prod(it.pid)); } else it.price=num(v); const bce=$('#bc'+i); if(bce) bce.style.display=belowCost(it)?'':'none'; const ct=$('#ct'+i); if(ct) ct.textContent=fm(F.cart[i].qty*F.cart[i].price); calcForm(); }
 /* two units per product (e.g. کارتن / دانه) */
 const pk=p=>Math.max(1,num((p||{}).pack));
 const iq=i=>{ const p=prod(i.pid)||{}; return i.u2?fm(i.q2)+' '+(p.unit2||'دانه'):fm(i.qty)+' '+(p.unit||''); };
@@ -1403,7 +1410,9 @@ function saveTxn(type){
  if(F.photo) t.photo=F.photo; else if(F.photo===undefined&&F.editId){ const o=DB.txns.find(x=>x.id===F.editId); if(o&&o.photo) t.photo=o.photo; }
  if(type==='expense') t.acc=fv('acc'); if(type==='transfer'){ t.to=fv('to'); if(t.to===t.method) return toast('مبدأ و مقصد یکی است'); }
  if(type==='sale'){ const net=txnTotal(t); if((t.paid||0)>net+0.01) return toast('نقد گرفته‌شده از خالص بل بیشتر است — اضافه را جدا «دریافت پول» ثبت کنید');
+  if(type==='sale'){ const bc=(t.items||[]).filter(i=>{ const a=(C().P[i.pid]||{avg:0}).avg; return a>0&&num(i.price)<a-0.01; }); if(bc.length){ if(!can('edit')) return toast('⛔ قیمت '+bc.map(i=>pname(i.pid)).join('، ')+' زیر قیمت خرید است — از مالک بپرسید'); toast('⚠️ '+bc.map(i=>pname(i.pid)).join('، ')+' زیر قیمت خرید فروخته شد'); } }
   { const cu=cust(t.party), lim=num((cu||{}).limit), prev=(C().CU[t.party]||{bal:0}).bal-(F.editId?(()=>{ const o=DB.txns.find(x=>x.id===F.editId); return o&&o.party===t.party?txnTotal(o)-num(o.paid):0; })():0), after=prev+txnTotal(t)-num(t.paid);
+   if(cu&&cu.hold&&num(t.paid)<txnTotal(t)-0.5) return toast('⛔ قرض به «'+cu.name+'» بسته است — فقط نقد بفروشید'+(cu.holdNote?' ('+cu.holdNote+')':''));
    if(lim&&after>lim+0.5){ if(!can('edit')) return toast('⛔ از سقف اعتبار این دکان ('+money(lim)+') بیشتر می‌شود — نقد بگیرید یا از مالک بپرسید'); else toast('⚠️ از سقف اعتبار ('+money(lim)+') گذشت'); } }
   const prevQ=pid=>F.editId?((DB.txns.find(x=>x.id===F.editId)||{}).items||[]).filter(i=>i.pid===pid).reduce((a,i)=>a+num(i.qty),0):0;
   const short=t.items.filter(i=>num(i.qty)>(C().P[i.pid]||{qty:0}).qty+prevQ(i.pid)); if(short.length) toast('⚠️ موجودی '+short.map(i=>pname(i.pid)).join('، ')+' کافی نیست — ثبت شد، موجودی را بررسی کنید'); }
