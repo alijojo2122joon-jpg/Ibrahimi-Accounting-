@@ -561,7 +561,7 @@ body.mopen #snack{bottom:auto;top:16px;transform:translate(-50%,-20px)}body.mope
 <script id="engine">
 'use strict';
 const LS = 'ebrahimi_acc_v1';
-const VERSION = '9.12';
+const VERSION = '9.13';
 
 /* ---- Chart of accounts (کدینگ حساب‌ها) ----
    nature: A=asset (debit), L=liability (credit), E=equity (credit), E-=contra equity (debit),
@@ -1006,6 +1006,7 @@ let LASTV=null;
 function render(){
  if(!BOOTED&&idbOK&&!DB.txns.length&&num(META.recCount)>=4000){ const v=$('#view'); if(v) v.innerHTML='<div class="card" style="text-align:center;padding:40px"><b>در حال باز کردن حساب‌ها…</b><div class="mu" style="margin-top:8px">'+fm(META.recCount)+' سند</div></div>'; return; }
  if(!can(R.v)) R={v:'dash',id:null,tab:null};
+ if(R.v==='dash'&&!R.dash&&isCounterU()) R.v='counter';
  drawSide(); drawTop();
  if(MAP&&R.v!=='map'){ try{MAP.remove();}catch(e){} MAP=null; }
  const v=$('#view'); if(v&&R.v!==LASTV){ v.style.animation='none'; void v.offsetWidth; v.style.animation=''; } LASTV=R.v;
@@ -3027,6 +3028,29 @@ function loadDemo(){
   if(d%30===0) save('txn',{type:'expense',no:nextNo('EXP'),date,acc:'6300',amount:12000,note:'کرایه هنگر',method:'cash'});
   if(d%10===0) save('txn',{type:'payment',no:nextNo('PAY'),date,party:S[0].id,amount:Math.max(0,Math.round(((C().SU[S[0].id]||{bal:0}).bal)*0.5/100)*100)||1000,method:'cash'});
  }
+ /* shop counter demo: loose goods by kilo/metre, counter sales, stock-ins, day closes with hand-over, one edited close, more expense kinds */
+ DB.settings.roles=Object.assign({},DB.settings.roles||{},{'مهدی':'worker','مهیار':'worker'}); DB.settings.counter={'مهدی':true,'مهیار':true}; save('settings',DB.settings);
+ const LP=[['چای سیاه کیلویی','مواد خوراکی','کیلو',480,410],['نخود','مواد خوراکی','کیلو',140,118],['لوبیا','مواد خوراکی','کیلو',160,135],['برنج کیلویی','برنج و آرد','کیلو',115,98],['ریسمان نایلونی','لوازم','متر',25,17],['پلاستیک فرش','لوازم','متر',95,72],['تخم مرغ','مواد خوراکی','دانه',12,9.5],['گوگرد (قطی)','لوازم','بسته',60,48]]
+  .map(a=>save('product',{code:nextNo('P'),name:a[0],cat:a[1],unit:a[2],price:a[3],openCost:a[4],openQty:a[2]==='دانه'?600:a[2]==='متر'?300:120,minQty:a[2]==='دانه'?120:20}));
+ if(!cust('walkin')) save('customer',{id:'walkin',code:'C-0000',name:'مشتری گذری (نقدی)',walkin:true,area:''});
+ const QS=[0.25,0.5,1,1.5,2,2.5,3,5,7,10];
+ for(let d=24; d>=0; d--){ const date=addDays(today(),-d), w=d%2?'مهیار':'مهدی'; META.user=w; const day=[];
+  if(d%5===0){ const sp=S[0], it=LP.filter(()=>rand()>0.5).slice(0,4).map(p=>({pid:p.id,qty:p.unit==='دانه'?360:p.unit==='متر'?100:50,price:p.openCost}));
+   if(it.length) day.push(save('txn',{type:'purchase',no:nextNo('PUR'),date,party:sp.id,items:it,paid:0,method:'cash',counter:true,note:'رسید به هنگر'})); }
+  const nb=3+Math.floor(rand()*5);
+  for(let k=0;k<nb;k++){ const it=LP.filter(()=>rand()>0.6).slice(0,3).map(p=>{ const q=p.unit==='دانه'?[6,12,30][Math.floor(rand()*3)]:p.unit==='متر'?[2,5,10,15][Math.floor(rand()*4)]:QS[Math.floor(rand()*QS.length)]; return {pid:p.id,qty:q,price:p.price}; });
+   if(!it.length) continue; const t={type:'sale',no:nextNo('INV'),date,party:'walkin',items:it,method:'cash',counter:true}; t.paid=txnTotal(t); day.push(save('txn',t)); }
+  if(d%3===1){ const c=CU[Math.floor(rand()*CU.length)], it=[{pid:LP[0].id,qty:5,price:LP[0].price},{pid:LP[1].id,qty:10,price:LP[1].price}]; day.push(save('txn',{type:'sale',no:nextNo('INV'),date,party:c.id,items:it,paid:0,method:'cash',counter:true})); }
+  if(d%7===2) save('txn',{type:'expense',no:nextNo('EXP'),date,acc:'6500',amount:600+Math.round(rand()*500),note:'حمالی بار هنگر',method:'cash'});
+  if(d%9===3) save('txn',{type:'expense',no:nextNo('EXP'),date,acc:'6600',amount:1500,note:'بل برق هنگر',method:'cash'});
+  if(d%11===4) save('txn',{type:'expense',no:nextNo('EXP'),date,acc:'6800',amount:350,note:'دو کیلو نخود خراب شد',method:'cash'});
+  if(d===0) continue; /* today stays open so «بستن حساب» can be tried */
+  const sales=day.filter(t=>t.type==='sale'), ins=day.filter(t=>t.type==='purchase'), agg=a=>{ const m={}; a.forEach(t=>t.items.forEach(i=>{ const o=m[i.pid]||(m[i.pid]={q:0,v:0}); o.q=r2(o.q+num(i.qty)); o.v=r2(o.v+num(i.qty)*num(i.price)); })); return m; };
+  const cash=r2(sales.reduce((x,t)=>x+num(t.paid),0)), credit=r2(sales.reduce((x,t)=>x+txnTotal(t)-num(t.paid),0)), off=d%6===0?-100:d%8===0?50:0, cnt=r2(cash+off);
+  const dc=save('txn',{type:'dclose',date,method:'cash',no:nextNo('DC'),expected:cash,counted:cnt,diff:off,amount:cnt,credit,bills:sales.length,ins:ins.length,inVal:r2(ins.reduce((x,t)=>x+txnTotal(t),0)),sold:agg(sales),inn:agg(ins),byU:{[w]:day.length},since:null,to:'ابراهیمی',note:off<0?'۱۰۰ افغانی کم آمد':''});
+  const h=save('txn',{type:'handover',date,method:'cash',from:w,to:'ابراهیمی',amount:cnt,no:nextNo('HND'),note:'تحویل پول هنگر — '+dc.no,dc:dc.id}); save('txn',Object.assign({},dc,{hid:h.id}));
+  if(d===6){ const fx=DB.txns.find(x=>x.id===dc.id), nc=r2(fx.counted+100); save('txn',Object.assign({},fx,{counted:nc,amount:nc,diff:0,editedBy:w,editedAt:nowIso(),note:'',edits:[{at:nowIso(),by:w,why:'اشتباه نوشتم، درست شمردم',ch:[{f:'counted',o:fx.counted,n:nc}]}]})); save('txn',Object.assign({},h,{amount:nc})); }
+  else if(d>2) save('txn',Object.assign({},DB.txns.find(x=>x.id===dc.id),{okBy:'ابراهیمی',okAt:nowIso()})); }
  save('txn',{type:'capital',no:nextNo('CAP'),date:sd,amount:450000,method:'cash',note:'سرمایهٔ اولیه'});
  META.user=users[0]; persist(); invalidate(); toast('دادهٔ آزمایشی بارگذاری شد'); go('dash'); }
 
