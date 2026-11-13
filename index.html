@@ -245,6 +245,9 @@ svg.flip{transform:scaleX(-1)}
 #side .keys{font-size:11px;color:var(--mu);margin-top:14px;text-align:center;direction:rtl}
 /* printable invoice */
 #printArea{display:none}
+.ctcl{display:flex;gap:12px;align-items:center;flex-wrap:wrap}.ctcl .m{flex:1;min-width:200px}.ctcl.done b{color:var(--g2)}.ctcl .mu{font-size:12.5px;margin-top:3px}
+.ctag>div{display:flex;gap:10px;align-items:baseline;padding:7px 0;border-bottom:1px dashed var(--line)}.ctag span{flex:1;min-width:0}.ctag b{white-space:nowrap}.ctag small{white-space:nowrap;color:var(--mu);min-width:70px;text-align:left}
+.ctlinks{margin-top:10px;font-size:13px}.ctlinks a{cursor:pointer;color:var(--g2);display:inline-flex;gap:6px;align-items:center}.ctlinks svg{width:15px;height:15px}
 .ctop{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:14px}.ctseg{flex:1;min-width:260px}.ctseg button{display:flex;gap:6px;align-items:center;justify-content:center}.ctseg svg{width:18px;height:18px}.ctwho{font-size:13px;display:flex;gap:6px;align-items:center}.ctwho svg{width:16px;height:16px}
 .ctcats{margin:12px 0 0;flex-wrap:nowrap;overflow-x:auto;padding:4px 2px 6px}.ctcats button{flex:none}
 .ctgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:10px;margin-top:12px}
@@ -555,7 +558,7 @@ body.mopen #snack{bottom:auto;top:16px;transform:translate(-50%,-20px)}body.mope
 <script id="engine">
 'use strict';
 const LS = 'ebrahimi_acc_v1';
-const VERSION = '9.2';
+const VERSION = '9.3';
 
 /* ---- Chart of accounts (کدینگ حساب‌ها) ----
    nature: A=asset (debit), L=liability (credit), E=equity (credit), E-=contra equity (debit),
@@ -609,6 +612,7 @@ const TT = {
  borrow:   ['قرض گرفتن از شخص','BRW','#8b5cf6'],
  repay:    ['پس دادن قرض شخص','RPY','#e5484d'],
  handover: ['تحویل پول بین افراد','HND','#0e7490'],
+ dclose:   ['بستن حساب هنگر','DC','#0f8f78'],
  load:     ['بارگیری موتر (صبح)','LOD','#0369a1'],
  unload:   ['تطبیق موتر (شب)','ULD','#0f766e'],
 };
@@ -1140,6 +1144,8 @@ function viewDash(){
    [truckCard(),'truck','#f08c2e','موتر امروز'],
    [agendaCard(),'cash','#13a389','امروز باید پول جمع شود',agenda().length],
    [todayShopsCard(),'shop','#8b5cf6','دکان‌های مسیر امروز'],
+   [new Date().getHours()>=17&&ctOpen().bills?`<div class="card"><div class="hint">امروز ${fm(ctOpen().bills)} بل در هنگر ثبت شده و حساب هنوز بسته نشده.</div><button class="btn" style="margin-top:10px" onclick="closeModal();ctCloseForm()">${I('lock')} بستن حساب هنگر</button></div>`:'','lock','#0f8f78','حساب هنگر هنوز بسته نشده'],
+   [(()=>{ const l=DB.txns.filter(t=>!t.void&&t.type==='dclose'&&!t.okBy&&t.by!==META.user&&roleOf(META.user)==='owner'&&t.date>=addDays(today(),-7)); return l.length?`<div class="list">${l.map(t=>`<div class="it" onclick="ctCloseView('${t.id}')"><div class="m"><div class="t">${fd(t.date)} — ${esc(t.by||'')}</div><div class="d">${fm(t.bills)} بل · شمرده ${money(t.counted)}</div></div><div class="a ${Math.abs(num(t.diff))>=0.5&&t.diff<0?'neg':''}">${Math.abs(num(t.diff))>=0.5?(t.diff>0?'+':'−')+money(Math.abs(t.diff)):'✓'}</div></div>`).join('')}</div>`:''; })(),'lock','#0f8f78','گزارش بستن هنگر'],
    [ordersCard(),'book','#3b6fd8','فرمایش‌های باز',openOrders().length],
    [payablesCard(),'out','#e5484d','قرض‌هایی که باید بدهیم'],
    [fixedCard(),'fuel','#e5484d','مصارف ثابت این ماه'],
@@ -1956,7 +1962,7 @@ function fxAdd(){ F.list.push({id:uid(),acc:'6300',amount:0,note:'',day:1}); dra
 function saveFixed(){ const l=F.list.filter(x=>num(x.amount)>0); save('settings',Object.assign({},DB.settings,{fixedExp:l})); closeModal(); toast('ذخیره شد ✓'); render(); }
 
 function approveTxn(id){ const t=DB.txns.find(x=>x.id===id); if(!t||roleOf(META.user)!=='owner') return; save('txn',Object.assign({},t,{okBy:META.user,okAt:nowIso()})); toast('تأیید شد ✓'); render(); }
-function unapproved(){ const me=META.user, since=addDays(today(),-30); return DB.txns.filter(t=>!t.void&&(t.type==='expense'||t.type==='wage'||(t.type==='purchase'&&t.counter))&&!t.okBy&&t.by&&t.by!==me&&t.date>=since); }
+function unapproved(){ const me=META.user, since=addDays(today(),-30); return DB.txns.filter(t=>!t.void&&(t.type==='expense'||t.type==='wage'||(t.type==='purchase'&&t.counter)||t.type==='dclose')&&!t.okBy&&t.by&&t.by!==me&&t.date>=since); }
 function approveAll(){ const l=unapproved(); batch(()=>l.forEach(t=>save('txn',Object.assign({},t,{okBy:META.user,okAt:nowIso()})))); toast('همه تأیید شد ✓'); render(); }
 function changesCard(){ if(roleOf(META.user)!=='owner') return ''; const since=addDays(today(),-2), me=META.user, ev=[], d=iso=>iso&&iso.slice(0,10)>=since;
  DB.txns.forEach(t=>{ if(!t.void&&!(t.history&&t.history.length)) return; const nm=(TT[t.type]||[''])[0]+' '+(t.no||'')+(partyName(t)?' — '+partyName(t):'');
@@ -2237,9 +2243,52 @@ function ctSaveIn(){ if(!CT.cart.length) return; const lock=DB.settings.lockDate
 function ctLog(){ const td=today(), sale=CT.log==='sale', tx=DB.txns.filter(t=>!t.void&&t.date===td&&(sale?t.type==='sale':t.type==='purchase')).sort((a,b)=>(b.createdAt||'').localeCompare(a.createdAt||''));
  const lines=tx.flatMap(t=>(t.items||[]).map(i=>({t,i}))), tot=tx.reduce((s,t)=>s+txnTotal(t),0), cash=tx.reduce((s,t)=>s+num(t.paid),0);
  const byU={}; tx.forEach(t=>byU[t.by||'—']=(byU[t.by||'—']||0)+1);
- return `<div class="card"><h3>${I('clock')} ثبت‌های امروز<span class="sp"></span><div class="seg" style="width:auto"><button class="${sale?'on':''}" onclick="CT.log='sale';render()">فروش</button><button class="${sale?'':'on'}" onclick="CT.log='in';render()">ورود جنس</button></div></h3>
+ const cl=ctLastClose(td);
+ return `<div class="card ctclose"><div class="ctcl ${cl?'done':''}">${cl?`<div class="m"><b>✓ حساب امروز بسته شد</b><div class="mu">${who(cl.by)} ساعت ${hm(cl.createdAt)} · شمرده: ${money(cl.counted)}${cl.to?' · تحویل به '+esc(cl.to):''}</div></div><button class="btn sm alt" onclick="ctCloseView('${cl.id}')">گزارش</button>`:`<div class="m"><b>آخر روز: بستن حساب امروز</b><div class="mu">پول را بشمارید، جمع فروش و جنس رسیده را ببینید و پول را تحویل بدهید</div></div>`}${ctOpen().bills||!cl?`<button class="btn sm" onclick="ctCloseForm()">${I('lock')} ${cl?'بستن دوباره':'بستن حساب'}</button>`:''}</div><div class="ctlinks"><a onclick="ctHistory()">${I('book')} روزهای بسته‌شدهٔ قبلی</a></div></div>
+ <div class="card"><h3>${I('clock')} ثبت‌های امروز<span class="sp"></span><div class="seg" style="width:auto"><button class="${sale?'on':''}" onclick="CT.log='sale';render()">فروش</button><button class="${sale?'':'on'}" onclick="CT.log='in';render()">ورود جنس</button></div></h3>
   ${tx.length?`<div class="cttot" style="margin:0 0 10px"><span>${fm(tx.length)} ${sale?'بل':'ورود'} · ${Object.entries(byU).map(([u,n])=>esc(u)+' '+fm(n)).join('، ')}</span>${sale||can('cost')?`<b>${money(sale?cash:tot)}${sale&&tot-cash>0.5?` <small class="mu">+ ${money(tot-cash)} قرض</small>`:''}</b>`:''}</div>`:''}
   <div class="list">${lines.slice(0,80).map(({t,i})=>`<div class="it" onclick="showTxn('${t.id}')"><div class="m"><div class="t">${esc(pname(i.pid))} — ${iq(i)}</div><div class="d">${who(t.by)} ساعت ${hm(t.createdAt)} · ${esc(partyName(t)||'')}</div></div>${sale||can('cost')?`<div class="a">${money(num(i.qty)*num(i.price))}</div>`:''}</div>`).join('')||`<div class="empty">امروز هنوز ${sale?'فروشی':'جنسی'} ثبت نشده</div>`}</div></div>`; }
+
+/* ---------- counter day close (بستن حساب امروز هنگر) ---------- */
+function ctLastClose(d){ return DB.txns.filter(t=>!t.void&&t.type==='dclose'&&t.date===d).sort((a,b)=>(b.createdAt||'').localeCompare(a.createdAt||''))[0]||null; }
+function ctOpen(){ const d=today(), cl=ctLastClose(d), since=cl?cl.createdAt:'';
+ const tx=DB.txns.filter(t=>!t.void&&t.date===d&&t.counter&&(t.type==='sale'||t.type==='purchase')&&(!since||(t.createdAt||'')>since));
+ const sales=tx.filter(t=>t.type==='sale'), ins=tx.filter(t=>t.type==='purchase'), agg=a=>{ const m={}; a.forEach(t=>(t.items||[]).forEach(i=>{ const o=m[i.pid]||(m[i.pid]={q:0,v:0}); o.q+=num(i.qty); o.v+=num(i.qty)*num(i.price); })); return m; };
+ const cash=sales.reduce((s,t)=>s+num(t.paid),0), credit=sales.reduce((s,t)=>s+txnTotal(t)-num(t.paid),0), byU={}; tx.forEach(t=>byU[t.by||'—']=(byU[t.by||'—']||0)+1);
+ return {since,bills:sales.length,ins:ins.length,cash:r2(cash),credit:r2(credit),sold:agg(sales),inn:agg(ins),byU,inVal:ins.reduce((s,t)=>s+txnTotal(t),0)}; }
+function ctAggTable(m,val){ const e=Object.entries(m); if(!e.length) return '<div class="hint">—</div>';
+ return `<div class="ctag">${e.sort((a,b)=>b[1].v-a[1].v).map(([pid,o])=>`<div><span>${esc(pname(pid))}</span><b>${qtyTxt(prod(pid),r2(o.q))}</b>${val?`<small>${money(o.v)}</small>`:''}</div>`).join('')}</div>`; }
+function ctCloseForm(){ const o=ctOpen(), me=META.user; F={type:'dclose',o};
+ const others=(DB.settings.users||[]).filter(u=>u!==me);
+ openModal('بستن حساب امروز — '+fd(today()),`
+ ${o.since?`<div class="hint" style="margin-bottom:10px">امروز یک بار بسته شده؛ این بستن فقط ثبت‌های بعد از ساعت ${hm(o.since)} را حساب می‌کند.</div>`:''}
+ <div class="grid k3 mini" style="margin-bottom:14px"><div><span class="mu">فروش نقد</span><b class="pos">${money(o.cash)}</b></div><div><span class="mu">فروش قرض</span><b class="warn">${money(o.credit)}</b></div><div><span class="mu">تعداد بل</span><b>${fm(o.bills)}</b></div></div>
+ ${sec('receipt','چه فروخته شد',ctAggTable(o.sold,true))}
+ ${sec('in','چه وارد هنگر شد',ctAggTable(o.inn,can('cost')))}
+ ${sec('cash','پول صندوق هنگر را بشمارید',`<div class="hint" style="margin:-4px 0 10px">باید <b>${money(o.cash)}</b> نقد باشد (فقط پول فروش نقد هنگر).</div>
+  <input class="in big" id="f_counted" inputmode="decimal" placeholder="مجموع پول شمرده‌شده" oninput="ctDiff()"><div id="cdiff" class="cdiff"></div>
+  ${fl('پول را به کی تحویل می‌دهید؟',`<select class="in" id="f_to"><option value="">پیش خودم می‌ماند</option>${others.map(u=>`<option ${u===others.find(x=>roleOf(x)==='owner')?'selected':''}>${esc(u)}</option>`).join('')}</select>`)}
+  ${fl('یادداشت (اختیاری)',inp('note','','placeholder="مثلاً: ۲۰۰ افغانی کم است چون…"'))}`)}
+ <button class="btn big" style="width:100%" onclick="ctCloseSave()">${I('lock')} بستن حساب امروز</button>`); }
+function ctDiff(){ const v=fv('counted'), el=$('#cdiff'); if(!el) return; if(v===''){ el.innerHTML=''; return; } const d=r2(num(v)-F.o.cash);
+ el.innerHTML=Math.abs(d)<0.5?'<b class="pos">✓ درست است</b>':d>0?`<b class="pos">${money(d)} اضافه</b>`:`<b class="neg">${money(-d)} کم</b>`; }
+function ctCloseSave(){ if(fv('counted')==='') return toast('پول شمرده‌شده را بنویسید'); const o=F.o, c=num(fv('counted')), to=fv('to'), d=today();
+ const lock=DB.settings.lockDate; if(lock&&d<=lock) return toast('حساب‌ها قفل است');
+ const sm=m=>Object.fromEntries(Object.entries(m).map(([k,v])=>[k,{q:r2(v.q),v:r2(v.v)}]));
+ let id; batch(()=>{ const r=save('txn',{type:'dclose',date:d,method:'cash',no:nextNo('DC'),expected:o.cash,counted:c,diff:r2(c-o.cash),amount:c,credit:o.credit,bills:o.bills,ins:o.ins,inVal:r2(o.inVal),sold:sm(o.sold),inn:sm(o.inn),byU:o.byU,since:o.since||null,to:to||null,note:fv('note').trim()}); id=r.id;
+  if(to&&c>0) save('txn',{type:'handover',date:d,method:'cash',from:META.user,to,amount:c,no:nextNo('HND'),note:'تحویل پول هنگر — '+r.no}); });
+ closeModal(); render(); toast('✓ حساب امروز بسته شد'); ctCloseView(id); }
+function ctCloseText(t){ return `📋 حساب هنگر — ${fd(t.date)}\nبسته‌کننده: ${t.by||''} ساعت ${hm(t.createdAt)}\n\n💵 فروش نقد: ${money(t.expected)}\n🧾 فروش قرض: ${money(t.credit)}\n🔢 تعداد بل: ${fm(t.bills)}\n✋ پول شمرده‌شده: ${money(t.counted)}${Math.abs(num(t.diff))>=0.5?(t.diff>0?' (اضافه '+money(t.diff)+')':' (کم '+money(-t.diff)+')'):' ✓'}${t.to?'\n➡️ تحویل به: '+t.to:''}\n\n🛒 فروخته شد:\n`+Object.entries(t.sold||{}).map(([p,o])=>`• ${pname(p)}: ${qtyTxt(prod(p),o.q)}`).join('\n')+(Object.keys(t.inn||{}).length?`\n\n📦 وارد هنگر شد:\n`+Object.entries(t.inn).map(([p,o])=>`• ${pname(p)}: ${qtyTxt(prod(p),o.q)}`).join('\n'):'')+(t.note?`\n\n📝 ${t.note}`:''); }
+function ctCloseView(id){ const t=DB.txns.find(x=>x.id===id); if(!t) return; const own=roleOf(META.user)==='owner', d=num(t.diff), txt=ctCloseText(t);
+ const toA=m=>Object.fromEntries(Object.entries(m||{}).map(([k,v])=>[k,{q:v.q,v:v.v}]));
+ openModal('حساب هنگر — '+fd(t.date),`<div class="mu" style="margin-bottom:10px">${who(t.by)} ساعت ${hm(t.createdAt)} بست${t.since?' (بستن دوم روز)':''} · ${esc(t.no||'')}${t.okBy?` · <span class="pos">دیده شد توسط ${esc(t.okBy)} ✓</span>`:''}</div>
+ <div class="grid k3 mini" style="margin-bottom:14px"><div><span class="mu">فروش نقد</span><b class="pos">${money(t.expected)}</b></div><div><span class="mu">فروش قرض</span><b class="warn">${money(t.credit)}</b></div><div><span class="mu">تعداد بل</span><b>${fm(t.bills)}</b></div></div>
+ <div class="sum"><div><span>پول شمرده‌شده</span><b>${money(t.counted)}</b></div><div><span>تفاوت</span><b class="${Math.abs(d)<0.5?'pos':d>0?'pos':'neg'}">${Math.abs(d)<0.5?'✓ درست':d>0?money(d)+' اضافه':money(-d)+' کم'}</b></div>${t.to?`<div><span>تحویل به</span><b>${esc(t.to)}</b></div>`:''}</div>
+ ${sec('receipt','فروخته شد',ctAggTable(toA(t.sold),true))}${sec('in','وارد هنگر شد',ctAggTable(toA(t.inn),can('cost')))}
+ ${t.note?`<div class="hint">📝 ${esc(t.note)}</div>`:''}
+ <div class="qrow" style="justify-content:center;margin-top:14px"><button class="btn" style="--c:#25b05a" onclick="window.open('https://wa.me/?text='+encodeURIComponent(ctCloseText(DB.txns.find(x=>x.id==='${t.id}'))),'_blank')">${I('wa')} فرستادن در واتس‌اپ</button><button class="btn alt" onclick="navigator.clipboard.writeText(ctCloseText(DB.txns.find(x=>x.id==='${t.id}'))).then(()=>toast('کاپی شد'))">کاپی</button>${own&&!t.okBy&&t.by!==META.user?`<button class="btn alt" onclick="approveTxn('${t.id}');closeModal()">${I('check')} دیدم، درست است</button>`:''}${can('void')?`<button class="btn alt" onclick="confirmBtn(this,()=>{undoTxn('${t.id}');closeModal();render();})">ابطال</button>`:''}</div>`); }
+function ctHistory(){ const a=DB.txns.filter(t=>!t.void&&t.type==='dclose').sort((x,y)=>(y.createdAt||'').localeCompare(x.createdAt||'')).slice(0,60);
+ openModal('روزهای بسته‌شدهٔ هنگر',a.length?`<div class="list">${a.map(t=>`<div class="it" onclick="ctCloseView('${t.id}')"><div class="m"><div class="t">${fd(t.date)} — ${fm(t.bills)} بل</div><div class="d">${who(t.by)} ساعت ${hm(t.createdAt)}${t.to?' · تحویل به '+esc(t.to):''}${Math.abs(num(t.diff))>=0.5?` · <span class="${t.diff>0?'pos':'neg'}">${t.diff>0?'اضافه':'کم'} ${money(Math.abs(t.diff))}</span>`:''}</div></div><div class="a">${money(t.counted)}</div></div>`).join('')}</div>`:'<div class="empty">هنوز هیچ روزی بسته نشده</div>'); }
 
 /* ---------- text size ---------- */
 function applyFont(){ const z={lg:1.12,xl:1.25}[META.font]||1; document.body.style.zoom=z===1?'':z; }
@@ -2642,7 +2691,7 @@ function loadList(){ const a=openOrders().filter(o=>o.ddate<=addDays(today(),1))
  <div class="stick"><div class="ft"><span class="mu">دکان‌ها</span><b>${fm(a.length)}</b></div><a class="btn" style="--c:#25b05a" target="_blank" rel="noopener" href="https://wa.me/?text=${encodeURIComponent(txt)}">${I('wa')} واتس‌اپ</a></div>`); }
 
 /* ---------- transaction detail ---------- */
-function showTxn(id,fresh){ const t=DB.txns.find(x=>x.id===id); if(!t) return; const tt=TT[t.type]; const js=C().J.filter(j=>j.tx===id);
+function showTxn(id,fresh){ const t=DB.txns.find(x=>x.id===id); if(!t) return; if(t.type==='dclose') return ctCloseView(id); const tt=TT[t.type]; const js=C().J.filter(j=>j.tx===id);
  const items=t.items||[]; const isC=['sale','sreturn','receipt'].includes(t.type), isP=PTYPES.includes(t.type); const party=isP?(DB.persons||[]).find(p=>p.id===t.party):isC?cust(t.party):supp(t.party);
  const txt=`${DB.settings.biz||'ابراهیمی اکانتینگ'}\n${tt[0]} ${t.no}\nتاریخ: ${fd(t.date)}\n${party?'مشتری: '+party.name+'\n':''}`+items.map(i=>`${pname(i.pid)}: ${iq(i)} × ${fm(ip(i))} = ${fm(num(i.qty)*num(i.price))}`).join('\n')+
   (t.discount?`\nتخفیف: ${fm(t.discount)}`:'')+`\nمجموع: ${money(txnTotal(t))}`+(t.type==='sale'?`\nنقد: ${money(t.paid||0)}\nبه حساب: ${money(txnTotal(t)-num(t.paid))}`:'')+(isC&&party?`\nمانده کل حساب شما: ${money((C().CU[party.id]||{bal:0}).bal)}`:'')+`\nتشکر 🌹`;
