@@ -245,6 +245,11 @@ svg.flip{transform:scaleX(-1)}
 #side .keys{font-size:11px;color:var(--mu);margin-top:14px;text-align:center;direction:rtl}
 /* printable invoice */
 #printArea{display:none}
+.scanov{position:fixed;inset:0;background:#000;z-index:7000;display:flex;flex-direction:column;align-items:center;justify-content:center}
+.scanov video{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+.sframe{position:relative;width:70vw;max-width:320px;height:180px;border:3px solid #ffc24b;border-radius:18px;box-shadow:0 0 0 9999px rgba(0,0,0,.45)}
+.shint{position:relative;color:#fff;margin-top:18px;font-weight:700}.scanov .btn{position:absolute;bottom:40px}
+
 .gr{display:flex;align-items:center;gap:14px}.gr .m{flex:1;min-width:0}
 .ring.xs{width:96px;height:96px;flex:none}.ring.xs .in{inset:16px}.ring.xs .in b{font-size:19px}.ring.xs .in b small{font-size:12px}
 
@@ -433,7 +438,7 @@ svg.flip{transform:scaleX(-1)}
 <script id="engine">
 'use strict';
 const LS = 'ebrahimi_acc_v1';
-const VERSION = '4.5';
+const VERSION = '4.6';
 
 /* ---- Chart of accounts (کدینگ حساب‌ها) ----
    nature: A=asset (debit), L=liability (credit), E=equity (credit), E-=contra equity (debit),
@@ -765,6 +770,7 @@ check:'M20 6 9 17l-5-5',
 print:'M6 9V2h12v7M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2M6 14h12v8H6z',
 search:'M11 19a8 8 0 1 0 0-16 8 8 0 0 0 0 16zM21 21l-4.3-4.3',
 lock:'M6 11h12v10H6zM8.5 11V7.5a3.5 3.5 0 0 1 7 0V11M12 15v2',
+scan:'M3 7V4h3M21 7V4h-3M3 17v3h3M21 17v3h-3M7 8v8M10 8v8M13 8v8M16 8v8',
 mic:'M12 15a3 3 0 0 0 3-3V6a3 3 0 0 0-6 0v6a3 3 0 0 0 3 3zM19 11a7 7 0 0 1-14 0M12 18v3',
 sync:'M21 12a9 9 0 0 1-15.5 6.2L3 16M3 12a9 9 0 0 1 15.5-6.2L21 8M21 3v5h-5M3 21v-5h5'};
 const I=(n,cls='')=>`<svg class="i ${cls}" viewBox="0 0 24 24"><path d="${IC[n]||''}"/></svg>`;
@@ -778,12 +784,12 @@ function drawSide(){
  NAV.filter(n=>can(n[0])).map(n=>`<a class="${R.v===n[0]||(R.v==='customer'&&n[0]==='customers')||(R.v==='supplier'&&n[0]==='suppliers')||(R.v==='product'&&n[0]==='products')?'on':''}" onclick="go('${n[0]}')">${I(n[1])}<span>${n[2]}</span></a>`).join('')+
  `<div class="qa"><button onclick="saleForm()">${I('receipt')} فروش جدید</button><button onclick="receiptForm()">${I('cash')} دریافت پول</button><button onclick="purchaseForm()">${I('cart')} خرید از عمده‌فروش</button><button onclick="expenseForm()">${I('fuel')} ثبت مصرف</button></div><a onclick="go('help')" class="${R.v==='help'?'on':''}">${I('book')}<span>راهنما</span></a><div class="keys">F2 فروش · F3 دریافت · F4 خرید · F8 مصرف</div>`;
  const B=(v,ic,l,on)=>`<a class="${on?'on':''}" onclick="go('${v}')"><b>${I(ic)}</b>${l}</a>`;
- $('#bnav').innerHTML=B('dash','home','خانه',R.v==='dash')+B('map','map','نقشه',R.v==='map')+`<a class="plus" onclick="quickMenu()"><b>${I('plus')}</b>ثبت</a>`+B('customers','shop','دکان‌ها',['customers','customer'].includes(R.v))+B('more','menu','بیشتر',['products','product','suppliers','txns','reports','settings','supplier','more','help'].includes(R.v));
+ $('#bnav').innerHTML=B('dash','home','خانه',R.v==='dash')+B('map','map','نقشه',R.v==='map')+`<a class="plus" onclick="quickMenu()"><b>${I('plus')}</b>ثبت</a>`+B('customers','shop','دکان‌ها',['customers','customer'].includes(R.v))+B('more','menu','بیشتر',['products','product','suppliers','txns','reports','settings','supplier','more','help','truck'].includes(R.v));
 }
 function drawTop(){
  const st={off:['','همگام‌سازی خاموش'],ok:['ok','همگام شد'],err:['err','خطای همگام‌سازی'],busy:['busy','در حال همگام‌سازی…']}[syncState]||['',''];
  const pend=META.dirty.length, dark=META.theme==='dark';
- $('#top').innerHTML=`<h1>${esc((NAV.find(n=>n[0]===R.v)||['','',R.v==='help'?'راهنما':R.v==='customer'?'حساب دکان':R.v==='product'?'کاردکس جنس':R.v==='supplier'?'حساب عمده‌فروش':'بیشتر'])[2])}</h1>
+ $('#top').innerHTML=`<h1>${esc((NAV.find(n=>n[0]===R.v)||['','',R.v==='help'?'راهنما':R.v==='truck'?'دفتر موتر':R.v==='customer'?'حساب دکان':R.v==='product'?'کاردکس جنس':R.v==='supplier'?'حساب عمده‌فروش':'بیشتر'])[2])}</h1>
  <button class="chip" onclick="go('settings')" title="${st[1]}"><span class="dot ${st[0]}"></span><span class="hm">${META.sync.url?(pend?fm(pend)+' در انتظار':st[1]):'همین دستگاه'}</span></button>
  <button class="chip" onclick="setTheme('${dark?'light':'dark'}')" title="حالت شب/روز">${I(dark?'sun':'moon')}</button>
  <button class="chip" onclick="searchAll()" title="جستجو">${I('search')}</button>${hasPins()?`<button class="chip" onclick="lockNow()" title="قفل">${I('lock')}</button>`:''}<button class="chip" onclick="userMenu()">${I('user')} ${esc(META.user)}</button>`;
@@ -793,7 +799,7 @@ function render(){
  drawSide(); drawTop();
  if(MAP&&R.v!=='map'){ try{MAP.remove();}catch(e){} MAP=null; }
  const v=$('#view');
- const views={dash:viewDash,map:viewMap,customers:viewCustomers,customer:viewCustomer,products:viewProducts,product:viewProduct,suppliers:viewSuppliers,supplier:viewSupplier,txns:viewTxns,reports:viewReports,settings:viewSettings,more:viewMore,help:viewHelp};
+ const views={dash:viewDash,map:viewMap,customers:viewCustomers,customer:viewCustomer,products:viewProducts,product:viewProduct,suppliers:viewSuppliers,supplier:viewSupplier,txns:viewTxns,reports:viewReports,settings:viewSettings,more:viewMore,help:viewHelp,truck:truckView};
  v.innerHTML=(views[R.v]||viewDash)();
  if(R.v==='map') setTimeout(initMap,30);
  if(R.v==='customers') drawCList();
@@ -869,7 +875,7 @@ function userMenu(){
 }
 function viewMore(){
  const col=['#f08c2e','#3b6fd8','#8b5cf6','#13a389','#e5484d'];
- return `<div class="list">`+NAV.slice(3).filter(n=>can(n[0])).map((n,i)=>`<div class="it" onclick="go('${n[0]}')"><div class="ic" style="--c:${col[i]}">${I(n[1])}</div><div class="m"><div class="t">${n[2]}</div></div>${I('chev')}</div>`).join('')+`<div class="it" onclick="go('help')"><div class="ic" style="--c:#f0b429">${I('book')}</div><div class="m"><div class="t">راهنمای استفاده</div></div>${I('chev')}</div><div class="it" onclick="priceList()"><div class="ic" style="--c:#25b05a">${I('wa')}</div><div class="m"><div class="t">لیست قیمت برای دکان‌ها</div></div>${I('chev')}</div></div>`;
+ return `<div class="list">`+NAV.slice(3).filter(n=>can(n[0])).map((n,i)=>`<div class="it" onclick="go('${n[0]}')"><div class="ic" style="--c:${col[i]}">${I(n[1])}</div><div class="m"><div class="t">${n[2]}</div></div>${I('chev')}</div>`).join('')+`<div class="it" onclick="go('truck')"><div class="ic" style="--c:#3b6fd8">${I('truck')}</div><div class="m"><div class="t">دفتر موتر (کیلومتر، تیل، روغن)</div></div>${I('chev')}</div><div class="it" onclick="go('help')"><div class="ic" style="--c:#f0b429">${I('book')}</div><div class="m"><div class="t">راهنمای استفاده</div></div>${I('chev')}</div><div class="it" onclick="priceList()"><div class="ic" style="--c:#25b05a">${I('wa')}</div><div class="m"><div class="t">لیست قیمت برای دکان‌ها</div></div>${I('chev')}</div></div>`;
 }
 
 /* ---------- dashboard ---------- */
@@ -893,6 +899,7 @@ function viewDash(){
  ${can('settings')&&DB.txns.length>15&&!META.sync.url&&(!META.lastBackup||daysBetween(META.lastBackup.slice(0,10),today())>=7)?`<div class="card banner"><div class="ic" style="--c:#e5484d">${I('alert')}</div><div style="flex:1"><b>${META.lastBackup?'آخرین بکاپ '+fm(daysBetween(META.lastBackup.slice(0,10),today()))+' روز پیش بود':'هنوز از اطلاعات بکاپ نگرفته‌اید'}</b><div class="hint">اگر گوشی گم یا خراب شود، حساب‌ها از بین می‌رود. یک فایل بکاپ بگیرید و در تلگرام یا گوگل‌درایو نگه دارید.</div></div><button class="btn sm red" onclick="exportJSON();render()">بکاپ</button></div>`:''}
  ${META.sync.url&&(syncState==='err'||(META.dirty.length>0&&META.lastSyncAt&&Date.now()-new Date(META.lastSyncAt).getTime()>3600000))?`<div class="card banner"><div class="ic" style="--c:#e5484d">${I('sync')}</div><div style="flex:1"><b>${fm(META.dirty.length)} ثبت هنوز به دستگاه‌های دیگر نرفته</b><div class="hint">${syncState==='err'?esc(META.lastSyncErr||'خطای همگام‌سازی'):'انترنت را بررسی کنید'}</div></div><button class="btn sm" onclick="doSync(true)">دوباره</button></div>`:''}
  ${can('settings')?budgetAlerts().map(o=>`<div class="card banner"><div class="ic" style="--c:#f08c2e">${I('fuel')}</div><div style="flex:1"><b>${esc(ACC[o.a].name)}: ${money(o.u.used)} از سقف ${money(o.u.lim)}</b><div class="hint">${o.u.pct>=100?'این ماه از سقف بودجه گذشت':'نزدیک به سقف بودجهٔ این ماه'}</div></div></div>`).join(''):''}
+ ${(()=>{ const t=DB.settings.truck; if(!t||!(t.log||[]).length) return ''; const km=Math.max(...t.log.map(l=>num(l.km))), o=t.log.filter(l=>l.oil).sort((a,b)=>num(b.km)-num(a.km))[0]; if(!o) return ''; const left=num(o.km)+(num(t.oilEvery)||5000)-km; return left<=300?`<div class="card banner" onclick="go('truck')" style="cursor:pointer"><div class="ic" style="--c:#f08c2e">${I('gear')}</div><div style="flex:1"><b>${left<=0?'وقت تعویض روغن موتر رسیده':'تعویض روغن موتر: '+fm(left)+' کیلومتر مانده'}</b></div></div>`:''; })()}
  ${typeof deferredInstall!=='undefined'&&deferredInstall?`<div class="card banner"><div class="ic" style="--c:#13a389">${I('in')}</div><div style="flex:1"><b>اپ را روی گوشی نصب کنید</b><div class="hint">مثل یک برنامه باز می‌شود و بدون انترنت هم کار می‌کند.</div></div><button class="btn sm" onclick="installApp()">نصب</button></div>`:''}
  ${setupCard()}
  <div class="qrow dashq">${[['receipt','#13a389','فروش','saleForm()'],['cash','#16a37a','دریافت پول','receiptForm()'],['cart','#3b6fd8','خرید عمده','purchaseForm()'],['fuel','#e5484d','مصرف','expenseForm()'],['map','#f08c2e','نقشه',"go('map')"],['shop','#8b5cf6','دکان جدید','customerForm()'],['wallet','#0f8f78','بستن صندوق','cashCloseForm()']].map(q=>act(q[0],q[1],q[2],q[3])).join('')}</div>
@@ -1178,7 +1185,7 @@ function viewProducts(){ const c=C(), ps=DB.products.filter(p=>!p.deleted);
  const cats=[...new Set(ps.map(p=>p.cat).filter(Boolean))];
  return `<div class="grid k4">${kpi('box','#3b6fd8','تعداد اجناس',fm(ps.length),cats.length?fm(cats.length)+' کتگوری':'')}${can('cost')?kpi('wallet','#13a389','ارزش جنس در هنگر',money(val),'به قیمت تمام‌شده'):kpi('wallet','#13a389','موجود در هنگر',fm(ps.reduce((s,p)=>s+Math.max(0,(c.P[p.id]||{qty:0}).qty),0)),'واحد')}${kpi('alert','#f08c2e','کم‌موجود',fm(low),'زیر حد اقل','warn',"shopList()")}${kpi('out','#e5484d','تمام‌شده',fm(out),'موجودی صفر یا منفی',out?'neg':'')}</div>
  <div class="row" style="margin:18px 0 12px"><div class="sbox" style="flex:1;min-width:200px;margin:0">${I('search')}<input placeholder="جستجوی جنس، کد یا کتگوری…" value="${esc(PQ)}" oninput="PQ=this.value;drawPList()"></div>
- <button class="btn" onclick="productForm()">${I('plus')} جنس جدید</button><button class="btn alt" onclick="bulkForm('p')">${I('in')} ورود گروهی</button><button class="btn" style="--c:#f08c2e" onclick="shopList()">${I('cart')} لیست خرید مندوی</button><button class="btn" style="--c:#25b05a" onclick="priceList()">${I('wa')} لیست قیمت</button><button class="btn alt" onclick="adjustForm()">${I('box')} شمارش هنگر</button></div>
+ <button class="btn" onclick="productForm()">${I('plus')} جنس جدید</button><button class="btn alt" onclick="bulkForm('p')">${I('in')} ورود گروهی</button><button class="btn" style="--c:#f08c2e" onclick="shopList()">${I('cart')} لیست خرید مندوی</button>${can('edit')?`<button class="btn" style="--c:#8b5cf6" onclick="priceBulkForm()">${I('trend')} تغییر گروهی قیمت</button>`:''}<button class="btn" style="--c:#25b05a" onclick="priceList()">${I('wa')} لیست قیمت</button><button class="btn alt" onclick="adjustForm()">${I('box')} شمارش هنگر</button></div>
  <div class="tabs">${['',...cats].map(k=>`<button class="${PCAT===k?'on':''}" onclick="PCAT='${esc(k).replace(/'/g,'')}';render()">${k?esc(k):'همه'}</button>`).join('')}<span style="flex:1"></span><button class="${PVIEW==='cards'?'on':''}" onclick="PVIEW='cards';drawPList()">کارت</button><button class="${PVIEW==='table'?'on':''}" onclick="PVIEW='table';drawPList()">جدول</button></div>
  <div id="plist"></div>`; }
 function drawPList(){ const el=$('#plist'); if(!el) return; const c=C(), q=PQ.trim().toLowerCase();
@@ -1231,7 +1238,7 @@ function productForm(id){ const p=id?prod(id):{unit:'کارتن'}; F={type:'prod
  const st=id?C().P[id]||{qty:0,avg:0}:null;
  openModal(id?'ویرایش جنس':'جنس جدید',(st?`<div class="grid k2 mini" style="margin-bottom:16px"><div><span class="mu">موجودی فعلی</span><b>${fm(st.qty)} ${esc(p.unit||'')}</b></div>${can('cost')?`<div><span class="mu">قیمت تمام‌شدهٔ میانگین</span><b>${money(st.avg)}</b></div>`:''}</div>`:'')+
  sec('box','مشخصات',`${fl('نام جنس *',inp('name',p.name,'placeholder="مثلاً: روغن آفتاب ۵ لیتره"'))}<div class="f2">${fl('کتگوری',inp('cat',p.cat,'list="cats" placeholder="مواد خوراکی، شوینده…"'))}${fl('واحد',`<select class="in" id="f_unit">${units.map(u=>`<option ${u===p.unit?'selected':''}>${u}</option>`).join('')}${p.unit&&!units.includes(p.unit)?`<option selected>${esc(p.unit)}</option>`:''}</select>`)}</div>
-  <datalist id="cats">${[...new Set(DB.products.map(x=>x.cat).filter(Boolean))].map(c=>`<option>${esc(c)}</option>`).join('')}</datalist>${fl('بارکد / کد',inp('code',p.code||'',''))}`)+
+  <datalist id="cats">${[...new Set(DB.products.map(x=>x.cat).filter(Boolean))].map(c=>`<option>${esc(c)}</option>`).join('')}</datalist>${fl('بارکد / کد',`<div class="row" style="flex-wrap:nowrap">${inp('code',p.code||'','')}${canScan()?`<button type="button" class="mic" onclick="scanBarcode(c=>{$('#f_code').value=c;})">${I('scan')}</button>`:''}</div>`)}`)+
  sec('box','واحد دوم (اختیاری)',`<div class="f2">${fl('واحد کوچک',inp('unit2',p.unit2||'','placeholder="مثلاً: دانه، بسته"'))}${fl('چند تا در هر '+esc(p.unit||'واحد')+'؟',inp('pack',p.pack||'','inputmode="decimal" placeholder="مثلاً ۱۲"'))}</div>${fl('قیمت فروش هر واحد کوچک',inp('price2',p.price2||'','inputmode="decimal" placeholder="خالی = قیمت تقسیم بر تعداد"'))}<div class="hint">اگر گاهی کارتن را باز کرده دانه‌ای می‌فروشید. در بل با دکمهٔ ⇄ بین دو واحد عوض کنید.</div>`)+sec('box','عکس جنس',photoBox(p.photo))+sec('cash','قیمت و هشدار',`<div class="f2">${fl('قیمت فروش به دکان (فی واحد)',inp('price',p.price||'','inputmode="decimal"'))}${fl('حد اقل موجودی (هشدار)',inp('minQty',p.minQty||'','inputmode="decimal"'))}</div>${(p.priceHist||[]).length?`<div class="hint">تغییر قیمت‌ها: ${(p.priceHist||[]).slice(-4).reverse().map(h=>fd(h.at.slice(0,10))+' ← '+fm(h.price)).join(' · ')}</div>`:''}`)+
  sec('in','موجودی اول دوره (فقط بار اول)',`<div class="f2">${fl('تعداد موجود در روز شروع',inp('openQty',p.openQty||'','inputmode="decimal" placeholder="۰"'))}${fl('قیمت خرید فی واحد',inp('openCost',p.openCost||'','inputmode="decimal" placeholder="۰"'))}</div><div class="hint">خریدهای بعدی را با «خرید عمده» ثبت کنید، نه اینجا.</div>`)+entBar('saveProduct()',del)); drawPhotoBox(); }
 function saveProduct(){ const name=fv('name').trim(); if(!name) return toast('نام جنس لازم است'); const old=F.id?prod(F.id):{}; const price=num(fv('price'));
@@ -1306,7 +1313,7 @@ const newSuppFields=()=>`<div id="newParty" style="display:none" class="card"><b
 const gpsBox=()=>`<div class="gstrip"><button type="button" class="btn sm bl" onclick="formGPS()">${I('pin')} ثبت لوکیشن</button><span class="gps" id="gpsInfo"></span></div>`;
 
 /* ---------- point-of-sale cart ---------- */
-function cartBox(){ return sec('box','اجناس',`<div class="sbox">${I('search')}<input id="gq" placeholder="جستجوی جنس یا کد… (Enter = اضافه)" oninput="drawGrid()" onkeydown="gqKey(event)" autocomplete="off"></div><div class="pgrid" id="pgrid"></div><div id="cart" class="cart"></div>`,`<span class="mu" id="cartCnt"></span>`); }
+function cartBox(){ return sec('box','اجناس',`<div class="sbox">${I('search')}<input id="gq" placeholder="جستجوی جنس یا کد… (Enter = اضافه)" oninput="drawGrid()" onkeydown="gqKey(event)" autocomplete="off">${canScan()?`<button type="button" class="mic" title="اسکن بارکد" onclick="scanToCart()">${I('scan')}</button>`:''}</div><div class="pgrid" id="pgrid"></div><div id="cart" class="cart"></div>`,`<span class="mu" id="cartCnt"></span>`); }
 function lastPrice(cid,pid){ if(!cid||cid==='__new') return 0; const t=DB.txns.filter(t=>!t.void&&t.type==='sale'&&t.party===cid&&(t.items||[]).some(i=>i.pid===pid)).sort((a,b)=>(b.date+b.createdAt).localeCompare(a.date+a.createdAt))[0]; return t?num(t.items.find(i=>i.pid===pid).price):0; }
 function lpDate(cid,pid){ const t=DB.txns.filter(t=>!t.void&&t.type==='sale'&&t.party===cid&&(t.items||[]).some(i=>i.pid===pid)).sort((a,b)=>(b.date+b.createdAt).localeCompare(a.date+a.createdAt))[0]; return t?t.date:''; }
 function defPrice(pid){ const p=prod(pid)||{}; if(F.type==='sale'||F.type==='sreturn'){ const c=cust(fv('party')), adj=num((c||{}).priceAdj), base=adj?Math.round(num(p.price)*(1+adj/100)):num(p.price); const lp=lastPrice(fv('party'),pid); return lp&&(!p.priceAt||lpDate(fv('party'),pid)>=p.priceAt.slice(0,10))?lp:base; } if(F.type==='adjust') return 0; const afn=Math.round((C().P[pid]||{}).lastBuy||num(p.openCost)), rt=typeof fxRate==='function'&&$('#f_cur')?fxRate():1; return rt>0&&rt!==1?r2(afn/rt):afn; }
@@ -1789,6 +1796,48 @@ function exportExcel(){ const c=C(), p=pnl(DB.settings.startDate,today()), bs=ba
   xSheet('دفتر روزنامه',[['تاریخ','سند','کد','حساب','بدهکار','بستانکار','شرح'],...c.J.map(j=>[j.d,j.no,j.acc,ACC[j.acc].name,j.dr,j.cr,j.memo])]));
  const xml=`<?xml version="1.0" encoding="UTF-8"?><?mso-application progid="Excel.Sheet"?><Workbook xmlns="urn:schemas-microsoft-com:office:spreadsheet" xmlns:ss="urn:schemas-microsoft-com:office:spreadsheet"><Styles><Style ss:ID="h"><Font ss:Bold="1" ss:Color="#FFFFFF"/><Interior ss:Color="#0F8F78" ss:Pattern="Solid"/></Style></Styles>${sheets.join('')}</Workbook>`;
  dl('ibrahimi-'+today()+'.xls',xml,'application/vnd.ms-excel'); toast('فایل Excel دانلود شد'); }
+
+/* ---------- bulk price change (when Mandawi prices move) ---------- */
+function priceBulkForm(){ const cats=[...new Set(DB.products.filter(p=>!p.deleted).map(p=>p.cat||'بدون کتگوری'))]; F={type:'pbulk',cats:new Set(cats)};
+ openModal('تغییر گروهی قیمت فروش',`<div class="hint" style="margin-bottom:12px">وقتی قیمت‌ها در مندوی بالا یا پایین می‌رود، قیمت فروش چند جنس را یکجا عوض کنید. تاریخچهٔ قیمت هر جنس نگه داشته می‌شود.</div>
+ ${sec('box','کدام کتگوری‌ها؟',`<div class="days">${cats.map(c=>`<button type="button" class="on" onclick="F.cats.has('${esc(c).replace(/'/g,'')}')?F.cats.delete('${esc(c).replace(/'/g,'')}'):F.cats.add('${esc(c).replace(/'/g,'')}');this.classList.toggle('on');pbPrev()">${esc(c)}</button>`).join('')}</div>`)}
+ ${sec('trend','چقدر؟',`<input type="hidden" id="f_pbm" value="pct"><div class="seg" style="margin-bottom:10px"><button type="button" class="on" onclick="segSet('pbm','pct',this);pbPrev()">درصد ٪</button><button type="button" onclick="segSet('pbm','margin',this);pbPrev()">حاشیهٔ سود روی قیمت خرید</button></div>
+  <input class="in big" id="f_pbv" inputmode="decimal" placeholder="مثلاً ۵ یا ‎-3" oninput="pbPrev()">${chips([['+۳٪',"$('#f_pbv').value=3;pbPrev()"],['+۵٪',"$('#f_pbv').value=5;pbPrev()"],['+۱۰٪',"$('#f_pbv').value=10;pbPrev()"],['−۵٪',"$('#f_pbv').value=-5;pbPrev()"]])}
+  <label class="chk" style="margin-top:4px"><input type="checkbox" id="f_pbr" checked onchange="pbPrev()" style="accent-color:#13a389"> گرد کردن به ۱۰ افغانی</label>`)}
+ <div id="pbprev"></div><div class="stick"><div class="ft"><span class="mu">اجناس</span><b id="ftot">۰</b></div><button class="btn" onclick="pbSave()">${I('check')} اعمال قیمت‌ها</button></div>`); pbPrev(); }
+function pbCalc(){ const v=num(fv('pbv')), m=fv('pbm'), rd=$('#f_pbr')&&$('#f_pbr').checked;
+ return DB.products.filter(p=>!p.deleted&&F.cats.has(p.cat||'بدون کتگوری')).map(p=>{ const avg=(C().P[p.id]||{avg:0}).avg; let np=m==='margin'?(avg?avg*(1+v/100):num(p.price)):num(p.price)*(1+v/100); if(rd) np=Math.round(np/10)*10; else np=Math.round(np); return {p,old:num(p.price),np,avg}; }).filter(o=>v&&o.np>0&&o.np!==o.old); }
+function pbPrev(){ const a=pbCalc(), el=$('#pbprev'); $('#ftot').textContent=fm(a.length); if(!el) return;
+ el.innerHTML=a.length?`<div class="tw nmin"><table class="tbl"><tr><th>جنس</th><th class="n">قبلاً</th><th class="n">جدید</th>${can('cost')?'<th class="n">حاشیه</th>':''}</tr>${a.map(o=>`<tr><td>${esc(o.p.name)}</td><td class="n mu">${fm(o.old)}</td><td class="n"><b>${fm(o.np)}</b></td>${can('cost')?`<td class="n ${o.avg&&o.np<o.avg?'neg':''}">${o.avg?fm(Math.round((o.np-o.avg)/o.np*100))+'٪':'—'}</td>`:''}</tr>`).join('')}</table></div>`:'<div class="hint" style="text-align:center;padding:10px">عدد را بنویسید تا قیمت‌های جدید را ببینید</div>'; }
+function pbSave(){ const a=pbCalc(); if(!a.length) return toast('تغییری نیست'); a.forEach(o=>{ const h=(o.p.priceHist||[]).slice(); h.push({at:nowIso(),price:o.old,by:META.user}); save('product',Object.assign({},o.p,{price:o.np,priceHist:h,priceAt:nowIso()})); }); closeModal(); toast('✓ قیمت '+fm(a.length)+' جنس عوض شد'); render(); }
+
+/* ---------- barcode scan with the phone camera ---------- */
+const canScan=()=>'BarcodeDetector' in window&&navigator.mediaDevices&&navigator.mediaDevices.getUserMedia;
+let SCAN=null;
+async function scanBarcode(onCode){ if(!canScan()) return toast('اسکن بارکد در این مرورگر نیست — از Chrome در Android استفاده کنید');
+ const ov=document.createElement('div'); ov.className='scanov'; ov.innerHTML=`<video playsinline muted></video><div class="sframe"></div><div class="shint">بارکد را جلوی کمره بگیرید</div><button class="btn red">بستن</button>`; document.body.appendChild(ov);
+ const stop=()=>{ if(SCAN){ SCAN.getTracks().forEach(t=>t.stop()); SCAN=null; } ov.remove(); }; ov.querySelector('button').onclick=stop;
+ try{ SCAN=await navigator.mediaDevices.getUserMedia({video:{facingMode:'environment'}}); const v=ov.querySelector('video'); v.srcObject=SCAN; await v.play();
+  const det=new BarcodeDetector({formats:['ean_13','ean_8','upc_a','upc_e','code_128','code_39','qr_code']});
+  const tick=async()=>{ if(!SCAN) return; try{ const r=await det.detect(v); if(r.length){ const code=r[0].rawValue; if(navigator.vibrate) try{navigator.vibrate(80);}catch(e){} stop(); onCode(code); return; } }catch(e){} requestAnimationFrame(tick); }; tick();
+ }catch(e){ stop(); toast('کمره باز نشد — اجازهٔ کمره را بدهید'); } }
+function scanToCart(){ scanBarcode(code=>{ const p=DB.products.find(x=>!x.deleted&&x.code&&x.code.trim()===code.trim()); if(p){ addCart(p.id); toast('✓ '+p.name); } else { $('#gq').value=code; drawGrid(); toast('این بارکد ثبت نیست: '+code); } }); }
+
+/* ---------- truck log (دفتر موتر) ---------- */
+function truckLog(){ return (DB.settings.truck||{log:[]}); }
+function truckView(){ const t=truckLog(), log=(t.log||[]).slice().sort((a,b)=>(b.date+b.at).localeCompare(a.date+a.at)), km=log.length?Math.max(...log.map(l=>num(l.km))):0;
+ const oil=(t.log||[]).filter(l=>l.oil).sort((a,b)=>num(b.km)-num(a.km))[0], every=num(t.oilEvery)||5000, nextOil=oil?num(oil.km)+every:null, left=nextOil!==null?nextOil-km:null;
+ const d30=addDays(today(),-29), fuel30=DB.txns.filter(x=>!x.void&&x.type==='expense'&&x.acc==='6100'&&x.date>=d30).reduce((s,x)=>s+num(x.amount),0), rep30=DB.txns.filter(x=>!x.void&&x.type==='expense'&&x.acc==='6200'&&x.date>=d30).reduce((s,x)=>s+num(x.amount),0);
+ const kms=(t.log||[]).filter(l=>l.date>=d30).map(l=>num(l.km)), dist=kms.length>1?Math.max(...kms)-Math.min(...kms):0;
+ return `<div class="grid k4">${kpi('truck','#3b6fd8','کیلومتر فعلی',km?fm(km):'—',log.length?'آخرین ثبت '+fd(log[0].date):'هنوز ثبت نشده')}${kpi('fuel','#e5484d','تیل ۳۰ روز',money(fuel30),dist?'حدود '+fm(Math.round(fuel30/dist))+' افغانی برای هر کیلومتر':'','neg')}${kpi('gear','#f08c2e','تعویض روغن بعدی',left===null?'—':left<=0?'وقتش رسیده!':fm(left)+' کیلومتر دیگر',nextOil?'در '+fm(nextOil)+' کیلومتر':'اولین تعویض روغن را ثبت کنید',left!==null&&left<=300?'neg':'')}${kpi('wallet','#8b5cf6','ترمیم ۳۰ روز',money(rep30),'')}</div>
+ <div class="row" style="margin:18px 0 12px"><button class="btn" onclick="truckForm()">${I('plus')} ثبت کیلومتر / تیل / روغن</button><button class="btn alt" onclick="expenseForm()">${I('fuel')} ثبت مصرف موتر</button></div>
+ <div class="card"><h3>${I('book')} دفتر موتر</h3><div class="slist">${log.slice(0,40).map(l=>`<div class="sr" style="cursor:default"><div class="m"><b>${fm(l.km)} کیلومتر ${l.oil?'<span class="badge" style="--c:#f08c2e">تعویض روغن</span>':''}${l.fuel?` <span class="badge" style="--c:#e5484d">${fm(l.fuel)} لیتر تیل</span>`:''}</b><div class="mu">${fd(l.date)} · ${esc(l.by||'')}${l.note?' · '+esc(l.note):''}</div></div></div>`).join('')||'<div class="empty">هر روز صبح کیلومتر موتر را ثبت کنید تا مصرف تیل و زمان تعویض روغن حساب شود.</div>'}</div></div>`; }
+function truckForm(){ const t=truckLog(); F={type:'truck'};
+ openModal('دفتر موتر',sec('truck','کیلومتر',`<input class="in big" id="f_km" inputmode="numeric" placeholder="کیلومتر روی صفحهٔ موتر">${dateInp()}`)+sec('fuel','امروز',`<label class="chk"><input type="checkbox" id="f_oil" style="accent-color:#f08c2e"> روغن ماشین عوض شد</label>${fl('تیل گرفته شد (لیتر — اختیاری)',inp('fuel','','inputmode="decimal"'))}${fl('یادداشت',inp('note'))}${fl('تعویض روغن هر چند کیلومتر؟',inp('oilEvery',t.oilEvery||5000,'inputmode="numeric"'))}<div class="hint">پول تیل و ترمیم را با «ثبت مصرف» بنویسید تا در حساب‌ها بیاید.</div>`)+`<div class="stick"><div class="ft"></div><button class="btn" onclick="truckSave()">${I('check')} ثبت</button></div>`); calcForm(); }
+function truckSave(){ const km=num(fv('km')); if(!km) return toast('کیلومتر را بنویسید'); const t=Object.assign({log:[]},truckLog()); const last=(t.log||[]).reduce((m,l)=>Math.max(m,num(l.km)),0);
+ if(last&&km<last-1) return toast('کیلومتر از ثبت قبلی ('+fm(last)+') کمتر است');
+ t.log=[...(t.log||[]),{date:fv('date')||today(),km,oil:$('#f_oil').checked,fuel:num(fv('fuel')),note:fv('note').trim(),by:META.user,at:nowIso()}].slice(-400); t.oilEvery=num(fv('oilEvery'))||5000;
+ save('settings',Object.assign({},DB.settings,{truck:t})); closeModal(); toast('ثبت شد ✓'); render(); }
 
 /* ---------- transaction detail ---------- */
 function showTxn(id,fresh){ const t=DB.txns.find(x=>x.id===id); if(!t) return; const tt=TT[t.type]; const js=C().J.filter(j=>j.tx===id);
