@@ -1,5 +1,5 @@
 /* Ibrahimi Accounting — offline service worker */
-const VER = 'ia-v8.3b';
+const VER = 'ia-v8.4';
 const SHELL = ['./', './index.html', './manifest.json', './icons/icon-192.png', './icons/icon-512.png', './icons/icon.svg'];
 const RUNTIME = 'ia-runtime';
 const TILES = 'ia-tiles';
@@ -18,7 +18,7 @@ self.addEventListener('fetch', e => {
     e.respondWith(fetch(req).then(r => { const cp = r.clone(); caches.open(VER).then(c => c.put('./index.html', cp)); return r; }).catch(() => caches.match('./index.html')));
     return;
   }
-  if (url.hostname.includes('tile.openstreetmap.org')) {           // map tiles: cache first, keep last 600
+  if (/tile\.openstreetmap\.org|arcgisonline\.com|cartocdn\.com/.test(url.hostname)) {           // map tiles: cache first, keep last 600
     e.respondWith(caches.open(TILES).then(c => c.match(req).then(hit => hit || fetch(req).then(r => { c.put(req, r.clone()); trim(TILES, 600); return r; }))));
     return;
   }
