@@ -449,7 +449,7 @@ body.mopen #snack{bottom:auto;top:16px;transform:translate(-50%,-20px)}body.mope
 <script id="engine">
 'use strict';
 const LS = 'ebrahimi_acc_v1';
-const VERSION = '7.8';
+const VERSION = '7.9';
 
 /* ---- Chart of accounts (کدینگ حساب‌ها) ----
    nature: A=asset (debit), L=liability (credit), E=equity (credit), E-=contra equity (debit),
@@ -1839,6 +1839,10 @@ function repShopTrend(){ const td=today(), a1=addDays(td,-STD+1), a0=addDays(td,
  <div class="card"><h3>${I('trend')} خریدشان زیاد شده</h3><div class="slist">${up.map(row).join('')||'<div class="empty">—</div>'}</div></div></div>
  <div class="hint" style="margin-top:10px">دکانی که ناگهان کمتر می‌خرد شاید از توزیع‌کنندهٔ دیگری جنس گرفته. زودتر سر بزنید و دلیلش را بپرسید.</div>`; }
 
+function orphanTxns(){ const del={}; DB.customers.forEach(x=>{ if(x.deleted) del[x.id]=x; }); return DB.txns.filter(t=>!t.void&&t.party&&del[t.party]&&['sale','sreturn','receipt'].includes(t.type)); }
+function fixOrphans(){ const l=orphanTxns(); let n=0, u=0; batch(()=>l.forEach(t=>{ let x=cust(t.party), g=0; while(x&&x.deleted&&x.mergedInto&&g++<5) x=cust(x.mergedInto); if(x&&!x.deleted){ save('txn',Object.assign({},t,{party:x.id})); n++; } else { save('customer',Object.assign({},cust(t.party),{deleted:false})); u++; } }));
+ closeModal(); toast('✓ '+fm(n)+' سند به دکان درست منتقل شد'+(u?'، '+fm(u)+' دکان حذف‌شده برگردانده شد':'')); render(); }
+
 /* ---------- text size ---------- */
 function applyFont(){ const z={lg:1.12,xl:1.25}[META.font]||1; document.body.style.zoom=z===1?'':z; }
 function setFont(v){ META.font=v; persist(); applyFont(); render(); }
@@ -1853,7 +1857,8 @@ function healthCheck(){ const c=C(), out=[]; let d=0,cr=0; c.J.forEach(j=>{ d+=j
  const cash=balOf('1010'); out.push([cash>=0,cash>=0?'صندوق نقدی منفی نیست':'صندوق نقدی منفی است',cash<0?'یک خرید/مصرف بیش از پول موجود ثبت شده یا سرمایه/نقد اول دوره ثبت نشده':money(cash)]);
  const noloc=DB.customers.filter(x=>!x.deleted&&!x.lat&&!x.walkin).length; out.push([!noloc,noloc?fm(noloc)+' دکان لوکیشن ندارد':'همه دکان‌ها لوکیشن دارند','']);
  const dup={}; DB.txns.forEach(t=>{ if(t.no) dup[t.no]=(dup[t.no]||0)+1; }); const dn=Object.values(dup).filter(v=>v>1).length; out.push([!dn,dn?fm(dn)+' نمبر سند تکراری':'نمبرهای سند یکتا هستند','']);
- openModal('بررسی سلامت حساب‌ها',`<div class="list">${out.map(o=>`<div class="it" style="cursor:default"><div class="ic" style="--c:${o[0]?'#16a37a':'#e5484d'};width:38px;height:38px">${I(o[0]?'check':'alert')}</div><div class="m"><div class="t" style="font-weight:600">${esc(o[1])}</div>${o[2]?`<div class="d">${esc(o[2])}</div>`:''}</div></div>`).join('')}</div>`); }
+ const orph=orphanTxns(); out.push([!orph.length,orph.length?fm(orph.length)+' سند به دکانِ یکی‌شده/حذف‌شده وصل است':'همهٔ سندها به دکان درست وصل‌اند',orph.length?'دکمهٔ «درست کن» پایین را بزنید':'']);
+ openModal('بررسی سلامت حساب‌ها',(orph.length&&can('delete')?`<button class="btn" style="width:100%;margin-bottom:12px" onclick="fixOrphans()">درست کن (${fm(orph.length)} سند)</button>`:'')+`<div class="list">${out.map(o=>`<div class="it" style="cursor:default"><div class="ic" style="--c:${o[0]?'#16a37a':'#e5484d'};width:38px;height:38px">${I(o[0]?'check':'alert')}</div><div class="m"><div class="t" style="font-weight:600">${esc(o[1])}</div>${o[2]?`<div class="d">${esc(o[2])}</div>`:''}</div></div>`).join('')}</div>`); }
 
 /* ---------- invoice as an image (share to WhatsApp) ---------- */
 async function txnImage(id){ const t=DB.txns.find(x=>x.id===id); if(!t) return; const s=DB.settings, isC=['sale','sreturn','receipt'].includes(t.type), party=isC?cust(t.party):supp(t.party), items=t.items||[];
