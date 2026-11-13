@@ -448,7 +448,7 @@ body.mopen #snack{bottom:auto;top:16px;transform:translate(-50%,-20px)}body.mope
 <script id="engine">
 'use strict';
 const LS = 'ebrahimi_acc_v1';
-const VERSION = '6.9';
+const VERSION = '7.0';
 
 /* ---- Chart of accounts (کدینگ حساب‌ها) ----
    nature: A=asset (debit), L=liability (credit), E=equity (credit), E-=contra equity (debit),
@@ -502,6 +502,8 @@ const TT = {
  borrow:   ['قرض گرفتن از شخص','BRW','#8b5cf6'],
  repay:    ['پس دادن قرض شخص','RPY','#e5484d'],
  handover: ['تحویل پول بین افراد','HND','#0e7490'],
+ load:     ['بارگیری موتر (صبح)','LOD','#0369a1'],
+ unload:   ['تطبیق موتر (شب)','ULD','#0f766e'],
 };
 
 let DB, META;
@@ -572,7 +574,7 @@ const cust = id => DB.customers.find(x=>x.id===id);
 const supp = id => DB.suppliers.find(x=>x.id===id);
 const prod = id => DB.products.find(x=>x.id===id);
 const pname = id => (prod(id)||{}).name||'؟';
-const partyName = t => { if(t.type==='handover') return (t.from||'؟')+' ← '+(t.to||'؟'); if(['wage','advance','advret','borrow','repay'].includes(t.type)){ const x=(DB.persons||[]).find(p=>p.id===t.party); return x?x.name:''; } const p=(['purchase','preturn','payment'].includes(t.type)?supp:cust)(t.party); return p?p.name:''; };
+const partyName = t => { if(t.type==='load'||t.type==='unload') return t.driver?'موتر — '+t.driver:'موتر'; if(t.type==='handover') return (t.from||'؟')+' ← '+(t.to||'؟'); if(['wage','advance','advret','borrow','repay'].includes(t.type)){ const x=(DB.persons||[]).find(p=>p.id===t.party); return x?x.name:''; } const p=(['purchase','preturn','payment'].includes(t.type)?supp:cust)(t.party); return p?p.name:''; };
 
 /* ---- Core: replay every transaction in date order and build the double-entry journal ----
    Inventory valued with weighted-average cost (میانگین موزون). Receivables aged FIFO. */
@@ -677,7 +679,8 @@ function txnTotal(t){
  if(t.type==='purchase') return g-num(t.discount)+num(t.extra);
  if(t.type==='sreturn'||t.type==='preturn') return g;
  if(t.type==='cashcount') return num(t.diff);
- if(t.type==='adjust') return (t.items||[]).reduce((s,i)=>s+num(i.qty),0);
+ if(t.type==='adjust'||t.type==='load') return (t.items||[]).reduce((s,i)=>s+num(i.qty),0);
+ if(t.type==='unload') return -num(t.shortVal);
  return num(t.amount);
 }
 
@@ -835,7 +838,7 @@ function closeModal(){ document.body.classList.remove('mopen'); $('#modal').clas
 function quickMenu(){
  const T=[['receipt','#13a389','فروش به دکان','saleForm()'],['box','#8b5cf6','فرمایش (تحویل بعداً)','orderForm()'],['cash','#16a37a','دریافت پول','receiptForm()'],['cart','#3b6fd8','خرید عمده','purchaseForm()'],['out','#8b5cf6','پرداخت به عمده‌فروش','paymentForm()'],
   ['fuel','#e5484d','مصرف','expenseForm()'],['wallet','#0f8f78','بستن صندوق','cashCloseForm()'],['box','#f08c2e','شمارش / اصلاح گدام','adjustForm()'],['in','#6f8f2f','مرجوعی از دکان',"returnForm('sreturn')"],
-  ['out','#5b6fb0','مرجوعی به عمده‌فروش',"returnForm('preturn')"],['bank','#0f5c4d','آوردن سرمایه',"cashForm('capital')"],['home','#a0522d','برداشت مالک',"cashForm('drawing')"],['sync','#607d8b','انتقال صندوق ⇄ بانک',"cashForm('transfer')"],['wallet','#0e7490','تحویل پول به نفر دیگر','handoverForm()'],
+  ['out','#5b6fb0','مرجوعی به عمده‌فروش',"returnForm('preturn')"],['bank','#0f5c4d','آوردن سرمایه',"cashForm('capital')"],['home','#a0522d','برداشت مالک',"cashForm('drawing')"],['sync','#607d8b','انتقال صندوق ⇄ بانک',"cashForm('transfer')"],['wallet','#0e7490','تحویل پول به نفر دیگر','handoverForm()'],['truck','#0369a1','بارگیری موتر (صبح)','loadForm()'],['check','#0f766e','تطبیق موتر (شب)','unloadForm()'],
   ['user','#3b6fd8','معاش / پیشکی کارگر',"closeModal();go('persons')"],['shop','#8b5cf6','دکان جدید','customerForm()'],['box','#3b6fd8','جنس جدید','productForm()'],['wa','#25b05a','لیست قیمت','priceList()'],['alert','#25b05a','یادآوری گروهی طلب','bulkRemind()'],['clock','#f0b429','قول پرداخت','closeModal();CF=&#39;debt&#39;;go(&#39;customers&#39;)']];
  openModal('ثبت سریع',`<div class="etiles qm">${T.map(t=>`<button type="button" onclick="${t[3]}"><span class="ic" style="--c:${t[1]}">${I(t[0])}</span><b>${t[2]}</b></button>`).join('')}</div>`);
 }
@@ -913,7 +916,7 @@ function viewSimple(){ const td=today(), recv=DB.txns.filter(t=>!t.void&&t.date=
  return `<div class="simplehi"><b>${hi}، ${esc(META.user)}</b><div class="mu">${fd(td)}</div></div>
  <div class="grid k2" style="grid-template-columns:repeat(2,minmax(0,1fr))">${kpi('cash','#16a37a','پولی که امروز گرفتید',money(recv),fm(bills)+' بل فروش','pos')}${kpi('wallet','#13a389','باید در دست شما باشد',money(recv-DB.txns.filter(t=>!t.void&&t.date===td&&t.by===META.user&&t.method!=='bank'&&['expense','payment','drawing'].includes(t.type)).reduce((s,t)=>s+num(t.amount),0)+handNet(META.user,td)),'نقد امروز منهای مصارف و تحویلی')}</div>
  <div class="bigtiles">${T.map(t=>`<button onclick="${t[3]}"><span class="ic" style="--c:${t[1]}">${I(t[0])}</span><b>${t[2]}</b></button>`).join('')}</div>
- ${ordersCard()}${agendaCard()}${todayShopsCard()}
+ ${truckCard()}${ordersCard()}${agendaCard()}${todayShopsCard()}
  <div style="text-align:center;margin-top:22px"><button class="btn alt" onclick="setSimple(META.user,false)">نمایش کامل</button></div>`; }
 function viewDash(){
  if(isSimple()) return viewSimple();
@@ -960,7 +963,7 @@ function viewDash(){
   ${!can('profit')?'':kpi('bank','#3b6fd8','ارزش خالص کسب‌وکار',money(cash+bank+ar+inv+(S['1500']||0)-ap+(S['2200']||0)),'دارایی منهای قرض')}
  </div>
  <div class="card" style="margin-top:18px"><h3>${I('chart')} فروش و پول جمع‌شده — ۱۴ روز اخیر<span class="sp"></span><span class="lg"><i style="background:#13a389"></i>فروش <i style="background:#f08c2e"></i>وصول</span></h3>${chart14()}</div>
- ${changesCard()}${payablesCard()}${fixedCard()}${agendaCard()}
+ ${truckCard()}${changesCard()}${payablesCard()}${fixedCard()}${agendaCard()}
  ${ordersCard()}
  ${todayShopsCard()}
  <div class="grid k2" style="margin-top:18px">
@@ -1717,6 +1720,42 @@ function repForecast(){ const td=today(), N=FCD, c=C(), start=balOf('1010')+balO
  <div class="tw" style="margin-top:14px"><table class="tbl"><tr><th>روز</th><th>آمد (قول‌ها)</th><th>رفت (وعده‌ها، مصارف ثابت)</th><th class="n">آمد</th><th class="n">رفت</th><th class="n">موجودی</th></tr>${rows.filter((r,i)=>r.ins.length||r.outs.length||i===rows.length-1).map(r=>`<tr><td>${fd(r.d)}<div class="mu" style="font-size:11px">${WD?WD.format(new Date(r.d+'T12:00:00')):''}</div></td><td style="font-size:12px">${r.ins.map(x=>esc(x.l)+' '+kfmt(x.v)).join('<br>')||'<span class="mu">—</span>'}</td><td style="font-size:12px">${r.outs.map(x=>esc(x.l)+' '+kfmt(x.v)).join('<br>')||'<span class="mu">—</span>'}</td><td class="n pos">${kfmt(r.i)}</td><td class="n neg">${kfmt(r.out)}</td><td class="n ${r.bal<0?'neg':''}"><b>${money(r.bal)}</b></td></tr>`).join('')}</table></div>
  <div class="hint" style="margin-top:10px">این تخمین است: قول‌های دکان‌ها، وعده‌های پرداخت به عمده‌فروش‌ها و مصارف ثابت ماهانه، به‌اضافهٔ میانگین روزانهٔ ۳۰ روز گذشته (وصول ${kfmt(avgIn)} و مصارف متغیر ${kfmt(avgVar)} در روز). خرید تازه از مندوی در آن حساب نشده.</div>`; }
 
+/* ---------- truck load (morning) & reconciliation (night) ---------- */
+function loadsOn(d){ return DB.txns.filter(t=>!t.void&&t.type==='load'&&t.date===d); }
+function loadForm(){ const ps=DB.products.filter(p=>!p.deleted).sort((a,b)=>(a.cat||'').localeCompare(b.cat||'','fa')||a.name.localeCompare(b.name,'fa')), c=C(), us=DB.settings.users||[];
+ const ord={}; openOrders().forEach(o=>(o.items||[]).forEach(i=>ord[i.pid]=(ord[i.pid]||0)+num(i.qty)));
+ F={type:'load',q:{}}; Object.entries(ord).forEach(([k,v])=>F.q[k]=v);
+ openModal('بارگیری موتر — صبح',`<div class="hint" style="margin-bottom:12px">چه مقدار از هر جنس بار موتر شد؟ شب با «تطبیق موتر» حساب می‌شود چه فروخته شد و چه باید برگردد. ${Object.keys(ord).length?'مقدار فرمایش‌های تحویل‌نشده از قبل نوشته شده.':''}</div>
+ ${fl('راننده / فروشنده',`<select class="in" id="f_driver">${us.map(u=>`<option ${u===META.user?'selected':''}>${esc(u)}</option>`).join('')}</select>`)}
+ <div class="list">${ps.map(p=>`<div class="it" style="cursor:default"><div class="m"><div class="t">${esc(p.name)}</div><div class="d">در گدام ${qtyTxt(p,(c.P[p.id]||{qty:0}).qty)}${ord[p.id]?'، فرمایش '+fm(ord[p.id]):''}</div></div><input class="in" style="width:90px;text-align:center" inputmode="decimal" placeholder="۰" value="${F.q[p.id]||''}" oninput="F.q['${p.id}']=num(this.value)" onfocus="this.select()"></div>`).join('')}</div>
+ <div class="stick"><button class="btn" onclick="saveLoad()">${I('truck')} ثبت بارگیری</button></div>`); }
+function saveLoad(){ const items=Object.entries(F.q).filter(([k,v])=>num(v)>0).map(([pid,qty])=>({pid,qty:num(qty),price:0})); if(!items.length) return toast('حد اقل یک جنس بنویسید');
+ const r=save('txn',{type:'load',date:today(),method:'cash',driver:fv('driver'),items,no:nextNo('LOD')}); closeModal(); snack('✓ بارگیری ثبت شد — '+fm(items.length)+' قلم',()=>undoTxn(r.id)); render(); }
+function unloadCalc(d,driver,onlyDriver){ const L={}; loadsOn(d).filter(t=>!driver||t.driver===driver).forEach(t=>t.items.forEach(i=>L[i.pid]=(L[i.pid]||0)+num(i.qty)));
+ const S={}; DB.txns.filter(t=>!t.void&&t.date===d&&(t.type==='sale'||t.type==='sreturn')&&(!onlyDriver||t.by===driver)).forEach(t=>(t.items||[]).forEach(i=>{ if(L[i.pid]!==undefined) S[i.pid]=(S[i.pid]||0)+(t.type==='sale'?1:-1)*num(i.qty); }));
+ return Object.keys(L).map(pid=>({pid,loaded:L[pid],sold:S[pid]||0,exp:L[pid]-(S[pid]||0)})); }
+function unloadForm(){ const d=today(), ls=loadsOn(d); if(!ls.length) return toast('امروز بارگیری موتر ثبت نشده — صبح «بارگیری موتر» را بزنید');
+ const drivers=[...new Set(ls.map(t=>t.driver).filter(Boolean))]; F={type:'unload',driver:drivers.length===1?drivers[0]:'',only:false,act:{}}; drawUnload(); }
+function drawUnload(){ const rows=unloadCalc(today(),F.driver,F.only); F.rows=rows; const drivers=[...new Set(loadsOn(today()).map(t=>t.driver).filter(Boolean))];
+ openModal('تطبیق موتر — شب',`<div class="hint" style="margin-bottom:12px">بار صبح منهای فروش امروز = آنچه باید در موتر مانده باشد. باقی‌مانده را بشمارید و بنویسید.</div>
+ ${drivers.length>1?fl('موتر / راننده',`<select class="in" onchange="F.driver=this.value;drawUnload()"><option value="">همه</option>${drivers.map(u=>`<option ${F.driver===u?'selected':''}>${esc(u)}</option>`).join('')}</select>`):''}
+ ${F.driver?`<label class="row" style="gap:8px;margin-bottom:10px;font-size:13px"><input type="checkbox" ${F.only?'checked':''} onchange="F.only=this.checked;drawUnload()"> فقط فروش‌هایی که ${esc(F.driver)} ثبت کرده</label>`:''}
+ <div class="list">${rows.map((r,i)=>`<div class="it" style="cursor:default"><div class="m"><div class="t">${esc(pname(r.pid))}</div><div class="d">بار ${fm(r.loaded)} − فروش ${fm(r.sold)} = باید بماند <b>${fm(r.exp)}</b></div></div><input class="in" style="width:86px;text-align:center" inputmode="decimal" placeholder="${fm(r.exp)}" value="${F.act[r.pid]??''}" oninput="F.act['${r.pid}']=this.value===''?undefined:num(this.value);unloadSum()" onfocus="this.select()"></div>`).join('')}</div>
+ <div class="sum" id="usum" style="margin-top:12px"></div>
+ <div class="stick"><button class="btn alt" onclick="F.rows.forEach(r=>F.act[r.pid]=r.exp);drawUnload()">همه درست است</button><button class="btn" onclick="saveUnload()">${I('check')} ثبت تطبیق</button></div>`); unloadSum(); }
+function unloadSum(){ let sv=0, n=0; F.rows.forEach(r=>{ const a=F.act[r.pid]; if(a===undefined) return; const d=a-r.exp; if(Math.abs(d)>0.001){ n++; sv+=d*num((prod(r.pid)||{}).price); } }); const el=$('#usum'); if(!el) return;
+ const filled=F.rows.filter(r=>F.act[r.pid]!==undefined).length; if(!filled){ el.innerHTML='<div class="mu" style="text-align:center">باقی‌ماندهٔ موتر را بشمارید و بنویسید</div>'; return; }
+ el.innerHTML=n?`<div class="big"><span>${sv<0?'کسری':'اضافه'} (${fm(n)} قلم، به قیمت فروش)</span><b class="${sv<0?'neg':'pos'}">${money(Math.abs(sv))}</b></div><div class="mu" style="font-size:12px">کسری یعنی جنسی فروخته شده و بل نشده، یا گم شده.</div>`:`<div class="big"><span>اختلاف</span><b class="pos">ندارد ✓</b></div>`; }
+function saveUnload(){ if(F.rows.some(r=>F.act[r.pid]===undefined)) return toast('برای همه اجناس «شمرده شد» را بنویسید (یا «همه درست است»)');
+ const items=F.rows.map(r=>({pid:r.pid,loaded:r.loaded,sold:r.sold,exp:r.exp,act:F.act[r.pid],qty:F.act[r.pid]-r.exp,price:num((prod(r.pid)||{}).price)})), sv=items.reduce((s,i)=>s+i.qty*i.price,0);
+ const r=save('txn',{type:'unload',date:today(),method:'cash',driver:F.driver,only:F.only,lines:items,shortVal:-sv,no:nextNo('ULD')}); closeModal();
+ const sh=items.filter(i=>i.qty<-0.001); if(sh.length&&can('edit')) openModal('کسری موتر',`<p>${fm(sh.length)} قلم کم است: ${sh.map(i=>esc(pname(i.pid))+' '+fm(-i.qty)).join('، ')}.</p><p class="hint">اگر واقعاً گم شده یا خراب است، آن را از موجودی گدام کم کنید (به حساب «کسری و ضایعات»). اگر فروخته شده و بل نشده، به‌جای این، بل فروش آن را ثبت کنید.</p><div class="row"><button class="btn red" onclick="shortToAdjust('${r.id}')">کم کردن از گدام</button><button class="btn alt" onclick="closeModal()">بعداً</button></div>`);
+ else toast(sv?'✓ تطبیق ثبت شد':'✓ موتر تطبیق شد — اختلاف ندارد'); render(); }
+function shortToAdjust(id){ const u=DB.txns.find(t=>t.id===id); const items=u.lines.filter(i=>i.qty<-0.001).map(i=>({pid:i.pid,qty:i.qty,price:0})); save('txn',{type:'adjust',date:today(),method:'cash',items,note:'کسری موتر '+(u.driver||'')+' — '+u.no,no:nextNo('ADJ')}); closeModal(); toast('از گدام کم شد ✓'); render(); }
+function truckCard(){ const d=today(), ls=loadsOn(d); if(!ls.length) return ''; const done=DB.txns.some(t=>!t.void&&t.type==='unload'&&t.date===d); if(done) return '';
+ const rows=unloadCalc(d,'',false), L=rows.reduce((s,r)=>s+r.loaded,0), S=rows.reduce((s,r)=>s+r.sold,0);
+ return `<div class="card" style="margin-bottom:18px"><h3>${I('truck')} موتر امروز<span class="sp"></span><button class="btn sm" onclick="unloadForm()">${I('check')} تطبیق شب</button></h3><div class="row" style="gap:18px"><span>بار صبح <b>${fm(L)}</b></span><span>فروخته <b class="pos">${fm(S)}</b></span><span>باید بماند <b>${fm(L-S)}</b></span></div><div class="hb2" style="margin-top:10px"><i style="width:${L?Math.min(100,S/L*100):0}%"></i></div></div>`; }
+
 /* ---------- text size ---------- */
 function applyFont(){ const z={lg:1.12,xl:1.25}[META.font]||1; document.body.style.zoom=z===1?'':z; }
 function setFont(v){ META.font=v; persist(); applyFont(); render(); }
@@ -2117,6 +2156,7 @@ function showTxn(id,fresh){ const t=DB.txns.find(x=>x.id===id); if(!t) return; c
  ${t.type==='cashcount'?`<div class="sum"><div><span>باید می‌بود</span><b>${money(t.expected)}</b></div><div><span>شمرده شد</span><b>${money(t.counted)}</b></div><div class="big"><span>${num(t.diff)<0?'کسری':num(t.diff)>0?'اضافه':'برابر'}</span><b class="${num(t.diff)<0?'neg':'pos'}">${money(Math.abs(num(t.diff)))}</b></div></div>`:''}
  ${t.photo?`<img class="cphoto" style="margin-top:12px;max-width:100%" src="${t.photo}" onclick="viewPhoto(this.src)">`:''}
  ${t.fx?`<div class="hint">${I('bank')} به ${CUR[t.fx.cur][0]} با نرخ ${fm(t.fx.rate)}: مجموع ${fm(r2(txnTotal(t)/t.fx.rate))} ${CUR[t.fx.cur][1]}</div>`:''}${DB.settings.lockDate&&t.date<=DB.settings.lockDate?`<div class="hint">${I('lock')} این سند در دورهٔ قفل‌شده است و تغییر نمی‌کند.</div>`:''}
+ ${t.type==='unload'&&t.lines?`<div class="slist" style="margin-bottom:10px">${t.lines.map(l=>`<div class="sr" style="cursor:default"><div class="m"><b>${esc(pname(l.pid))}</b><div class="mu">بار ${fm(l.loaded)}، فروش ${fm(l.sold)}، باید ${fm(l.exp)}، بود ${fm(l.act)}</div></div><b class="${l.qty<0?'neg':l.qty>0?'pos':'pos'}">${l.qty?fm(l.qty):'✓'}</b></div>`).join('')}</div>`:''}
  ${t.note?`<div class="hint">📝 ${esc(t.note)}</div>`:''}
  ${(t.history||[]).length?`<details class="more" style="margin:10px 0"><summary>${I('clock')} ${fm(t.history.length)} بار ویرایش شده — آخرین بار ${esc(t.editedBy||'')}</summary><div style="margin-top:10px">${t.history.slice().reverse().map(h=>`<div class="hint">• ${new Date(h.at).toLocaleString('fa-AF')} — ${esc(h.by||'')}: قبلاً ${t.type==='adjust'?'':money(txnTotal(h.prev))}${h.prev.paid?'، نقد '+money(h.prev.paid):''}، ${fd(h.prev.date)}${(h.prev.items||[]).length?'، '+(h.prev.items||[]).map(i=>pname(i.pid)+' ×'+fm(i.qty)).join('، '):''}</div>`).join('')}</div></details>`:''}
  <details class="more" style="margin-top:12px"><summary>${I('book')} سند حسابداری (دوبل‌انتری)</summary><table class="tbl"><tr><th>کد</th><th>حساب</th><th class="n">بدهکار</th><th class="n">بستانکار</th></tr>${js.map(j=>`<tr><td>${j.acc}</td><td>${esc(ACC[j.acc].name)}<div class="mu" style="font-size:12px">${esc(j.memo)}</div></td><td class="n">${j.dr?fm(j.dr):''}</td><td class="n">${j.cr?fm(j.cr):''}</td></tr>`).join('')}</table></details>
