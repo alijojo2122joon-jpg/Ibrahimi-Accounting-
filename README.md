@@ -102,4 +102,4 @@
 - `sw.js`، `manifest.json`، `icons/` — نصب و کار آفلاین
 
 ## UI sounds
-UI sounds are from the SND kit 01 by the Dentsu sound designers (https://snd.dev). They are free to use, and the sound designers keep the copyright. You can turn them off in Settings → Display.
+There are only three sounds: a click, a sound for saving money entries, and a sound for saving an expense. They are Android AOSP system sound effects (Effect_Tick, NFCSuccess and VideoStop) from platform/frameworks/base/data/sounds, © The Android Open Source Project, licensed under Apache License 2.0. You can turn them off in Settings → Display.
