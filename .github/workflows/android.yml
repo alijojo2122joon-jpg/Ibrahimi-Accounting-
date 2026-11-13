@@ -1,0 +1,36 @@
+name: Android APK
+on:
+  push:
+    branches: [main]
+    paths: ['android/**', '.github/workflows/android.yml']
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with: { distribution: temurin, java-version: '17' }
+      - uses: android-actions/setup-android@v3
+      - uses: gradle/actions/setup-gradle@v4
+        with: { gradle-version: '8.7' }
+      - name: Signing key
+        env:
+          KEYSTORE_B64: ${{ secrets.KEYSTORE_B64 }}
+          KS_PASS: ${{ secrets.KS_PASS }}
+        run: |
+          if [ -n "$KEYSTORE_B64" ]; then echo "$KEYSTORE_B64" | base64 -d > android/app/ebrahimi.keystore; echo "KS_PASS=$KS_PASS" >> $GITHUB_ENV;
+          else keytool -genkeypair -keystore android/app/ebrahimi.keystore -alias ebrahimi -keyalg RSA -keysize 2048 -validity 10000 -storepass ebrahimi-app -keypass ebrahimi-app -dname "CN=Ebrahimi Accounting, O=Ebrahimi, C=AF"; fi
+      - name: Build APK
+        run: gradle -p android assembleRelease --no-daemon --stacktrace
+      - name: Rename
+        run: cp android/app/build/outputs/apk/release/app-release.apk ebrahimi-accounting.apk
+      - uses: softprops/action-gh-release@v2
+        with:
+          tag_name: android-latest
+          name: اپ اندروید ابراهیمی اکانتینگ
+          body: "فایل ebrahimi-accounting.apk را روی گوشی اندروید دانلود و نصب کنید."
+          files: ebrahimi-accounting.apk
+          make_latest: true

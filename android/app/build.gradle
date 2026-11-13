@@ -1,0 +1,26 @@
+plugins { id 'com.android.application' }
+android {
+    namespace 'af.ebrahimi.accounting'
+    compileSdk 34
+    defaultConfig {
+        applicationId "af.ebrahimi.accounting"
+        minSdk 24
+        targetSdk 34
+        versionCode (System.getenv("GITHUB_RUN_NUMBER") ? System.getenv("GITHUB_RUN_NUMBER").toInteger() : 1)
+        versionName "1.0." + (System.getenv("GITHUB_RUN_NUMBER") ?: "0")
+    }
+    signingConfigs {
+        app {
+            storeFile file("ebrahimi.keystore")
+            storePassword System.getenv("KS_PASS") ?: "ebrahimi-app"
+            keyAlias "ebrahimi"
+            keyPassword System.getenv("KS_PASS") ?: "ebrahimi-app"
+        }
+    }
+    buildTypes {
+        release { minifyEnabled false; signingConfig signingConfigs.app }
+        debug { signingConfig signingConfigs.app }
+    }
+    compileOptions { sourceCompatibility JavaVersion.VERSION_17; targetCompatibility JavaVersion.VERSION_17 }
+}
+dependencies { implementation 'androidx.core:core:1.13.1' }
