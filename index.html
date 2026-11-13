@@ -448,7 +448,7 @@ body.mopen #snack{bottom:auto;top:16px;transform:translate(-50%,-20px)}body.mope
 <script id="engine">
 'use strict';
 const LS = 'ebrahimi_acc_v1';
-const VERSION = '5.4';
+const VERSION = '5.5';
 
 /* ---- Chart of accounts (کدینگ حساب‌ها) ----
    nature: A=asset (debit), L=liability (credit), E=equity (credit), E-=contra equity (debit),
@@ -501,6 +501,7 @@ const TT = {
  advret:   ['پس گرفتن پیشکی/قرض','ADR','#16a37a'],
  borrow:   ['قرض گرفتن از شخص','BRW','#8b5cf6'],
  repay:    ['پس دادن قرض شخص','RPY','#e5484d'],
+ handover: ['تحویل پول بین افراد','HND','#0e7490'],
 };
 
 let DB, META;
@@ -569,7 +570,7 @@ const cust = id => DB.customers.find(x=>x.id===id);
 const supp = id => DB.suppliers.find(x=>x.id===id);
 const prod = id => DB.products.find(x=>x.id===id);
 const pname = id => (prod(id)||{}).name||'؟';
-const partyName = t => { if(['wage','advance','advret','borrow','repay'].includes(t.type)){ const x=(DB.persons||[]).find(p=>p.id===t.party); return x?x.name:''; } const p=(['purchase','preturn','payment'].includes(t.type)?supp:cust)(t.party); return p?p.name:''; };
+const partyName = t => { if(t.type==='handover') return (t.from||'؟')+' ← '+(t.to||'؟'); if(['wage','advance','advret','borrow','repay'].includes(t.type)){ const x=(DB.persons||[]).find(p=>p.id===t.party); return x?x.name:''; } const p=(['purchase','preturn','payment'].includes(t.type)?supp:cust)(t.party); return p?p.name:''; };
 
 /* ---- Core: replay every transaction in date order and build the double-entry journal ----
    Inventory valued with weighted-average cost (میانگین موزون). Receivables aged FIFO. */
@@ -832,7 +833,7 @@ function closeModal(){ document.body.classList.remove('mopen'); $('#modal').clas
 function quickMenu(){
  const T=[['receipt','#13a389','فروش به دکان','saleForm()'],['box','#8b5cf6','فرمایش (تحویل بعداً)','orderForm()'],['cash','#16a37a','دریافت پول','receiptForm()'],['cart','#3b6fd8','خرید عمده','purchaseForm()'],['out','#8b5cf6','پرداخت به عمده‌فروش','paymentForm()'],
   ['fuel','#e5484d','مصرف','expenseForm()'],['wallet','#0f8f78','بستن صندوق','cashCloseForm()'],['box','#f08c2e','شمارش / اصلاح گدام','adjustForm()'],['in','#6f8f2f','مرجوعی از دکان',"returnForm('sreturn')"],
-  ['out','#5b6fb0','مرجوعی به عمده‌فروش',"returnForm('preturn')"],['bank','#0f5c4d','آوردن سرمایه',"cashForm('capital')"],['home','#a0522d','برداشت مالک',"cashForm('drawing')"],['sync','#607d8b','انتقال صندوق ⇄ بانک',"cashForm('transfer')"],
+  ['out','#5b6fb0','مرجوعی به عمده‌فروش',"returnForm('preturn')"],['bank','#0f5c4d','آوردن سرمایه',"cashForm('capital')"],['home','#a0522d','برداشت مالک',"cashForm('drawing')"],['sync','#607d8b','انتقال صندوق ⇄ بانک',"cashForm('transfer')"],['wallet','#0e7490','تحویل پول به نفر دیگر','handoverForm()'],
   ['user','#3b6fd8','معاش / پیشکی کارگر',"closeModal();go('persons')"],['shop','#8b5cf6','دکان جدید','customerForm()'],['box','#3b6fd8','جنس جدید','productForm()'],['wa','#25b05a','لیست قیمت','priceList()'],['alert','#25b05a','یادآوری گروهی طلب','bulkRemind()'],['clock','#f0b429','قول پرداخت','closeModal();CF=&#39;debt&#39;;go(&#39;customers&#39;)']];
  openModal('ثبت سریع',`<div class="etiles qm">${T.map(t=>`<button type="button" onclick="${t[3]}"><span class="ic" style="--c:${t[1]}">${I(t[0])}</span><b>${t[2]}</b></button>`).join('')}</div>`);
 }
@@ -908,7 +909,7 @@ function viewSimple(){ const td=today(), recv=DB.txns.filter(t=>!t.void&&t.date=
  const h=new Date().getHours(), hi=h<11?'صبح بخیر':h<16?'روز بخیر':'شب بخیر';
  const T=[['receipt','#13a389','بل فروش','saleForm()'],['cash','#16a37a','پول گرفتم','receiptForm()'],['box','#8b5cf6','فرمایش','orderForm()'],['fuel','#e5484d','مصرف','expenseForm()'],['shop','#f08c2e','دکان‌ها',"go('customers')"],['map','#3b6fd8','نقشه',"go('map')"]];
  return `<div class="simplehi"><b>${hi}، ${esc(META.user)}</b><div class="mu">${fd(td)}</div></div>
- <div class="grid k2" style="grid-template-columns:repeat(2,minmax(0,1fr))">${kpi('cash','#16a37a','پولی که امروز گرفتید',money(recv),fm(bills)+' بل فروش','pos')}${kpi('wallet','#13a389','باید در دست شما باشد',money(recv-DB.txns.filter(t=>!t.void&&t.date===td&&t.by===META.user&&t.method!=='bank'&&['expense','payment','drawing'].includes(t.type)).reduce((s,t)=>s+num(t.amount),0)),'نقد امروز منهای مصارف')}</div>
+ <div class="grid k2" style="grid-template-columns:repeat(2,minmax(0,1fr))">${kpi('cash','#16a37a','پولی که امروز گرفتید',money(recv),fm(bills)+' بل فروش','pos')}${kpi('wallet','#13a389','باید در دست شما باشد',money(recv-DB.txns.filter(t=>!t.void&&t.date===td&&t.by===META.user&&t.method!=='bank'&&['expense','payment','drawing'].includes(t.type)).reduce((s,t)=>s+num(t.amount),0)+handNet(META.user,td)),'نقد امروز منهای مصارف و تحویلی')}</div>
  <div class="bigtiles">${T.map(t=>`<button onclick="${t[3]}"><span class="ic" style="--c:${t[1]}">${I(t[0])}</span><b>${t[2]}</b></button>`).join('')}</div>
  ${ordersCard()}${agendaCard()}${todayShopsCard()}
  <div style="text-align:center;margin-top:22px"><button class="btn alt" onclick="setSimple(META.user,false)">نمایش کامل</button></div>`; }
@@ -1500,7 +1501,7 @@ function saveTxn(type){
 function setSeg(k,v){ const b=[...document.querySelectorAll(`#mBody [onclick^="segSet('${k}','${v}'"]`)][0]; if(b) segSet(k,v,b); }
 function editTxn(id){ const t=DB.txns.find(x=>x.id===id); if(!t||t.void) return; if(!can('edit')) return toast('اجازهٔ ویرایش ندارید'); if(DB.settings.lockDate&&t.date<=DB.settings.lockDate) return toast('این سند در دورهٔ قفل‌شده است');
  const open={sale:()=>saleForm(t.party),receipt:()=>receiptForm(t.party),purchase:()=>purchaseForm(t.party),payment:()=>paymentForm(t.party),sreturn:()=>returnForm('sreturn'),preturn:()=>returnForm('preturn'),expense:()=>expenseForm(),capital:()=>cashForm('capital'),drawing:()=>cashForm('drawing'),transfer:()=>cashForm('transfer'),adjust:()=>adjustForm()}[t.type];
- if(!open) return; open(); F.editId=id;
+ if(!open) return toast('این نوع سند ویرایش نمی‌شود — باطل کنید و دوباره ثبت کنید'); open(); F.editId=id;
  $('#mTitle').textContent='ویرایش '+TT[t.type][0]+' — '+t.no;
  if(t.party&&$('#f_party')){ $('#f_party').value=t.party; drawParty(); }
  if(t.items&&F.cart){ F.cart=t.items.map(i=>Object.assign({pid:i.pid,qty:num(i.qty),price:num(i.price)},i.u2?{u2:true,q2:num(i.q2),p2:num(i.p2)}:{},i.exp?{exp:i.exp}:{})); }
@@ -1609,6 +1610,16 @@ function printCountSheet(){ const c=C(); const ps=DB.products.filter(p=>!p.delet
  <div class="hint" style="margin-top:8px">بعد از شمارش، تفاوت‌ها را در «شمارش هنگر» ثبت کنید.</div>
  <div class="isig"><div>شمارنده</div><div>امضای مالک</div></div></div>`;
  try{ window.print(); }catch(e){ toast('چاپ در این صفحه ممکن نیست'); } }
+
+function handNet(u,d){ return DB.txns.filter(t=>!t.void&&t.type==='handover'&&t.date===d).reduce((s,t)=>s+(t.to===u?num(t.amount):0)-(t.from===u?num(t.amount):0),0); }
+function handoverForm(){ F={type:'handover'}; const us=DB.settings.users||[]; const own=us.find(u=>roleOf(u)==='owner'&&u!==META.user)||us.find(u=>u!==META.user)||'';
+ const sel=(id,v)=>`<select class="in" id="f_${id}">${us.map(u=>`<option ${u===v?'selected':''}>${esc(u)}</option>`).join('')}</select>`;
+ openModal('تحویل پول به نفر دیگر',`<div class="hint" style="margin-bottom:12px">مثلاً مهیار شب پول فروش را به ابراهیمی می‌دهد. این ثبت حساب کسب‌وکار را تغییر نمی‌دهد (پول هنوز در صندوق است)، فقط «پول دست هر نفر» را درست نشان می‌دهد.</div>
+ ${sec('user','از کی به کی',`<div class="f2">${fl('دهنده',sel('from',META.user))}${fl('گیرنده',sel('to',own))}</div>`)}
+ ${sec('cash','مبلغ',`<input class="in big" id="f_amount" inputmode="decimal" placeholder="۰" oninput="calcForm()">${fl('یادداشت',inp('note','','placeholder="مثلاً پول فروش امروز"'))}`)}
+ <div class="stick"><div class="ft"><span class="mu">مبلغ</span><b id="ftot">۰ ؋</b></div><button class="btn" onclick="saveHandover()">${I('check')} ثبت تحویل</button></div>`); }
+function saveHandover(){ const a=num(fv('amount')), from=fv('from'), to=fv('to'); if(!a) return toast('مبلغ را بنویسید'); if(from===to) return toast('دهنده و گیرنده یکی است');
+ const r=save('txn',{type:'handover',date:today(),method:'cash',from,to,amount:a,note:fv('note').trim(),no:nextNo('HND')}); closeModal(); snack('✓ تحویل '+money(a)+' از '+from+' به '+to+' ثبت شد',()=>undoTxn(r.id)); render(); }
 
 /* ---------- text size ---------- */
 function applyFont(){ const z={lg:1.12,xl:1.25}[META.font]||1; document.body.style.zoom=z===1?'':z; }
@@ -2108,11 +2119,12 @@ function repDaily(){ const d=RP.dd||today(); const tx=DB.txns.filter(t=>!t.void&
    if(t.type==='transfer'){ if(t.method==='cash') o.cout+=num(t.amount); if(t.to==='cash') o.cin+=num(t.amount); } } return o; };
  const all=calc(tx), open=balOf('1010',addDays(d,-1)), close=balOf('1010',d), cc=tx.find(t=>t.type==='cashcount');
  const col=(o)=>`<table class="tbl">${trow('فروش (بل‌ها)',o.sales)}${trow('نقد گرفته‌شده هنگام فروش',o.cashSale,'pos')}${trow('دریافت طلب از دکان‌ها',o.recv,'pos')}${trow('خرید از عمده‌فروش',o.buy)}${trow('پرداخت به عمده‌فروش',o.pay,'neg')}${trow('مصارف',o.exp,'neg')}${o.draw?trow('برداشت مالک',o.draw,'neg'):''}${o.ret?trow('مرجوعی فروش',o.ret,'warn'):''}<tfoot><tr><td>خالص نقد (ورود − خروج)</td><td class="n ${o.cin-o.cout>=0?'pos':'neg'}">${money(o.cin-o.cout)}</td></tr></tfoot></table>`;
- const per=users.map(u=>({u,o:calc(tx.filter(t=>t.by===u))})).filter(x=>x.o.cnt);
+ const hx=tx.filter(t=>t.type==='handover'); hx.forEach(t=>{ [t.from,t.to].forEach(u=>{ if(u&&!users.includes(u)) users.push(u); }); });
+ const per=users.map(u=>{ const o=calc(tx.filter(t=>t.by===u&&t.type!=='handover')); hx.forEach(t=>{ if(t.from===u){ o.cout+=num(t.amount); o.hout=(o.hout||0)+num(t.amount); o.cnt++; } if(t.to===u){ o.cin+=num(t.amount); o.hin=(o.hin||0)+num(t.amount); o.cnt++; } }); return {u,o}; }).filter(x=>x.o.cnt);
  return `<div class="row noprint" style="margin-bottom:16px;justify-content:space-between"><button class="btn sm alt" onclick="RP.dd=addDays('${d}',-1);render()">${I('chev','flip')} روز قبل</button><div style="text-align:center"><b style="font-size:17px">${fd(d)}</b><div class="mu" style="font-size:12px">${WD?WD.format(new Date(d+'T12:00:00')):''}</div></div><button class="btn sm alt" onclick="RP.dd=addDays('${d}',1);render()" ${d>=today()?'disabled':''}>روز بعد ${I('chev')}</button></div>
  <div class="grid k4">${kpi('wallet','#7d8796','صندوق اول روز',money(open),'')}${kpi('in','#16a37a','پول آمد',money(all.cin),fm(all.cnt)+' ثبت','pos')}${kpi('out','#e5484d','پول رفت',money(all.cout),'','neg')}${kpi('cash','#13a389','صندوق آخر روز',money(close),cc?(Math.abs(num(cc.diff))<1?'✓ شمرده شد — برابر':(num(cc.diff)<0?'کسری ':'اضافه ')+money(Math.abs(num(cc.diff)))):'هنوز شمرده نشده',cc&&num(cc.diff)<0?'neg':'')}</div>
  <div class="card" style="margin-top:18px"><h3>${I('user')} پول دست هر نفر<span class="sp"></span><button class="btn sm" onclick="cashCloseForm()">${I('wallet')} بستن صندوق</button></h3>
- ${per.length?`<div class="grid k3">${per.map(({u,o})=>`<div class="ucard"><div class="av" style="--c:${colorOf(u)};width:46px;height:46px">${esc(u[0]||'؟')}</div><div><b>${esc(u)}</b><div class="mu" style="font-size:12px">${fm(o.cnt)} ثبت، فروش ${kfmt(o.sales)}، وصول ${kfmt(o.cashSale+o.recv)}</div><div class="${o.cin-o.cout>=0?'pos':'neg'}" style="font-weight:800;font-size:18px;margin-top:4px">${money(o.cin-o.cout)}</div><div class="mu" style="font-size:11.5px">باید در دست داشته باشد</div></div></div>`).join('')}</div>`:'<div class="empty">امروز هنوز ثبتی نیست</div>'}
+ ${per.length?`<div class="grid k3">${per.map(({u,o})=>`<div class="ucard"><div class="av" style="--c:${colorOf(u)};width:46px;height:46px">${esc(u[0]||'؟')}</div><div><b>${esc(u)}</b><div class="mu" style="font-size:12px">${fm(o.cnt)} ثبت، فروش ${kfmt(o.sales)}، وصول ${kfmt(o.cashSale+o.recv)}</div><div class="${o.cin-o.cout>=0?'pos':'neg'}" style="font-weight:800;font-size:18px;margin-top:4px">${money(o.cin-o.cout)}</div><div class="mu" style="font-size:11.5px">باید در دست داشته باشد</div>${o.hin||o.hout?`<div style="font-size:11.5px;margin-top:3px;color:#0e7490">${o.hin?'تحویل گرفت '+kfmt(o.hin):''}${o.hin&&o.hout?'، ':''}${o.hout?'تحویل داد '+kfmt(o.hout):''}</div>`:''}</div></div>`).join('')}</div>`:'<div class="empty">امروز هنوز ثبتی نیست</div>'}
  <div class="row" style="margin-top:10px"><button class="btn sm" style="--c:#25b05a" onclick="shareDay('${d}')">${I('wa')} فرستادن خلاصهٔ روز در واتساپ</button></div><div class="hint" style="margin-top:10px">هر شب پول دست هر نفر را بشمارید و با عدد بالا مقایسه کنید. تفاوت یعنی اشتباه یا چیزی که ثبت نشده.</div></div>
  <details class="more" style="margin-top:18px"><summary>${I('book')} جزئیات کامل روز</summary><div class="grid k${Math.min(3,per.length+1)}" style="margin-top:12px"><div><h3>همه</h3>${col(all)}</div>${per.map(({u,o})=>`<div><h3>${esc(u)}</h3>${col(o)}</div>`).join('')}</div></details>`; }
 function shareDay(d){ const tx=DB.txns.filter(t=>!t.void&&t.date===d); let sales=0,cash=0,recv=0,exp=0,buy=0; const shops=new Set();
