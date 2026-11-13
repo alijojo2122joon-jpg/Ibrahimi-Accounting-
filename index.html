@@ -302,7 +302,7 @@ svg.flip{transform:scaleX(-1)}
 <script id="engine">
 'use strict';
 const LS = 'ebrahimi_acc_v1';
-const VERSION = '1.2';
+const VERSION = '1.2.1';
 
 /* ---- Chart of accounts (کدینگ حساب‌ها) ----
    nature: A=asset (debit), L=liability (credit), E=equity (credit), E-=contra equity (debit),
@@ -922,13 +922,13 @@ function drawPL(){ const el=$('#plst'); if(!el) return; const q=($('#pq').value|
  const last=x=>((kind==='c'?C().CU:C().SU)[x.id]||{}).last||'';
  const a=(kind==='c'?DB.customers:DB.suppliers).filter(x=>!x.deleted&&(!q||[x.name,x.owner,x.area,x.phone,x.code].join(' ').toLowerCase().includes(q))).sort((x,y)=>last(y).localeCompare(last(x))||x.name.localeCompare(y.name,'fa'));
  el.innerHTML=(F.pnew?`<div class="pi new" onclick="pickParty('__new')"><div class="av">${I('plus')}</div><div class="m"><b>${kind==='c'?'دکان جدید':'عمده‌فروش جدید'}</b>${q?`<div class="mu">«${esc(q)}»</div>`:''}</div></div>`:'')+
- a.slice(0,40).map(x=>{ const b=pBal(x.id); return `<div class="pi" onclick="pickParty('${x.id}')"><div class="av" style="--c:${pCol(x)}">${esc(x.name[0]||'؟')}</div><div class="m"><b>${esc(x.name)}</b><div class="mu">${esc([x.owner,x.area].filter(Boolean).join(' · '))}</div></div>${b>0.5?`<b class="${kind==='c'?'warn':'neg'}">${money(b)}</b>`:''}</div>`; }).join('')+(a.length?'':'<div class="empty">پیدا نشد</div>'); }
+ a.slice(0,40).map(x=>{ const b=pBal(x.id); return `<div class="pi" onclick="pickParty('${x.id}')"><div class="av" style="--c:${pCol(x)}">${esc(x.name[0]||'؟')}</div><div class="m"><b>${esc(x.name)}</b><div class="mu">${esc([x.owner,x.area].filter(Boolean).join(' · '))}</div></div>${b>0.5?`<b class="${kind==='c'?'warn':'neg'}">${money(b)}</b>`:''}</div>`; }).join('')+(a.length?'':`<div class="empty">در لیست پیدا نشد${F.pnew&&q?' — از دکمهٔ بالا آن را اضافه کنید':''}</div>`); }
 function pickParty(id){ const q=(($('#pq')||{}).value||'').trim(); $('#f_party').value=id; drawParty(); partyChanged();
  if(id==='__new'){ const n=$('#f_nc_name'); if(n){ n.value=q; n.focus(); } } }
 function partyChanged(){ const v=fv('party'); const nb=$('#newParty'); if(nb) nb.style.display=v==='__new'?'block':'none';
  const gi=$('#gpsInfo'); if(gi&&!F.gps){ const c=cust(v); gi.innerHTML=v==='__new'?'اگر در همین دکان هستید، لوکیشن را بگیرید':c&&!c.lat?'<b class="warn">این دکان هنوز لوکیشن ندارد</b> — اگر آنجا هستید بزنید':c&&c.lat?'لوکیشن این دکان ثبت است ✓':'وقتی در دکان هستید بزنید'; }
  if(F.cart) drawGrid(); calcForm(); }
-const newCustFields=()=>`<div id="newParty" style="display:none" class="card" ><b>دکان جدید</b><div class="f2" style="margin-top:10px">${fl('نام دکان *',inp('nc_name'))}${fl('صاحب دکان',inp('nc_owner'))}</div><div class="f2">${fl('شماره',inp('nc_phone','','inputmode="tel"'))}${fl('ساحه',inp('nc_area'))}</div></div>`;
+const newCustFields=()=>`<div id="newParty" style="display:none" class="card" ><b>دکان جدید</b><div class="f2" style="margin-top:10px">${fl('نام دکان *',inp('nc_name'))}${fl('صاحب دکان',inp('nc_owner'))}</div><div class="f2">${fl('شماره',inp('nc_phone','','inputmode="tel"'))}${fl('ساحه',inp('nc_area'))}</div>${F.type==='receipt'?fl('بدهی قبلی این دکان (پیش از ثبت در سیستم)',inp('nc_open','','inputmode="decimal" placeholder="مثلاً ۱۵۰۰۰"')):''}</div>`;
 const newSuppFields=()=>`<div id="newParty" style="display:none" class="card"><b>عمده‌فروش جدید</b><div class="f2" style="margin-top:10px">${fl('نام *',inp('nc_name'))}${fl('آدرس',inp('nc_area','','placeholder="مندوی…"'))}</div></div>`;
 const gpsBox=()=>`<div class="gstrip"><button type="button" class="btn sm bl" onclick="formGPS()">${I('pin')} ثبت لوکیشن</button><span class="gps" id="gpsInfo"></span></div>`;
 
@@ -980,7 +980,7 @@ function saleForm(cid){ F={type:'sale',cart:[],gps:null};
  sec('cash','پرداخت',`<div class="f2">${fl('نقد گرفته شد',ninp('paid','','۰'))}${fl('تخفیف',ninp('discount','','۰'))}</div>${chips([['همه قرض','payPct(0)'],['نصف','payPct(.5)'],['تمام پول را داد','payPct(1)']])}<div class="sum" id="sum"></div>`+more(fl('روش دریافت',methodSel())+dateInp()+fl('یادداشت',inp('note')))) + saveBar('sale','ثبت بل'));
  drawParty(!cid); drawGrid(); drawCart(); partyChanged(); }
 function receiptForm(cid){ F={type:'receipt',gps:null};
- openModal('دریافت پول از دکان',sec('shop','دکان',partyBox('c',cid,false)+gpsBox())+
+ openModal('دریافت پول از دکان',sec('shop','دکان',partyBox('c',cid,true)+gpsBox())+
  sec('cash','مبلغ',`<input class="in big" id="f_amount" inputmode="decimal" placeholder="۰" oninput="calcForm()">${chips([['تصفیهٔ کامل',"$('#f_amount').value=r2(Math.max(0,pBal(fv('party'))-num(fv('discount'))));calcForm()"],['نصف',"$('#f_amount').value=Math.round(Math.max(0,pBal(fv('party')))/2);calcForm()"]])}${fl('تخفیف / بخشش (اختیاری)',ninp('discount','','۰'))}<div class="sum" id="sum"></div>`+more(fl('روش',methodSel())+dateInp()+fl('یادداشت',inp('note')),'روش، تاریخ و یادداشت'))+saveBar('receipt','ثبت دریافت','var(--gr)'));
  drawParty(!cid); partyChanged(); }
 function purchaseForm(sid){ F={type:'purchase',cart:[]};
@@ -992,7 +992,7 @@ function paymentForm(sid){ F={type:'payment'};
  sec('cash','مبلغ',`<input class="in big" id="f_amount" inputmode="decimal" placeholder="۰" oninput="calcForm()">${chips([['تمام قرض',"$('#f_amount').value=r2(Math.max(0,pBal(fv('party'))));calcForm()"]])}${fl('تخفیف گرفته‌شده',ninp('discount','','۰'))}<div class="sum" id="sum"></div>`+more(fl('روش',methodSel())+dateInp()+fl('یادداشت',inp('note')),'روش، تاریخ و یادداشت'))+saveBar('payment','ثبت پرداخت','#8b5cf6'));
  drawParty(!sid); partyChanged(); }
 function returnForm(type){ F={type,cart:[]}; const isS=type==='sreturn';
- openModal(TT[type][0],sec(isS?'shop':'truck',isS?'دکان':'عمده‌فروش',partyBox(isS?'c':'s','',!isS))+cartBox()+
+ openModal(TT[type][0],sec(isS?'shop':'truck',isS?'دکان':'عمده‌فروش',partyBox(isS?'c':'s','',true))+cartBox()+
  sec('cash','پول',`${fl(isS?'پول نقد پس داده شد':'پول نقد پس گرفته شد',ninp('paid','','۰'))}<div class="sum" id="sum"></div>`+more(fl('روش',methodSel())+dateInp()+fl('دلیل مرجوعی',inp('note','','placeholder="خراب، تاریخ‌گذشته، اضافه…"')),'روش، تاریخ و دلیل'))+saveBar(type,'ثبت مرجوعی','var(--or)'));
  drawParty(true); drawGrid(); drawCart(); partyChanged(); }
 const EXP_IC={'6100':'fuel','6200':'gear','6300':'shop','6400':'user','6500':'box','6600':'trend','6700':'bank','6900':'menu'};
@@ -1027,12 +1027,12 @@ function saveTxn(type){
  const t={type,date:fv('date')||today(),note:fv('note').trim(),method:fv('method')||'cash'};
  if(['sale','sreturn','purchase','preturn','adjust'].includes(type)){ t.items=readItems(); if(!t.items.length) return toast('حد اقل یک جنس با تعداد بنویسید'); }
  if(['sale','sreturn','receipt'].includes(type)){ let cid=fv('party');
-  if(cid==='__new'){ const nm=fv('nc_name').trim(); if(!nm) return toast('نام دکان جدید را بنویسید'); cid=save('customer',{code:nextNo('C'),name:nm,owner:fv('nc_owner').trim(),phone:fv('nc_phone').trim(),area:fv('nc_area').trim()}).id; }
-  if(!cid) return toast('دکان را انتخاب کنید'); t.party=cid;
+  if(cid==='__new'){ const nm=fv('nc_name').trim(); if(!nm) return toast('نام دکان جدید را بنویسید'); cid=save('customer',{code:nextNo('C'),name:nm,owner:fv('nc_owner').trim(),phone:fv('nc_phone').trim(),area:fv('nc_area').trim(),openBal:num(fv('nc_open'))}).id; }
+  if(!cid){ const q=(($('#pq')||{}).value||'').trim(); return toast(q?'«'+q+'» در لیست نیست — روی «＋ دکان جدید» بزنید':'دکان را انتخاب کنید'); } t.party=cid;
   if(F.gps){ const c=cust(cid); save('customer',Object.assign({},c,{lat:F.gps.lat,lng:F.gps.lng,gpsAcc:F.gps.acc,gpsAt:nowIso()})); } }
  if(['purchase','preturn','payment'].includes(type)){ let sid=fv('party');
   if(sid==='__new'){ const nm=fv('nc_name').trim(); if(!nm) return toast('نام عمده‌فروش را بنویسید'); sid=save('supplier',{code:nextNo('S'),name:nm,area:fv('nc_area').trim()}).id; }
-  if(!sid) return toast('عمده‌فروش را انتخاب کنید'); t.party=sid; }
+  if(!sid){ const q=(($('#pq')||{}).value||'').trim(); return toast(q?'«'+q+'» در لیست نیست — روی «＋ عمده‌فروش جدید» بزنید':'عمده‌فروش را انتخاب کنید'); } t.party=sid; }
  ['discount','paid','extra','amount'].forEach(k=>{ const v=num(fv(k)); if(v) t[k]=v; });
  if(['discount','paid','extra','amount'].some(k=>t[k]<0)) return toast('مبلغ منفی مجاز نیست');
  if(['receipt','payment','expense','capital','drawing','transfer'].includes(type)&&!t.amount) return toast('مبلغ را بنویسید');
