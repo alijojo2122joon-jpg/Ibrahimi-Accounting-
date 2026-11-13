@@ -245,6 +245,7 @@ svg.flip{transform:scaleX(-1)}
 #side .keys{font-size:11px;color:var(--mu);margin-top:14px;text-align:center;direction:rtl}
 /* printable invoice */
 #printArea{display:none}
+.ut{border:0;background:var(--bg);box-shadow:var(--upS);border-radius:99px;padding:3px 10px;font-size:11.5px;font-weight:700;color:#8b5cf6;cursor:pointer;margin-right:6px}
 .mic{border:0;background:var(--bg);color:var(--g2);width:36px;height:36px;border-radius:50%;box-shadow:var(--upS);display:grid;place-items:center;cursor:pointer;flex:none}
 .mic.on{color:#fff;background:var(--red);box-shadow:0 0 0 6px rgba(229,72,77,.2);animation:pl 1s infinite}
 @keyframes pl{50%{box-shadow:0 0 0 12px rgba(229,72,77,.05)}}
@@ -420,7 +421,7 @@ svg.flip{transform:scaleX(-1)}
 <script id="engine">
 'use strict';
 const LS = 'ebrahimi_acc_v1';
-const VERSION = '3.6';
+const VERSION = '3.7';
 
 /* ---- Chart of accounts (کدینگ حساب‌ها) ----
    nature: A=asset (debit), L=liability (credit), E=equity (credit), E-=contra equity (debit),
@@ -1184,11 +1185,11 @@ function productForm(id){ const p=id?prod(id):{unit:'کارتن'}; F={type:'prod
  openModal(id?'ویرایش جنس':'جنس جدید',(st?`<div class="grid k2 mini" style="margin-bottom:16px"><div><span class="mu">موجودی فعلی</span><b>${fm(st.qty)} ${esc(p.unit||'')}</b></div>${can('cost')?`<div><span class="mu">قیمت تمام‌شدهٔ میانگین</span><b>${money(st.avg)}</b></div>`:''}</div>`:'')+
  sec('box','مشخصات',`${fl('نام جنس *',inp('name',p.name,'placeholder="مثلاً: روغن آفتاب ۵ لیتره"'))}<div class="f2">${fl('کتگوری',inp('cat',p.cat,'list="cats" placeholder="مواد خوراکی، شوینده…"'))}${fl('واحد',`<select class="in" id="f_unit">${units.map(u=>`<option ${u===p.unit?'selected':''}>${u}</option>`).join('')}${p.unit&&!units.includes(p.unit)?`<option selected>${esc(p.unit)}</option>`:''}</select>`)}</div>
   <datalist id="cats">${[...new Set(DB.products.map(x=>x.cat).filter(Boolean))].map(c=>`<option>${esc(c)}</option>`).join('')}</datalist>${fl('بارکد / کد',inp('code',p.code||'',''))}`)+
- sec('box','عکس جنس',photoBox(p.photo))+sec('cash','قیمت و هشدار',`<div class="f2">${fl('قیمت فروش به دکان (فی واحد)',inp('price',p.price||'','inputmode="decimal"'))}${fl('حد اقل موجودی (هشدار)',inp('minQty',p.minQty||'','inputmode="decimal"'))}</div>${(p.priceHist||[]).length?`<div class="hint">تغییر قیمت‌ها: ${(p.priceHist||[]).slice(-4).reverse().map(h=>fd(h.at.slice(0,10))+' ← '+fm(h.price)).join(' · ')}</div>`:''}`)+
+ sec('box','واحد دوم (اختیاری)',`<div class="f2">${fl('واحد کوچک',inp('unit2',p.unit2||'','placeholder="مثلاً: دانه، بسته"'))}${fl('چند تا در هر '+esc(p.unit||'واحد')+'؟',inp('pack',p.pack||'','inputmode="decimal" placeholder="مثلاً ۱۲"'))}</div>${fl('قیمت فروش هر واحد کوچک',inp('price2',p.price2||'','inputmode="decimal" placeholder="خالی = قیمت تقسیم بر تعداد"'))}<div class="hint">اگر گاهی کارتن را باز کرده دانه‌ای می‌فروشید. در بل با دکمهٔ ⇄ بین دو واحد عوض کنید.</div>`)+sec('box','عکس جنس',photoBox(p.photo))+sec('cash','قیمت و هشدار',`<div class="f2">${fl('قیمت فروش به دکان (فی واحد)',inp('price',p.price||'','inputmode="decimal"'))}${fl('حد اقل موجودی (هشدار)',inp('minQty',p.minQty||'','inputmode="decimal"'))}</div>${(p.priceHist||[]).length?`<div class="hint">تغییر قیمت‌ها: ${(p.priceHist||[]).slice(-4).reverse().map(h=>fd(h.at.slice(0,10))+' ← '+fm(h.price)).join(' · ')}</div>`:''}`)+
  sec('in','موجودی اول دوره (فقط بار اول)',`<div class="f2">${fl('تعداد موجود در روز شروع',inp('openQty',p.openQty||'','inputmode="decimal" placeholder="۰"'))}${fl('قیمت خرید فی واحد',inp('openCost',p.openCost||'','inputmode="decimal" placeholder="۰"'))}</div><div class="hint">خریدهای بعدی را با «خرید عمده» ثبت کنید، نه اینجا.</div>`)+entBar('saveProduct()',del)); drawPhotoBox(); }
 function saveProduct(){ const name=fv('name').trim(); if(!name) return toast('نام جنس لازم است'); const old=F.id?prod(F.id):{}; const price=num(fv('price'));
  const hist=(old.priceHist||[]).slice(); if(F.id&&num(old.price)!==price) hist.push({at:nowIso(),price:num(old.price),by:META.user});
- const r=save('product',Object.assign({},old,{name,cat:fv('cat').trim(),unit:fv('unit'),price,minQty:num(fv('minQty')),openQty:num(fv('openQty')),openCost:num(fv('openCost')),code:fv('code').trim()||old.code||nextNo('P'),photo:photoVal(old),priceHist:hist,priceAt:F.id&&num(old.price)!==price?nowIso():(old.priceAt||nowIso())}));
+ const r=save('product',Object.assign({},old,{name,cat:fv('cat').trim(),unit:fv('unit'),price,minQty:num(fv('minQty')),openQty:num(fv('openQty')),openCost:num(fv('openCost')),code:fv('code').trim()||old.code||nextNo('P'),photo:photoVal(old),unit2:fv('unit2').trim(),pack:num(fv('pack')),price2:num(fv('price2')),priceHist:hist,priceAt:F.id&&num(old.price)!==price?nowIso():(old.priceAt||nowIso())}));
  closeModal(); toast('ذخیره شد ✓'); if(R.v==='product') render(); else go('product',r.id); }
 
 /* ---------- suppliers ---------- */
@@ -1267,21 +1268,27 @@ function drawGrid(){ const el=$('#pgrid'); if(!el) return; const q=(($('#gq')||{
  if(!DB.products.some(p=>!p.deleted)){ el.innerHTML=`<div class="empty">هنوز جنسی ثبت نشده — <a href="#" onclick="closeModal();productForm();return false">جنس جدید</a></div>`; return; }
  const a=DB.products.filter(p=>!p.deleted&&(!q||[p.name,p.code,p.cat].join(' ').toLowerCase().includes(q))).sort((x,y)=>(pop[y.id]||0)-(pop[x.id]||0)||x.name.localeCompare(y.name,'fa'));
  el.innerHTML=a.slice(0,q?40:18).map(p=>{ const s=(C().P[p.id]||{qty:0}).qty, inC=F.cart.find(i=>i.pid===p.id);
-  return `<button type="button" class="pc ${inC?'on':''} ${p.photo?'hp':''}" onclick="addCart('${p.id}')">${p.photo?`<img src="${p.photo}">`:''}<b>${esc(p.name)}</b>${F.type==='adjust'?'':`<span>${fm(defPrice(p.id))} ؋</span>`}<i class="${s<=0?'neg':num(p.minQty)&&s<=num(p.minQty)?'warn':''}">موجود ${fm(s)} ${esc(p.unit||'')}</i>${inC?`<em>${fm(inC.qty)}</em>`:''}</button>`; }).join('')||'<div class="empty">پیدا نشد</div>'; }
+  return `<button type="button" class="pc ${inC?'on':''} ${p.photo?'hp':''}" onclick="addCart('${p.id}')">${p.photo?`<img src="${p.photo}">`:''}<b>${esc(p.name)}</b>${F.type==='adjust'?'':`<span>${fm(defPrice(p.id))} ؋</span>`}<i class="${s<=0?'neg':num(p.minQty)&&s<=num(p.minQty)?'warn':''}">موجود ${qtyTxt(p,s)}</i>${inC?`<em>${fm(inC.qty)}</em>`:''}</button>`; }).join('')||'<div class="empty">پیدا نشد</div>'; }
 function gqKey(e){ if(e.key!=='Enter') return; e.preventDefault(); const f=document.querySelector('#pgrid .pc'); if(!f) return; f.click(); const q=$('#gq'); q.value=''; drawGrid(); setTimeout(()=>{ const ins=document.querySelectorAll('#cart .stp input'); const last=[...document.querySelectorAll('#cart .cl')].find(r=>r.querySelector('b')&&f.querySelector('b')&&r.querySelector('b').textContent===f.querySelector('b').textContent); const i=last?last.querySelector('.stp input'):ins[ins.length-1]; if(i){ i.focus(); i.select(); i.onkeydown=ev=>{ if(ev.key==='Enter'){ ev.preventDefault(); q.focus(); } }; } },30); }
 function addCart(pid){ const it=F.cart.find(i=>i.pid===pid); if(it) it.qty=r2(it.qty+(F.type==='adjust'&&it.qty<0?-1:1)); else F.cart.push({pid,qty:F.type==='adjust'?-1:1,price:defPrice(pid)}); drawCart(); drawGrid(); calcForm(); }
 function drawCart(){ const el=$('#cart'); if(!el) return; const adj=F.type==='adjust';
  el.innerHTML=F.cart.map((it,i)=>{ const p=prod(it.pid)||{}, st=(C().P[it.pid]||{qty:0}).qty, over=F.type==='sale'&&it.qty>st;
-  return `<div class="cl"><div class="cn"><b>${esc(p.name)}</b><div class="mu ${over?'neg':''}" id="cs${i}">موجود ${fm(st)} ${esc(p.unit||'')}${over?' — کافی نیست':''}</div></div>
-  <div class="stp"><button type="button" onclick="stepQ(${i},1)">+</button><input inputmode="decimal" value="${it.qty}" oninput="setQ(${i},this.value)" onfocus="this.select()"><button type="button" onclick="stepQ(${i},-1)">−</button></div>
-  ${adj?'':`<label class="cp"><span class="mu">فی</span><input inputmode="decimal" value="${it.price}" oninput="setP(${i},this.value)" onfocus="this.select()"></label><div class="ct" id="ct${i}">${fm(it.qty*it.price)}</div>`}
+  return `<div class="cl"><div class="cn"><b>${esc(p.name)}</b> ${pk(p)>1&&p.unit2?`<button type="button" class="ut" onclick="toggleU(${i})">${it.u2?esc(p.unit2):esc(p.unit||'')} ⇄</button>`:''}<div class="mu ${over?'neg':''}" id="cs${i}">موجود ${qtyTxt(p,st)}${over?' — کافی نیست':''}</div></div>
+  <div class="stp"><button type="button" onclick="stepQ(${i},1)">+</button><input inputmode="decimal" value="${it.u2?it.q2:it.qty}" oninput="setQ(${i},this.value)" onfocus="this.select()"><button type="button" onclick="stepQ(${i},-1)">−</button></div>
+  ${adj?'':`<label class="cp"><span class="mu">فی ${it.u2?esc(p.unit2):''}</span><input inputmode="decimal" value="${it.u2?it.p2:it.price}" oninput="setP(${i},this.value)" onfocus="this.select()"></label><div class="ct" id="ct${i}">${fm(it.qty*it.price)}</div>`}
   <button type="button" class="x" onclick="F.cart.splice(${i},1);drawCart();drawGrid();calcForm()">✕</button></div>`; }).join('')||`<div class="hint" style="text-align:center;padding:6px">روی جنس بزنید تا به ${F.type==='adjust'?'لیست':'بل'} اضافه شود</div>`;
  const c=$('#cartCnt'); if(c) c.textContent=F.cart.length?fm(F.cart.length)+' قلم':''; }
-function stepQ(i,d){ const it=F.cart[i]; it.qty=r2(it.qty+d); if(F.type!=='adjust'&&it.qty<=0) F.cart.splice(i,1); drawCart(); drawGrid(); calcForm(); }
-function setQ(i,v){ F.cart[i].qty=num(v); const ct=$('#ct'+i); if(ct) ct.textContent=fm(F.cart[i].qty*F.cart[i].price); calcForm(); }
-function setP(i,v){ F.cart[i].price=num(v); const ct=$('#ct'+i); if(ct) ct.textContent=fm(F.cart[i].qty*F.cart[i].price); calcForm(); }
+function stepQ(i,d){ const it=F.cart[i]; if(it.u2){ it.q2=Math.max(0,it.q2+d); it.qty=it.q2/pk(prod(it.pid)); if(it.q2<=0) F.cart.splice(i,1); drawCart(); drawGrid(); calcForm(); return; } it.qty=r2(it.qty+d); if(F.type!=='adjust'&&it.qty<=0) F.cart.splice(i,1); drawCart(); drawGrid(); calcForm(); }
+function setQ(i,v){ const it=F.cart[i]; if(it.u2){ it.q2=num(v); it.qty=it.q2/pk(prod(it.pid)); } else it.qty=num(v); const ct=$('#ct'+i); if(ct) ct.textContent=fm(F.cart[i].qty*F.cart[i].price); calcForm(); }
+function setP(i,v){ const it=F.cart[i]; if(it.u2){ it.p2=num(v); it.price=it.p2*pk(prod(it.pid)); } else it.price=num(v); const ct=$('#ct'+i); if(ct) ct.textContent=fm(F.cart[i].qty*F.cart[i].price); calcForm(); }
+/* two units per product (e.g. کارتن / دانه) */
+const pk=p=>Math.max(1,num((p||{}).pack));
+const iq=i=>{ const p=prod(i.pid)||{}; return i.u2?fm(i.q2)+' '+(p.unit2||'دانه'):fm(i.qty)+' '+(p.unit||''); };
+const ip=i=>i.u2?num(i.p2):num(i.price);
+function qtyTxt(p,q){ if(!p||pk(p)<=1||!p.unit2) return fm(r2(q))+' '+(p&&p.unit||''); const n=pk(p), neg=q<0, a=Math.abs(q), c=Math.floor(a+1e-9), r=Math.round((a-c)*n); return (neg?'−':'')+(c?fm(c)+' '+(p.unit||''):'')+(c&&r?' و ':'')+(r?fm(r)+' '+p.unit2:'')+(!c&&!r?'۰':''); }
+function toggleU(i){ const it=F.cart[i], p=prod(it.pid), n=pk(p); if(n<=1) return; if(it.u2){ it.qty=r2(it.q2/n)||1; it.price=r2(it.p2*n); it.u2=false; } else { it.u2=true; it.q2=Math.max(1,Math.round(it.qty*n)); it.p2=num(p.price2)||r2(it.price/n); it.qty=it.q2/n; it.price=it.p2*n; } drawCart(); drawGrid(); calcForm(); }
 const cartGross=()=>(F.cart||[]).reduce((s,i)=>s+num(i.qty)*num(i.price),0);
-function readItems(){ return (F.cart||[]).filter(i=>i.pid&&num(i.qty)).map(i=>({pid:i.pid,qty:num(i.qty),price:F.type==='adjust'?0:num(i.price)})); }
+function readItems(){ return (F.cart||[]).filter(i=>i.pid&&num(i.qty)).map(i=>Object.assign({pid:i.pid,qty:r2(num(i.qty)*1e6)/1e6,price:F.type==='adjust'?0:r2(num(i.price)*1e4)/1e4},i.u2?{u2:true,q2:num(i.q2),p2:F.type==='adjust'?0:num(i.p2)}:{})); }
 function payPct(f){ const net=cartGross()-num(fv('discount')); $('#f_paid').value=f?r2(net*f):''; calcForm(); }
 
 function calcForm(){
@@ -1346,7 +1353,7 @@ function printTxn(id){ const t=DB.txns.find(x=>x.id===id); if(!t) return; const 
  } else rows=tr('مجموع',txnTotal(t),1)+(t.paid?tr('پرداخت شد',num(t.paid)):'');
  $('#printArea').innerHTML=`<div class="inv"><div class="ih"><div><div class="ib">${esc(s.biz||'ابراهیمی اکانتینگ')}</div><div>${esc(s.addr||'')}</div><div dir="ltr" style="text-align:right">${esc(s.phone||'')}</div></div><div class="ihr"><div class="itl">${TT[t.type][0]}</div><div>نمبر: <b>${esc(t.no)}</b></div><div>تاریخ: ${fd(t.date)}</div></div></div>
  ${party?`<div class="ip"><span>${isC?'مشتری':'عمده‌فروش'}:</span> <b>${esc(party.name)}</b>${party.owner?' — '+esc(party.owner):''}${party.phone?' · '+esc(party.phone):''}${party.area?' · '+esc(party.area):''}</div>`:''}
- ${items.length?`<table class="itbl"><thead><tr><th>#</th><th>جنس</th><th>تعداد</th><th>فی</th><th>جمع</th></tr></thead><tbody>${items.map((i,k)=>`<tr><td>${fm(k+1)}</td><td>${esc(pname(i.pid))}</td><td>${fm(i.qty)} ${esc((prod(i.pid)||{}).unit||'')}</td><td>${fm(i.price)}</td><td>${fm(num(i.qty)*num(i.price))}</td></tr>`).join('')}</tbody></table>`:''}
+ ${items.length?`<table class="itbl"><thead><tr><th>#</th><th>جنس</th><th>تعداد</th><th>فی</th><th>جمع</th></tr></thead><tbody>${items.map((i,k)=>`<tr><td>${fm(k+1)}</td><td>${esc(pname(i.pid))}</td><td>${iq(i)}</td><td>${fm(ip(i))}</td><td>${fm(num(i.qty)*num(i.price))}</td></tr>`).join('')}</tbody></table>`:''}
  <table class="itot">${rows}</table>${t.note?`<div class="inote">یادداشت: ${esc(t.note)}</div>`:''}
  <div class="isig"><div>امضای فروشنده</div><div>امضای ${isC?'خریدار':'تحویل‌دهنده'}</div></div><div class="ifoot">تشکر از اعتماد شما — ${esc(s.biz||'')}</div></div>`;
  try{ window.print(); }catch(e){ toast('چاپ در این صفحه ممکن نیست'); } }
@@ -1391,7 +1398,7 @@ function editTxn(id){ const t=DB.txns.find(x=>x.id===id); if(!t||t.void) return;
  if(!open) return; open(); F.editId=id;
  $('#mTitle').textContent='ویرایش '+TT[t.type][0]+' — '+t.no;
  if(t.party&&$('#f_party')){ $('#f_party').value=t.party; drawParty(); }
- if(t.items&&F.cart){ F.cart=t.items.map(i=>({pid:i.pid,qty:num(i.qty),price:num(i.price)})); }
+ if(t.items&&F.cart){ F.cart=t.items.map(i=>Object.assign({pid:i.pid,qty:num(i.qty),price:num(i.price)},i.u2?{u2:true,q2:num(i.q2),p2:num(i.p2)}:{})); }
  const setv=(k,v)=>{ const e=$('#f_'+k); if(e&&v!==undefined&&v!==null&&v!=='') e.value=v; };
  ['paid','discount','extra','amount','note','date'].forEach(k=>setv(k,t[k]));
  if(t.method) setSeg('method',t.method); if(t.acc) setSeg('acc',t.acc); if(t.to) setv('to',t.to);
@@ -1464,7 +1471,7 @@ function setupCard(){ if(META.setupDone||!can('settings')) return ''; const s=DB
 
 /* ---------- repeat last bill ---------- */
 function lastSale(cid){ return DB.txns.filter(t=>!t.void&&t.type==='sale'&&t.party===cid).sort((a,b)=>(b.date+b.createdAt).localeCompare(a.date+a.createdAt))[0]; }
-function repeatLast(){ const t=lastSale(fv('party')); if(!t) return; F.cart=t.items.map(i=>({pid:i.pid,qty:num(i.qty),price:num((prod(i.pid)||{}).price)||num(i.price)})).filter(i=>prod(i.pid)&&!prod(i.pid).deleted); drawCart(); drawGrid(); calcForm(); toast('اجناس بل قبلی اضافه شد — تعداد را بررسی کنید'); }
+function repeatLast(){ const t=lastSale(fv('party')); if(!t) return; F.cart=t.items.map(i=>i.u2?{pid:i.pid,u2:true,q2:num(i.q2),p2:num((prod(i.pid)||{}).price2)||num(i.p2),qty:num(i.q2)/pk(prod(i.pid)),price:(num((prod(i.pid)||{}).price2)||num(i.p2))*pk(prod(i.pid))}:{pid:i.pid,qty:num(i.qty),price:num((prod(i.pid)||{}).price)||num(i.price)}).filter(i=>prod(i.pid)&&!prod(i.pid).deleted); drawCart(); drawGrid(); calcForm(); toast('اجناس بل قبلی اضافه شد — تعداد را بررسی کنید'); }
 function repeatChip(){ const el=$('#repeatBox'); if(!el) return; const t=F.type==='sale'&&fv('party')&&fv('party')!=='__new'?lastSale(fv('party')):null;
  el.innerHTML=t?`<button type="button" class="btn sm alt" onclick="repeatLast()">${I('sync')} تکرار بل قبلی (${fd(t.date)} · ${fm(t.items.length)} قلم)</button>`:''; }
 
@@ -1512,7 +1519,7 @@ async function txnImage(id){ const t=DB.txns.find(x=>x.id===id); if(!t) return; 
  if(party){ y+=40; x.fillStyle='#fff'; rr(x,P,y,W-2*P,86,22); x.fill(); txt((isC?'مشتری: ':'عمده‌فروش: ')+party.name,W-P-28,y+55,F(700,32),'#18211f'); if(party.area) txt(party.area,P+28,y+55,F(400,26),'#6b7a76','left'); y+=86; }
  if(items.length){ y+=50; txt('جنس',W-P,y,F(700,26),'#6b7a76'); txt('تعداد × فی',W/2,y,F(700,26),'#6b7a76','center'); txt('جمع',P,y,F(700,26),'#6b7a76','left'); y+=20;
   items.forEach((i,k)=>{ x.fillStyle=k%2?'#eef1f4':'#fff'; x.fillRect(P-10,y,W-2*P+20,rowH); const yy=y+48;
-   txt(pname(i.pid),W-P,yy,F(700,30),'#18211f'); txt(fm(i.qty)+' '+((prod(i.pid)||{}).unit||'')+' × '+fm(i.price),W/2,yy,F(400,28),'#18211f','center'); txt(fm(num(i.qty)*num(i.price)),P,yy,F(700,30),'#18211f','left'); y+=rowH; }); }
+   txt(pname(i.pid),W-P,yy,F(700,30),'#18211f'); txt(iq(i)+' × '+fm(ip(i)),W/2,yy,F(400,28),'#18211f','center'); txt(fm(num(i.qty)*num(i.price)),P,yy,F(700,30),'#18211f','left'); y+=rowH; }); }
  y+=30; tot.forEach(([l,v,b])=>{ y+=62; if(b){ x.fillStyle='rgba(19,163,137,.12)'; rr(x,P-10,y-44,W-2*P+20,60,14); x.fill(); } txt(l,W-P,y,F(b?800:400,b?34:30),'#18211f'); txt(money(v),P,y,F(b?800:600,b?36:30),b?'#0f8f78':'#18211f','left'); });
  y+=90; txt('تشکر از اعتماد شما 🌹',W/2,y,F(700,32),'#0f8f78','center'); txt('ساخته‌شده با ابراهیمی اکانتینگ',W/2,y+46,F(400,22),'#9aa5a1','center');
  const blob=await new Promise(r=>cv.toBlob(r,'image/png')); const file=new File([blob],(t.no||'bill')+'.png',{type:'image/png'});
@@ -1654,13 +1661,13 @@ function printMonth(){ const ms=persianMonths(12).filter(m=>m.to>=DB.settings.st
 /* ---------- transaction detail ---------- */
 function showTxn(id,fresh){ const t=DB.txns.find(x=>x.id===id); if(!t) return; const tt=TT[t.type]; const js=C().J.filter(j=>j.tx===id);
  const items=t.items||[]; const isC=['sale','sreturn','receipt'].includes(t.type); const party=isC?cust(t.party):supp(t.party);
- const txt=`${DB.settings.biz||'ابراهیمی اکانتینگ'}\n${tt[0]} ${t.no}\nتاریخ: ${fd(t.date)}\n${party?'مشتری: '+party.name+'\n':''}`+items.map(i=>`${pname(i.pid)}: ${fm(i.qty)} × ${fm(i.price)} = ${fm(num(i.qty)*num(i.price))}`).join('\n')+
+ const txt=`${DB.settings.biz||'ابراهیمی اکانتینگ'}\n${tt[0]} ${t.no}\nتاریخ: ${fd(t.date)}\n${party?'مشتری: '+party.name+'\n':''}`+items.map(i=>`${pname(i.pid)}: ${iq(i)} × ${fm(ip(i))} = ${fm(num(i.qty)*num(i.price))}`).join('\n')+
   (t.discount?`\nتخفیف: ${fm(t.discount)}`:'')+`\nمجموع: ${money(txnTotal(t))}`+(t.type==='sale'?`\nنقد: ${money(t.paid||0)}\nبه حساب: ${money(txnTotal(t)-num(t.paid))}`:'')+(isC&&party?`\nمانده کل حساب شما: ${money((C().CU[party.id]||{bal:0}).bal)}`:'')+`\nتشکر 🌹`;
  openModal(tt[0]+' — '+t.no,`${fresh?`<div class="okbar">${I('check')} ثبت شد — می‌توانید عکس بل را برای دکان‌دار بفرستید</div>`:''}
  ${t.void?`<div class="card" style="margin-bottom:12px;color:var(--red)">❌ این سند باطل شده — ${esc(t.voidBy||'')} · ${esc(t.voidReason||'')}</div>`:''}
  <div class="thero"><div class="ic" style="--c:${tt[2]}">${I(({sale:'receipt',sreturn:'in',purchase:'cart',preturn:'out',receipt:'cash',payment:'out',expense:'fuel',capital:'bank',drawing:'home',transfer:'sync',adjust:'box',cashcount:'wallet'})[t.type]||'book')}</div><div class="m"><div class="mu">${tt[0]} · ${esc(t.no)}</div>${party?`<a href="#" class="tp" onclick="closeModal();go('${isC?'customer':'supplier'}','${party.id}');return false">${esc(party.name)}</a>`:`<b class="tp">${esc(t.type==='expense'?ACC[t.acc||'6900'].name:tt[0])}</b>`}</div><div class="tv"><b>${t.type==='adjust'?fm(txnTotal(t)):money(txnTotal(t))}</b></div></div>
  <div class="tchips"><span>${I('clock')} ${fd(t.date)}</span><span>${I('user')} ${esc(t.by||'')}</span><span>${I(t.method==='bank'?'bank':'cash')} ${t.method==='bank'?'بانک/حواله':'نقد'}</span>${t.editedAt?`<span>${I('edit')} ویرایش‌شده</span>`:''}</div>
- ${items.length?`<div class="tw nmin" style="margin-top:10px"><table class="tbl"><tr><th>جنس</th><th class="n">تعداد</th>${t.type==='adjust'?'':'<th class="n">فی</th><th class="n">جمع</th>'}</tr>${items.map(i=>`<tr><td>${esc(pname(i.pid))}</td><td class="n">${fm(i.qty)}</td>${t.type==='adjust'?'':`<td class="n">${fm(i.price)}</td><td class="n">${fm(num(i.qty)*num(i.price))}</td>`}</tr>`).join('')}</table></div>`:''}
+ ${items.length?`<div class="tw nmin" style="margin-top:10px"><table class="tbl"><tr><th>جنس</th><th class="n">تعداد</th>${t.type==='adjust'?'':'<th class="n">فی</th><th class="n">جمع</th>'}</tr>${items.map(i=>`<tr><td>${esc(pname(i.pid))}</td><td class="n"><span dir="rtl">${t.type==='adjust'?fm(i.qty):iq(i)}</span></td>${t.type==='adjust'?'':`<td class="n">${fm(ip(i))}</td><td class="n">${fm(num(i.qty)*num(i.price))}</td>`}</tr>`).join('')}</table></div>`:''}
  <div class="sum"><div class="big"><span>مجموع</span><b>${t.type==='adjust'?fm(txnTotal(t)):money(txnTotal(t))}</b></div>${t.discount?`<div><span>تخفیف</span><b>${money(t.discount)}</b></div>`:''}${t.paid?`<div><span>نقد</span><b>${money(t.paid)}</b></div>`:''}${t.extra?`<div><span>کرایه/حمالی</span><b>${money(t.extra)}</b></div>`:''}${t.type==='sale'&&can('profit')&&C().costs[t.id]!==undefined?`<div><span>سود ناخالص این بل</span><b class="pos">${money(txnTotal(t)-C().costs[t.id])}</b></div>`:''}</div>
  ${t.type==='cashcount'?`<div class="sum"><div><span>باید می‌بود</span><b>${money(t.expected)}</b></div><div><span>شمرده شد</span><b>${money(t.counted)}</b></div><div class="big"><span>${num(t.diff)<0?'کسری':num(t.diff)>0?'اضافه':'برابر'}</span><b class="${num(t.diff)<0?'neg':'pos'}">${money(Math.abs(num(t.diff)))}</b></div></div>`:''}
  ${t.fx?`<div class="hint">${I('bank')} به ${CUR[t.fx.cur][0]} با نرخ ${fm(t.fx.rate)}: مجموع ${fm(r2(txnTotal(t)/t.fx.rate))} ${CUR[t.fx.cur][1]}</div>`:''}${DB.settings.lockDate&&t.date<=DB.settings.lockDate?`<div class="hint">${I('lock')} این سند در دورهٔ قفل‌شده است و تغییر نمی‌کند.</div>`:''}
