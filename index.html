@@ -245,6 +245,14 @@ svg.flip{transform:scaleX(-1)}
 #side .keys{font-size:11px;color:var(--mu);margin-top:14px;text-align:center;direction:rtl}
 /* printable invoice */
 #printArea{display:none}
+.promise{margin-top:10px;padding:9px 12px;border-radius:14px;box-shadow:var(--inS);font-size:13px;cursor:pointer;color:var(--g2)}
+.promise.late{color:var(--red)}.promise svg.i{width:16px;height:16px;vertical-align:-3px}
+.steps2{display:grid;gap:10px;counter-reset:s}
+.steps2 .st{display:flex;align-items:center;gap:12px;padding:8px 10px;border-radius:16px;box-shadow:var(--upS)}
+.steps2 em{font-style:normal;width:30px;height:30px;border-radius:50%;display:grid;place-items:center;font-weight:800;color:#fff;background:linear-gradient(145deg,#ffc24b,#f08c2e);flex:none}
+.steps2 .m{flex:1;min-width:0;cursor:pointer}.steps2 .mu{font-size:12px}
+.rnum span{display:grid;place-items:center;width:26px;height:26px;border-radius:50%;background:#f08c2e;color:#fff;font:800 13px Vazirmatn,Tahoma;border:2px solid #fff;box-shadow:0 2px 6px rgba(0,0,0,.3)}
+
 .nocost tr>*:nth-child(3),.nocost tr>*:nth-child(5),.nocost tr>*:nth-child(6),.nocost tr>*:nth-child(8){display:none}
 #lock{position:fixed;inset:0;z-index:5000;background:var(--bg);display:flex;align-items:center;justify-content:center;overflow:auto;padding:20px}
 #lock.hide{display:none}
@@ -333,7 +341,7 @@ svg.flip{transform:scaleX(-1)}
 <script id="engine">
 'use strict';
 const LS = 'ebrahimi_acc_v1';
-const VERSION = '1.4';
+const VERSION = '1.5';
 
 /* ---- Chart of accounts (کدینگ حساب‌ها) ----
    nature: A=asset (debit), L=liability (credit), E=equity (credit), E-=contra equity (debit),
@@ -792,6 +800,7 @@ function viewDash(){
   ${kpi('fuel','#e5484d','مصارف ۳۰ روز',money(p30.totalExp),'تیل، کرایه، معاش…','neg',"R={v:'reports',tab:'pnl'};render()")}
  </div>
  <div class="card" style="margin-top:18px"><h3>${I('chart')} فروش و پول جمع‌شده — ۱۴ روز اخیر<span class="sp"></span><span class="lg"><i style="background:#13a389"></i>فروش <i style="background:#f08c2e"></i>وصول</span></h3>${chart14()}</div>
+ ${agendaCard()}
  <div class="grid k2" style="margin-top:18px">
   <div class="card"><h3>${I('alert')} بیشترین طلب‌ها<span class="sp"></span><button class="btn sm alt" onclick="go('map')">🗺️ روی نقشه</button></h3><div class="list">
    ${debtors.slice(0,7).map(x=>custItem(x)).join('')||'<div class="empty">هیچ دکانی بدهکار نیست 🎉</div>'}</div></div>
@@ -809,9 +818,56 @@ function chart14(){ const td=today(), days=[...Array(14)].map((_,i)=>addDays(td,
  const bars=days.map((d,i)=>{ const x=L+i*cw, s=S[d]||0, c=Cc[d]||0, bw=cw*0.3; return `<g><title>${fd(d)} — فروش ${money(s)} · وصول ${money(c)}</title><rect x="${x+cw*0.17}" y="${H-B-h(s)}" width="${bw}" height="${Math.max(0,h(s))}" rx="4" fill="url(#gS)"/><rect x="${x+cw*0.17+bw+2}" y="${H-B-h(c)}" width="${bw}" height="${Math.max(0,h(c))}" rx="4" fill="url(#gC)"/><text x="${x+cw/2}" y="${H-8}" text-anchor="middle" class="ax ${d===td?'td':''}">${dfmt?dfmt.format(new Date(d+'T12:00:00')):d.slice(8)}</text></g>`; }).join('');
  return `<svg class="chart" viewBox="0 0 ${W} ${H}" dir="ltr"><defs><linearGradient id="gS" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#1bc3a4"/><stop offset="1" stop-color="#0f8f78"/></linearGradient><linearGradient id="gC" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ffc24b"/><stop offset="1" stop-color="#f08c2e"/></linearGradient></defs>${g}${bars}</svg>`; }
 function custItem(x){ const c=C().CU[x.id]||{bal:0,oldest:0}, st=custSt(x.id);
- return `<div class="it" onclick="go('customer','${x.id}')"><div class="av" style="--c:${st.col}">${esc((x.name||'؟')[0])}</div><div class="m"><div class="t">${esc(x.name)} ${x.lat?'📍':''}</div><div class="d">${esc([x.owner,x.area].filter(Boolean).join(' — '))}${c.bal>0.5?` · ${fm(c.oldest)} روز`:''}</div></div><div class="a ${st.cls}">${money(c.bal)}</div></div>`; }
+ return `<div class="it" onclick="go('customer','${x.id}')"><div class="av" style="--c:${st.col}">${esc((x.name||'؟')[0])}</div><div class="m"><div class="t">${esc(x.name)} ${x.lat?'📍':''}${x.promiseDate&&c.bal>0.5?` <span class="badge" style="--c:${x.promiseDate<today()?'var(--red)':'var(--g2)'}">قول ${fd(x.promiseDate)}</span>`:''}</div><div class="d">${esc([x.owner,x.area].filter(Boolean).join(' — '))}${c.bal>0.5?` · ${fm(c.oldest)} روز`:''}</div></div><div class="a ${st.cls}">${money(c.bal)}</div></div>`; }
 function txItem(t){ const tt=TT[t.type]||['','','#999'];
  return `<div class="it" onclick="showTxn('${t.id}')"><span class="badge" style="--c:${tt[2]}">${tt[0]}</span><div class="m"><div class="t">${esc(partyName(t)||t.note||ACC[t.acc]?.name||'')}</div><div class="d">${esc(t.no)} · ${fd(t.date)} · ${esc(t.by||'')}</div></div><div class="a">${t.type==='adjust'?fm(txnTotal(t)):money(txnTotal(t))}</div></div>`; }
+/* ---------- payment promises, reminders & collection agenda ---------- */
+function promiseForm(id){ const x=cust(id), b=(C().CU[id]||{bal:0}).bal; F={type:'promise'};
+ const d=(n)=>addDays(today(),n);
+ openModal('قول پرداخت — '+x.name,`<div class="hint" style="margin-bottom:12px">دکان‌دار گفت کی پول می‌دهد؟ همان روز در داشبورد و در «مسیر امروز» یادآوری می‌شود.</div>
+ ${sec('clock','تاریخ قول',`<input class="in" type="date" id="f_pdate" value="${x.promiseDate||d(3)}" onchange="$('#pfa').textContent=fd(this.value)"><div class="hint" id="pfa" style="margin:6px 2px 10px">${fd(x.promiseDate||d(3))}</div>${chips([['فردا',`$('#f_pdate').value='${d(1)}';$('#pfa').textContent='${fd(d(1))}'`],['پس‌فردا',`$('#f_pdate').value='${d(2)}';$('#pfa').textContent='${fd(d(2))}'`],['یک هفته بعد',`$('#f_pdate').value='${d(7)}';$('#pfa').textContent='${fd(d(7))}'`]])}`)}
+ ${sec('cash','چقدر قول داد؟',`<input class="in big" id="f_pamt" inputmode="decimal" value="${x.promiseAmt||Math.max(0,Math.round(b))}" placeholder="۰">${fl('یادداشت',inp('pnote',x.promiseNote||'','placeholder="مثلاً: بعد از فروش آخر هفته"'))}`)}
+ <div class="stick"><div class="ft"><span class="mu">بدهی فعلی</span><b>${money(b)}</b></div>${x.promiseDate?`<button class="btn alt" onclick="savePromise('${id}',true)">حذف قول</button>`:''}<button class="btn" onclick="savePromise('${id}')">${I('check')} ثبت قول</button></div>`); }
+function savePromise(id,clear){ const x=cust(id);
+ save('customer',Object.assign({},x,clear?{promiseDate:null,promiseAmt:null,promiseNote:null}:{promiseDate:fv('pdate')||today(),promiseAmt:num(fv('pamt')),promiseNote:fv('pnote').trim(),promiseBy:META.user}));
+ closeModal(); toast(clear?'قول حذف شد':'قول پرداخت ثبت شد ✓'); render(); }
+function remindText(id){ const x=cust(id), b=(C().CU[id]||{bal:0}).bal, s=DB.settings;
+ return `سلام ${x.owner||x.name} جان، امیدواریم خوب باشید 🌹\nیادآوری دوستانه از ${s.biz||'ابراهیمی'}:\nباقی حساب «${x.name}» نزد ما ${money(b)} است${x.promiseDate?` (قول پرداخت: ${fd(x.promiseDate)})`:''}.\nهر وقت مناسب بود لطفاً تصفیه کنید. تشکر از همکاری شما.`; }
+function agenda(){ const td=today(), c=C(), out=[];
+ for(const x of DB.customers){ if(x.deleted) continue; const u=c.CU[x.id]; if(!u||u.bal<=0.5) continue;
+  if(x.promiseDate&&x.promiseDate<=td) out.push({x,u,why:x.promiseDate<td?'late':'today',pri:x.promiseDate<td?0:1});
+  else if(!x.promiseDate&&u.oldest>30) out.push({x,u,why:'old',pri:2}); }
+ return out.sort((a,b)=>a.pri-b.pri||b.u.bal-a.u.bal); }
+function agendaCard(){ const a=agenda(); if(!a.length) return '';
+ const lab={late:['قول گذشته','var(--red)'],today:['قول امروز','var(--g2)'],old:['بدهی +۳۰ روز','var(--or)']};
+ return `<div class="card" style="margin-top:18px"><h3>${I('clock')} امروز باید پول جمع شود<span class="sp"></span><button class="btn sm" onclick="planRoute(true)">${I('map')} مسیر امروز</button></h3><div class="list">${a.slice(0,8).map(({x,u,why})=>`<div class="it"><div class="av" style="--c:${lab[why][1]}">${esc(x.name[0]||'؟')}</div><div class="m" onclick="go('customer','${x.id}')"><div class="t">${esc(x.name)}</div><div class="d"><span class="badge" style="--c:${lab[why][1]}">${lab[why][0]}</span> ${x.promiseDate?fd(x.promiseDate)+(x.promiseAmt?' · قول '+money(x.promiseAmt):''):fm(u.oldest)+' روز'}</div></div><div class="a warn">${money(u.bal)}</div><a class="btn sm alt" href="${waLink(x.phone,remindText(x.id))}" target="_blank" rel="noopener" title="یادآوری واتس‌اپ">${I('wa')}</a><button class="btn sm" onclick="receiptForm('${x.id}')">${I('cash')}</button></div>`).join('')}</div>${a.length>8?`<div class="hint">و ${fm(a.length-8)} دکان دیگر — در «نقشه» ببینید</div>`:''}</div>`; }
+
+/* ---------- daily collection route ---------- */
+let ROUTE=null;
+async function planRoute(fromDash){
+ if(fromDash){ go('map'); }
+ toast('در حال پیدا کردن موقعیت شما…');
+ try{ MYPOS=await getGPS(); }catch(e){ toast(e.message+' — مسیر از اولین دکان شروع می‌شود'); }
+ const td=today(), c=C();
+ let cand=DB.customers.filter(x=>!x.deleted&&x.lat&&(c.CU[x.id]||{}).bal>0.5).map(x=>{ const u=c.CU[x.id]; const due=x.promiseDate&&x.promiseDate<=td; return {x,score:(due?1e9:0)+(u.oldest>30?1e8:0)+u.bal}; }).sort((a,b)=>b.score-a.score).slice(0,10).map(o=>o.x);
+ if(!cand.length){ ROUTE=null; toast('هیچ بدهکاری با لوکیشن پیدا نشد'); return render(); }
+ // nearest-neighbour ordering from current position
+ let cur=MYPOS||{lat:cand[0].lat,lng:cand[0].lng}, order=[], left=cand.slice(), km=0;
+ while(left.length){ let bi=0,bd=1e9; left.forEach((x,i)=>{ const d=hav(cur.lat,cur.lng,x.lat,x.lng); if(d<bd){bd=d;bi=i;} }); const n=left.splice(bi,1)[0]; km+=bd<1e8?bd:0; order.push(n); cur={lat:n.lat,lng:n.lng}; }
+ ROUTE={ids:order.map(x=>x.id),km,from:MYPOS?{lat:MYPOS.lat,lng:MYPOS.lng}:null};
+ if(R.v!=='map') go('map'); else render(); }
+function routeLink(){ if(!ROUTE) return '#'; const pts=ROUTE.ids.map(cust).filter(Boolean); const last=pts[pts.length-1];
+ const wp=pts.slice(0,-1).map(x=>x.lat+','+x.lng).join('|');
+ return `https://www.google.com/maps/dir/?api=1${ROUTE.from?`&origin=${ROUTE.from.lat},${ROUTE.from.lng}`:''}&destination=${last.lat},${last.lng}${wp?`&waypoints=${encodeURIComponent(wp)}`:''}&travelmode=driving`; }
+function routeCard(){ if(!ROUTE) return ''; const c=C(); const pts=ROUTE.ids.map(cust).filter(Boolean); const tot=pts.reduce((s,x)=>s+((c.CU[x.id]||{}).bal||0),0);
+ return `<div class="card" style="margin-bottom:14px"><h3>${I('truck')} مسیر جمع‌آوری امروز<span class="sp"></span><button class="btn sm alt" onclick="ROUTE=null;render()">✕</button></h3>
+ <div class="grid k3 mini" style="margin-bottom:12px"><div><span class="mu">دکان‌ها</span><b>${fm(pts.length)}</b></div><div><span class="mu">مجموع طلب</span><b class="warn">${money(tot)}</b></div><div><span class="mu">فاصلهٔ تقریبی</span><b>${fm(r2(ROUTE.km))} کیلومتر</b></div></div>
+ <div class="steps2">${pts.map((x,i)=>`<div class="st"><em>${fm(i+1)}</em><div class="m" onclick="go('customer','${x.id}')"><b>${esc(x.name)}</b><div class="mu">${esc(x.area||'')}${x.promiseDate&&x.promiseDate<=today()?' · <span class="pos">قول امروز</span>':''}</div></div><b class="warn">${money((c.CU[x.id]||{}).bal)}</b><button class="btn sm" onclick="receiptForm('${x.id}')">${I('cash')}</button></div>`).join('')}</div>
+ <a class="btn" style="width:100%;margin-top:12px" href="${routeLink()}" target="_blank" rel="noopener">${I('map')} باز کردن کل مسیر در گوگل‌مپ</a></div>`; }
+function drawRouteLine(){ if(!MAP||!ROUTE||typeof L==='undefined') return; const pts=ROUTE.ids.map(cust).filter(Boolean); const ll=(ROUTE.from?[[ROUTE.from.lat,ROUTE.from.lng]]:[]).concat(pts.map(x=>[x.lat,x.lng]));
+ L.polyline(ll,{color:'#13a389',weight:4,opacity:.8,dashArray:'8 8'}).addTo(ML);
+ pts.forEach((x,i)=>L.marker([x.lat,x.lng],{icon:L.divIcon({className:'rnum',html:`<span>${fm(i+1)}</span>`,iconSize:[26,26],iconAnchor:[13,13]})}).addTo(ML));
+ try{ MAP.fitBounds(ll,{padding:[40,40],maxZoom:16}); }catch(e){} }
 
 /* ---------- map ---------- */
 let MAP=null, ML=null, MYM=null, PICK=null, MYPOS=null, MAPF='all';
@@ -823,12 +879,14 @@ function viewMap(){
   <button class="btn sm ${MAPF==='all'?'':'alt'}" onclick="MAPF='all';drawMarkers()">همه</button>
   <button class="btn sm ${MAPF==='debt'?'':'alt'}" onclick="MAPF='debt';drawMarkers()">فقط بدهکارها</button>
   <button class="btn sm ${MAPF==='old'?'':'alt'}" onclick="MAPF='old';drawMarkers()">بدهی کهنه (+۳۰ روز)</button>
-  <button class="btn sm bl" onclick="locateMe()">📍 من کجا هستم؟</button>
+  <button class="btn sm bl" onclick="locateMe()">${I('pin')} من کجا هستم؟</button>
+  <button class="btn sm" style="--c:#f08c2e" onclick="planRoute()">${I('truck')} مسیر امروز</button>
  </div>
+ ${routeCard()}
  ${PICK?`<div class="card" style="margin-bottom:12px">👆 روی نقشه جای دکان «${esc((cust(PICK)||{}).name)}» را لمس کنید. <button class="btn sm alt" onclick="PICK=null;render()">لغو</button></div>`:''}
  <div id="map"></div>
  <div class="hint" style="margin:6px 2px">🟢 تصفیه · 🟠 بدهکار · 🔴 بدهی کهنه یا بیش از حد اعتبار ${nloc?` · <b>${fm(nloc)}</b> دکان هنوز لوکیشن ندارد`:''}</div>
- <div class="card" style="margin-top:10px"><h3>🚚 مسیر جمع‌آوری پول — بدهکارها به ترتیب نزدیکی<span class="sp"></span></h3><div id="nearList" class="list"></div></div>`;
+ <div class="card" style="margin-top:10px"><h3>${I('alert')} بدهکارها به ترتیب نزدیکی<span class="sp"></span></h3><div id="nearList" class="list"></div></div>`;
 }
 function initMap(){
  const el=$('#map'); if(!el) return;
@@ -838,8 +896,9 @@ function initMap(){
  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,attribution:'© OpenStreetMap'}).addTo(MAP);
  ML=L.layerGroup().addTo(MAP);
  MAP.on('click',e=>{ if(!PICK) return; const c=cust(PICK); if(c){ save('customer',Object.assign({},c,{lat:+e.latlng.lat.toFixed(6),lng:+e.latlng.lng.toFixed(6),gpsAt:nowIso()})); toast('📍 لوکیشن «'+c.name+'» ثبت شد'); } PICK=null; render(); });
- drawMarkers(true);
+ drawMarkers(!ROUTE);
  if(MYPOS) showMe();
+ drawRouteLine();
 }
 function drawMarkers(fit){
  document.querySelectorAll('.mapbar .btn.sm').forEach((b,i)=>{ if(i<3) b.classList.toggle('alt',['all','debt','old'][i]!==MAPF); });
@@ -862,11 +921,11 @@ function drawNear(){ const el=$('#nearList'); if(!el) return;
  if(MYPOS) arr=arr.map(x=>Object.assign({},x,{_d:x.lat?hav(MYPOS.lat,MYPOS.lng,x.lat,x.lng):1e9})).sort((a,b)=>a._d-b._d);
  else arr.sort((a,b)=>C().CU[b.id].bal-C().CU[a.id].bal);
  el.innerHTML=(MYPOS?'':'<div class="hint">برای مرتب‌سازی بر اساس نزدیکی، «📍 من کجا هستم؟» را بزنید.</div>')+
- arr.slice(0,30).map(x=>{ const c=C().CU[x.id], st=custSt(x.id); return `<div class="it"><div class="av" style="--c:${st.col}">${esc(x.name[0]||'؟')}</div><div class="m" onclick="go('customer','${x.id}')"><div class="t">${esc(x.name)}</div><div class="d">${x._d!==undefined&&x._d<1e8?(x._d<1?fm(Math.round(x._d*1000))+' متر':fm(x._d.toFixed(1))+' کیلومتر')+' · ':''}${x.lat?'':'⚠️ بدون لوکیشن · '}${fm(c.oldest)} روز</div></div><div class="a ${st.cls}">${money(c.bal)}</div>${x.lat?`<a class="btn sm bl" href="${gmaps(x.lat,x.lng)}" target="_blank" rel="noopener">🧭</a>`:''}<button class="btn sm" onclick="receiptForm('${x.id}')">💵</button></div>`; }).join('')
+ arr.slice(0,30).map(x=>{ const c=C().CU[x.id], st=custSt(x.id); return `<div class="it"><div class="av" style="--c:${st.col}">${esc(x.name[0]||'؟')}</div><div class="m" onclick="go('customer','${x.id}')"><div class="t">${esc(x.name)}</div><div class="d">${x._d!==undefined&&x._d<1e8?(x._d<1?fm(Math.round(x._d*1000))+' متر':fm(x._d.toFixed(1))+' کیلومتر')+' · ':''}${x.lat?'':'⚠️ بدون لوکیشن · '}${fm(c.oldest)} روز</div></div><div class="a ${st.cls}">${money(c.bal)}</div><a class="btn sm alt" href="${waLink(x.phone,remindText(x.id))}" target="_blank" rel="noopener">${I('wa')}</a>${x.lat?`<a class="btn sm bl" href="${gmaps(x.lat,x.lng)}" target="_blank" rel="noopener">${I('map')}</a>`:''}<button class="btn sm" onclick="receiptForm('${x.id}')">${I('cash')}</button></div>`; }).join('')
  || '<div class="empty">هیچ طلبی نمانده 🎉</div>';
 }
 async function locateMe(){ toast('در حال پیدا کردن موقعیت…'); try{ MYPOS=await getGPS(); showMe(); drawNear(); toast('موقعیت پیدا شد (دقت ~'+fm(MYPOS.acc)+' متر)'); }catch(e){ toast(e.message); } }
-function showMe(){ if(!MAP||!MYPOS) return; if(MYM) try{MYM.remove();}catch(e){} MYM=L.circleMarker([MYPOS.lat,MYPOS.lng],{radius:9,color:'#fff',weight:3,fillColor:'#2c5aa0',fillOpacity:1}).addTo(MAP).bindTooltip('شما اینجا هستید'); MAP.setView([MYPOS.lat,MYPOS.lng],15); }
+function showMe(){ if(!MAP||!MYPOS) return; if(MYM) try{MYM.remove();}catch(e){} MYM=L.circleMarker([MYPOS.lat,MYPOS.lng],{radius:9,color:'#fff',weight:3,fillColor:'#2c5aa0',fillOpacity:1}).addTo(MAP).bindTooltip('شما اینجا هستید'); if(!ROUTE) MAP.setView([MYPOS.lat,MYPOS.lng],15); }
 function pickOnMap(id){ closeModal(); PICK=id; go('map'); }
 async function captureCustLoc(id){ try{ toast('در حال گرفتن لوکیشن…'); const g=await getGPS(); const c=cust(id); save('customer',Object.assign({},c,{lat:g.lat,lng:g.lng,gpsAcc:g.acc,gpsAt:nowIso()})); toast('📍 لوکیشن ثبت شد (دقت ~'+fm(g.acc)+' متر)'); render(); }catch(e){ toast(e.message); } }
 
@@ -898,7 +957,8 @@ function viewCustomer(){
   <div class="ring sm">${ringSvg(pct,st.col)}<div class="in"><b class="${st.cls}">${money(c.bal)}</b><span>${c.bal<-0.5?'پیش‌پرداخت':c.bal>0.5?'بدهی · '+fm(c.oldest)+' روز':'حساب تصفیه است'}</span></div></div>
   <div class="cinfo"><div class="ctt">${esc(x.name)}</div><div class="mu">${esc([x.code,x.owner,x.phone].filter(Boolean).join(' · '))}</div>
    <div class="mu" style="margin-top:4px">${I('pin')} ${esc(x.area||'—')} ${x.lat?'':'<span class="badge" style="--c:var(--or)">بدون لوکیشن</span>'} · <a href="#" onclick="pickOnMap('${x.id}');return false">تعیین روی نقشه</a></div>
-   <div class="qrow">${act('receipt','#13a389','فروش',`saleForm('${x.id}')`)}${act('cash','#16a37a','دریافت پول',`receiptForm('${x.id}')`)}${x.lat?act('map','#3b6fd8','مسیر','',gmaps(x.lat,x.lng)):act('pin','#f08c2e','ثبت لوکیشن',`captureCustLoc('${x.id}')`)}${x.phone?act('phone','#8b5cf6','تماس','','tel:'+x.phone):''}${act('wa','#25b05a','واتس‌اپ','',waLink(x.phone,stmtText(x.id)))}${act('edit','#7d8796','ویرایش',`customerForm('${x.id}')`)}</div>
+   <div class="qrow">${act('receipt','#13a389','فروش',`saleForm('${x.id}')`)}${act('cash','#16a37a','دریافت پول',`receiptForm('${x.id}')`)}${x.lat?act('map','#3b6fd8','مسیر','',gmaps(x.lat,x.lng)):act('pin','#f08c2e','ثبت لوکیشن',`captureCustLoc('${x.id}')`)}${x.phone?act('phone','#8b5cf6','تماس','','tel:'+x.phone):''}${act('wa','#25b05a','واتس‌اپ','',waLink(x.phone,stmtText(x.id)))}${c.bal>0.5?act('clock','#f0b429','قول پرداخت',`promiseForm('${x.id}')`)+act('alert','#e5484d','یادآوری','',waLink(x.phone,remindText(x.id))):''}${act('edit','#7d8796','ویرایش',`customerForm('${x.id}')`)}</div>
+   ${x.promiseDate?`<div class="promise ${x.promiseDate<today()?'late':''}" onclick="promiseForm('${x.id}')">${I('clock')} قول پرداخت: <b>${fd(x.promiseDate)}</b>${x.promiseAmt?' — '+money(x.promiseAmt):''}${x.promiseNote?' · '+esc(x.promiseNote):''}${x.promiseDate<today()?' · <b>گذشته!</b>':''}</div>`:''}
    ${x.note?`<div class="hint" style="margin-top:8px">📝 ${esc(x.note)}</div>`:''}</div></div>
  <div class="grid k4" style="margin-top:18px">${kpi('trend','#13a389','مجموع خرید از ما',money(c.sales),fm(c.cnt)+' بل فروش')}${kpi('cash','#16a37a','مجموع پرداخت',money(c.recv),c.sales?fm(Math.round(c.recv/c.sales*100))+'٪ وصول':'','pos')}${kpi('clock','#f08c2e','قدیمی‌ترین بدهی',fm(c.oldest||0)+' روز',st.lb)}${kpi('alert','#e5484d','سقف اعتبار',lim?money(lim):'تعیین نشده',lim&&c.bal>lim?'<span class="neg">از سقف گذشته</span>':'')}</div>
  ${c.bal>0.5?`<div class="card" style="margin-top:18px"><h3>${I('clock')} کهنگی بدهی</h3><div class="aging"><i style="width:${b[0]/tb*100}%;background:#16a37a"></i><i style="width:${b[1]/tb*100}%;background:#f0b429"></i><i style="width:${b[2]/tb*100}%;background:#f08c2e"></i><i style="width:${b[3]/tb*100}%;background:#e5484d"></i></div>
@@ -1117,7 +1177,8 @@ function saveTxn(type){
  if(['sale','sreturn','receipt'].includes(type)){ let cid=fv('party');
   if(cid==='__new'){ const nm=fv('nc_name').trim(); if(!nm) return toast('نام دکان جدید را بنویسید'); cid=save('customer',{code:nextNo('C'),name:nm,owner:fv('nc_owner').trim(),phone:fv('nc_phone').trim(),area:fv('nc_area').trim(),openBal:num(fv('nc_open'))}).id; }
   if(!cid){ const q=(($('#pq')||{}).value||'').trim(); return toast(q?'«'+q+'» در لیست نیست — روی «＋ دکان جدید» بزنید':'دکان را انتخاب کنید'); } t.party=cid;
-  if(F.gps){ const c=cust(cid); save('customer',Object.assign({},c,{lat:F.gps.lat,lng:F.gps.lng,gpsAcc:F.gps.acc,gpsAt:nowIso()})); } }
+  if(F.gps){ const c=cust(cid); save('customer',Object.assign({},c,{lat:F.gps.lat,lng:F.gps.lng,gpsAcc:F.gps.acc,gpsAt:nowIso()})); }
+  if(type==='receipt'&&!F.editId){ const c=cust(cid); if(c&&c.promiseDate&&num(fv('amount'))+num(fv('discount'))>=Math.min(num(c.promiseAmt)||Infinity,(C().CU[cid]||{bal:0}).bal)-0.5) save('customer',Object.assign({},c,{promiseDate:null,promiseAmt:null,promiseNote:null})); } }
  if(['purchase','preturn','payment'].includes(type)){ let sid=fv('party');
   if(sid==='__new'){ const nm=fv('nc_name').trim(); if(!nm) return toast('نام عمده‌فروش را بنویسید'); sid=save('supplier',{code:nextNo('S'),name:nm,area:fv('nc_area').trim()}).id; }
   if(!sid){ const q=(($('#pq')||{}).value||'').trim(); return toast(q?'«'+q+'» در لیست نیست — روی «＋ عمده‌فروش جدید» بزنید':'عمده‌فروش را انتخاب کنید'); } t.party=sid; }
