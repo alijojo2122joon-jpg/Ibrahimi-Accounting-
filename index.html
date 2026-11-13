@@ -448,7 +448,7 @@ body.mopen #snack{bottom:auto;top:16px;transform:translate(-50%,-20px)}body.mope
 <script id="engine">
 'use strict';
 const LS = 'ebrahimi_acc_v1';
-const VERSION = '6.4';
+const VERSION = '6.5';
 
 /* ---- Chart of accounts (کدینگ حساب‌ها) ----
    nature: A=asset (debit), L=liability (credit), E=equity (credit), E-=contra equity (debit),
@@ -909,7 +909,7 @@ const isSimple=()=>!!((DB.settings.simple||{})[META.user]);
 function setSimple(u,v){ save('settings',Object.assign({},DB.settings,{simple:Object.assign({},DB.settings.simple||{},{[u]:v})})); toast(v?'حالت ساده روشن شد':'حالت کامل'); render(); }
 function viewSimple(){ const td=today(), recv=DB.txns.filter(t=>!t.void&&t.date===td&&t.by===META.user).reduce((s,t)=>s+(t.type==='receipt'?num(t.amount):t.type==='sale'?num(t.paid):0),0), bills=DB.txns.filter(t=>!t.void&&t.date===td&&t.type==='sale'&&t.by===META.user).length;
  const h=new Date().getHours(), hi=h<11?'صبح بخیر':h<16?'روز بخیر':'شب بخیر';
- const T=[['receipt','#13a389','بل فروش','saleForm()'],['cash','#16a37a','پول گرفتم','receiptForm()'],['box','#8b5cf6','فرمایش','orderForm()'],['fuel','#e5484d','مصرف','expenseForm()'],['shop','#f08c2e','دکان‌ها',"go('customers')"],['map','#3b6fd8','نقشه',"go('map')"]];
+ const T=[['receipt','#13a389','بل فروش','saleForm()'],['cash','#16a37a','پول گرفتم','receiptForm()'],['box','#8b5cf6','فرمایش','orderForm()'],['fuel','#e5484d','مصرف','expenseForm()'],['wallet','#0e7490','تحویل پول','handoverForm()'],['shop','#f08c2e','دکان‌ها',"go('customers')"],['map','#3b6fd8','نقشه',"go('map')"],['book','#7d8796','ثبت‌های من',"TQ.user=META.user;TQ.type='';tRange('today');go('txns')"]];
  return `<div class="simplehi"><b>${hi}، ${esc(META.user)}</b><div class="mu">${fd(td)}</div></div>
  <div class="grid k2" style="grid-template-columns:repeat(2,minmax(0,1fr))">${kpi('cash','#16a37a','پولی که امروز گرفتید',money(recv),fm(bills)+' بل فروش','pos')}${kpi('wallet','#13a389','باید در دست شما باشد',money(recv-DB.txns.filter(t=>!t.void&&t.date===td&&t.by===META.user&&t.method!=='bank'&&['expense','payment','drawing'].includes(t.type)).reduce((s,t)=>s+num(t.amount),0)+handNet(META.user,td)),'نقد امروز منهای مصارف و تحویلی')}</div>
  <div class="bigtiles">${T.map(t=>`<button onclick="${t[3]}"><span class="ic" style="--c:${t[1]}">${I(t[0])}</span><b>${t[2]}</b></button>`).join('')}</div>
