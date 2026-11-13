@@ -245,6 +245,10 @@ svg.flip{transform:scaleX(-1)}
 #side .keys{font-size:11px;color:var(--mu);margin-top:14px;text-align:center;direction:rtl}
 /* printable invoice */
 #printArea{display:none}
+.days{display:flex;flex-wrap:wrap;gap:8px}
+.days button{border:0;background:var(--bg);border-radius:12px;padding:8px 12px;box-shadow:var(--upS);cursor:pointer;color:var(--mu);font-size:13px}
+.days button.on{box-shadow:var(--inS);color:var(--g2);font-weight:700}
+
 .ut{border:0;background:var(--bg);box-shadow:var(--upS);border-radius:99px;padding:3px 10px;font-size:11.5px;font-weight:700;color:#8b5cf6;cursor:pointer;margin-right:6px}
 .mic{border:0;background:var(--bg);color:var(--g2);width:36px;height:36px;border-radius:50%;box-shadow:var(--upS);display:grid;place-items:center;cursor:pointer;flex:none}
 .mic.on{color:#fff;background:var(--red);box-shadow:0 0 0 6px rgba(229,72,77,.2);animation:pl 1s infinite}
@@ -421,7 +425,7 @@ svg.flip{transform:scaleX(-1)}
 <script id="engine">
 'use strict';
 const LS = 'ebrahimi_acc_v1';
-const VERSION = '3.9';
+const VERSION = '4.0';
 
 /* ---- Chart of accounts (کدینگ حساب‌ها) ----
    nature: A=asset (debit), L=liability (credit), E=equity (credit), E-=contra equity (debit),
@@ -902,8 +906,9 @@ function viewDash(){
  </div>
  <div class="card" style="margin-top:18px"><h3>${I('chart')} فروش و پول جمع‌شده — ۱۴ روز اخیر<span class="sp"></span><span class="lg"><i style="background:#13a389"></i>فروش <i style="background:#f08c2e"></i>وصول</span></h3>${chart14()}</div>
  ${agendaCard()}
+ ${todayShopsCard()}
  <div class="grid k2" style="margin-top:18px">
-  <div class="card"><h3>${I('alert')} بیشترین طلب‌ها<span class="sp"></span><button class="btn sm alt" onclick="go('map')">🗺️ روی نقشه</button></h3><div class="list">
+  <div class="card"><h3>${I('alert')} بیشترین طلب‌ها<span class="sp"></span><button class="btn sm alt" onclick="go('map')">روی نقشه</button></h3><div class="list">
    ${debtors.slice(0,7).map(x=>custItem(x)).join('')||'<div class="empty">هیچ دکانی بدهکار نیست 🎉</div>'}</div></div>
   <div class="card"><h3>${I('clock')} آخرین ثبت‌ها<span class="sp"></span><button class="btn sm alt" onclick="go('txns')">همه</button></h3><div class="list">
    ${recent.map(txItem).join('')||'<div class="empty">هنوز چیزی ثبت نشده</div>'}</div></div>
@@ -955,32 +960,48 @@ function agenda(){ const td=today(), c=C(), out=[];
   if(x.promiseDate&&x.promiseDate<=td) out.push({x,u,why:x.promiseDate<td?'late':'today',pri:x.promiseDate<td?0:1});
   else if(!x.promiseDate&&u.oldest>30) out.push({x,u,why:'old',pri:2}); }
  return out.sort((a,b)=>a.pri-b.pri||b.u.bal-a.u.bal); }
+function todayShopsCard(){ const wd=todayW(), a=DB.customers.filter(x=>!x.deleted&&(x.days||[]).includes(wd)); if(!a.length) return ''; const done=new Set(DB.txns.filter(t=>!t.void&&t.type==='sale'&&t.date===today()).map(t=>t.party));
+ return `<div class="card" style="margin-top:18px"><h3>${I('truck')} توزیع امروز — ${WDN[wd]} <span class="mu" style="font-weight:500;font-size:13px">${fm(a.filter(x=>done.has(x.id)).length)} از ${fm(a.length)} انجام شد</span><span class="sp"></span><button class="btn sm" onclick="go('map');setTimeout(()=>planRoute(false,'day'),100)">${I('map')} مسیر</button></h3><div class="aging" style="margin:0 0 12px"><i style="width:${a.filter(x=>done.has(x.id)).length/a.length*100}%;background:linear-gradient(90deg,#1bc3a4,#0f8f78)"></i></div><div class="list">${a.sort((x,y)=>(done.has(x.id)?1:0)-(done.has(y.id)?1:0)).slice(0,8).map(x=>`<div class="it" style="${done.has(x.id)?'opacity:.55':''}"><div class="av ${x.photo?'ph':''}" style="--c:${custSt(x.id).col}">${x.photo?`<img src="${x.photo}">`:esc(x.name[0]||'؟')}</div><div class="m" onclick="go('customer','${x.id}')"><div class="t">${esc(x.name)} ${done.has(x.id)?'✓':''}</div><div class="d">${esc(x.area||'')}</div></div><button class="btn sm" onclick="saleForm('${x.id}')">${I('receipt')}</button></div>`).join('')}</div></div>`; }
 function agendaCard(){ const a=agenda(); if(!a.length) return '';
  const lab={late:['قول گذشته','var(--red)'],today:['قول امروز','var(--g2)'],old:['بدهی +۳۰ روز','var(--or)']};
- return `<div class="card" style="margin-top:18px"><h3>${I('clock')} امروز باید پول جمع شود<span class="sp"></span><button class="btn sm" onclick="planRoute(true)">${I('map')} مسیر امروز</button></h3><div class="list">${a.slice(0,8).map(({x,u,why})=>`<div class="it"><div class="av" style="--c:${lab[why][1]}">${esc(x.name[0]||'؟')}</div><div class="m" onclick="go('customer','${x.id}')"><div class="t">${esc(x.name)}</div><div class="d"><span class="badge" style="--c:${lab[why][1]}">${lab[why][0]}</span> ${x.promiseDate?fd(x.promiseDate)+(x.promiseAmt?' · قول '+money(x.promiseAmt):''):fm(u.oldest)+' روز'}</div></div><div class="a warn">${money(u.bal)}</div><a class="btn sm alt" href="${waLink(x.phone,remindText(x.id))}" target="_blank" rel="noopener" title="یادآوری واتس‌اپ">${I('wa')}</a><button class="btn sm" onclick="receiptForm('${x.id}')">${I('cash')}</button></div>`).join('')}</div>${a.length>8?`<div class="hint">و ${fm(a.length-8)} دکان دیگر — در «نقشه» ببینید</div>`:''}</div>`; }
+ return `<div class="card" style="margin-top:18px"><h3>${I('clock')} امروز باید پول جمع شود<span class="sp"></span><button class="btn sm" onclick="go('map');setTimeout(routeMenu,100)">${I('map')} مسیر امروز</button></h3><div class="list">${a.slice(0,8).map(({x,u,why})=>`<div class="it"><div class="av" style="--c:${lab[why][1]}">${esc(x.name[0]||'؟')}</div><div class="m" onclick="go('customer','${x.id}')"><div class="t">${esc(x.name)}</div><div class="d"><span class="badge" style="--c:${lab[why][1]}">${lab[why][0]}</span> ${x.promiseDate?fd(x.promiseDate)+(x.promiseAmt?' · قول '+money(x.promiseAmt):''):fm(u.oldest)+' روز'}</div></div><div class="a warn">${money(u.bal)}</div><a class="btn sm alt" href="${waLink(x.phone,remindText(x.id))}" target="_blank" rel="noopener" title="یادآوری واتس‌اپ">${I('wa')}</a><button class="btn sm" onclick="receiptForm('${x.id}')">${I('cash')}</button></div>`).join('')}</div>${a.length>8?`<div class="hint">و ${fm(a.length-8)} دکان دیگر — در «نقشه» ببینید</div>`:''}</div>`; }
 
 /* ---------- daily collection route ---------- */
 let ROUTE=null;
-async function planRoute(fromDash){
+const WDN=['یکشنبه','دوشنبه','سه‌شنبه','چهارشنبه','پنجشنبه','جمعه','شنبه'];
+const WORD=[6,0,1,2,3,4,5];   // Afghan week starts Saturday
+const todayW=()=>new Date(today()+'T12:00:00').getDay();
+let RMODE='debt', RAREA='';
+function routeMenu(){ const areas={}; DB.customers.filter(x=>!x.deleted&&x.lat).forEach(x=>{ const a=(x.area||'').split(/[،,]/)[0].trim(); if(a) areas[a]=(areas[a]||0)+1; });
+ const nToday=DB.customers.filter(x=>!x.deleted&&x.lat&&(x.days||[]).includes(todayW())).length;
+ openModal('مسیر امروز',`${sec('truck','کدام دکان‌ها؟',`<div class="etiles qm" style="grid-template-columns:repeat(2,minmax(0,1fr))">
+ <button type="button" onclick="closeModal();planRoute(false,'debt')"><span class="ic" style="--c:#f08c2e">${I('cash')}</span><b>جمع کردن پول<br><small class="mu">بدهکارها، قول‌های امروز اول</small></b></button>
+ <button type="button" onclick="closeModal();planRoute(false,'day')"><span class="ic" style="--c:#13a389">${I('truck')}</span><b>دکان‌های روز توزیع<br><small class="mu">${WDN[todayW()]} — ${fm(nToday)} دکان</small></b></button></div>`)}
+ ${Object.keys(areas).length?sec('pin','یا یک ساحه',`<div class="chips">${Object.entries(areas).sort((a,b)=>b[1]-a[1]).map(([a,n])=>`<button type="button" onclick="RAREA='${esc(a).replace(/'/g,'')}';closeModal();planRoute(false,'area')">${esc(a)} (${fm(n)})</button>`).join('')}</div>`):''}`); }
+async function planRoute(fromDash,mode){ RMODE=mode||RMODE||'debt';
  if(fromDash){ go('map'); }
  toast('در حال پیدا کردن موقعیت شما…');
  try{ MYPOS=await getGPS(); }catch(e){ toast(e.message+' — مسیر از اولین دکان شروع می‌شود'); }
- const td=today(), c=C();
- let cand=DB.customers.filter(x=>!x.deleted&&x.lat&&(c.CU[x.id]||{}).bal>0.5).map(x=>{ const u=c.CU[x.id]; const due=x.promiseDate&&x.promiseDate<=td; return {x,score:(due?1e9:0)+(u.oldest>30?1e8:0)+u.bal}; }).sort((a,b)=>b.score-a.score).slice(0,10).map(o=>o.x);
- if(!cand.length){ ROUTE=null; toast('هیچ بدهکاری با لوکیشن پیدا نشد'); return render(); }
- // nearest-neighbour ordering from current position
+ const td=today(), c=C(), wd=todayW();
+ let pool=DB.customers.filter(x=>!x.deleted&&x.lat);
+ if(RMODE==='debt') pool=pool.filter(x=>(c.CU[x.id]||{}).bal>0.5);
+ if(RMODE==='day') pool=pool.filter(x=>(x.days||[]).includes(wd));
+ if(RMODE==='area') pool=pool.filter(x=>(x.area||'').split(/[،,]/)[0].trim()===RAREA);
+ let cand=pool.map(x=>{ const u=c.CU[x.id]||{bal:0,oldest:0}; const due=x.promiseDate&&x.promiseDate<=td; return {x,score:(due?1e9:0)+(u.oldest>30?1e8:0)+u.bal}; }).sort((a,b)=>b.score-a.score).slice(0,RMODE==='debt'?10:23).map(o=>o.x);
+ if(!cand.length){ ROUTE=null; toast(RMODE==='day'?'برای امروز ('+WDN[wd]+') دکانی تعیین نشده — در فرم دکان «روز توزیع» را بزنید':'دکانی با لوکیشن پیدا نشد'); return render(); }
  let cur=MYPOS||{lat:cand[0].lat,lng:cand[0].lng}, order=[], left=cand.slice(), km=0;
  while(left.length){ let bi=0,bd=1e9; left.forEach((x,i)=>{ const d=hav(cur.lat,cur.lng,x.lat,x.lng); if(d<bd){bd=d;bi=i;} }); const n=left.splice(bi,1)[0]; km+=bd<1e8?bd:0; order.push(n); cur={lat:n.lat,lng:n.lng}; }
- ROUTE={ids:order.map(x=>x.id),km,from:MYPOS?{lat:MYPOS.lat,lng:MYPOS.lng}:null};
+ ROUTE={ids:order.map(x=>x.id),km,from:MYPOS?{lat:MYPOS.lat,lng:MYPOS.lng}:null,mode:RMODE,area:RAREA};
  if(R.v!=='map') go('map'); else render(); }
-function routeLink(){ if(!ROUTE) return '#'; const pts=ROUTE.ids.map(cust).filter(Boolean); const last=pts[pts.length-1];
+function togDay(d,b){ const a=(fv('days')||'').split(',').filter(x=>x!=='').map(Number); const i=a.indexOf(d); if(i>=0) a.splice(i,1); else a.push(d); $('#f_days').value=a.join(','); b.classList.toggle('on'); }
+function routeLink(part){ if(!ROUTE) return '#'; let pts=ROUTE.ids.map(cust).filter(Boolean); if(part!==undefined) pts=pts.slice(part*10,part*10+10); const last=pts[pts.length-1];
  const wp=pts.slice(0,-1).map(x=>x.lat+','+x.lng).join('|');
  return `https://www.google.com/maps/dir/?api=1${ROUTE.from?`&origin=${ROUTE.from.lat},${ROUTE.from.lng}`:''}&destination=${last.lat},${last.lng}${wp?`&waypoints=${encodeURIComponent(wp)}`:''}&travelmode=driving`; }
 function routeCard(){ if(!ROUTE) return ''; const c=C(); const pts=ROUTE.ids.map(cust).filter(Boolean); const tot=pts.reduce((s,x)=>s+((c.CU[x.id]||{}).bal||0),0);
- return `<div class="card" style="margin-bottom:14px"><h3>${I('truck')} مسیر جمع‌آوری امروز<span class="sp"></span><button class="btn sm alt" onclick="ROUTE=null;render()">✕</button></h3>
+ return `<div class="card" style="margin-bottom:14px"><h3>${I('truck')} ${ROUTE.mode==='day'?'مسیر توزیع '+WDN[todayW()]:ROUTE.mode==='area'?'مسیر ساحهٔ '+esc(ROUTE.area):'مسیر جمع‌آوری امروز'}<span class="sp"></span><button class="btn sm alt" onclick="ROUTE=null;render()">✕</button></h3>
  <div class="grid k3 mini" style="margin-bottom:12px"><div><span class="mu">دکان‌ها</span><b>${fm(pts.length)}</b></div><div><span class="mu">مجموع طلب</span><b class="warn">${money(tot)}</b></div><div><span class="mu">فاصلهٔ تقریبی</span><b>${fm(r2(ROUTE.km))} کیلومتر</b></div></div>
  <div class="steps2">${pts.map((x,i)=>`<div class="st"><em>${fm(i+1)}</em>${x.photo?`<img class="rth" src="${x.photo}" onclick="viewPhoto(this.src)">`:''}<div class="m" onclick="go('customer','${x.id}')"><b>${esc(x.name)}</b><div class="mu">${esc(x.area||'')}${x.promiseDate&&x.promiseDate<=today()?' · <span class="pos">قول امروز</span>':''}</div></div><b class="warn">${money((c.CU[x.id]||{}).bal)}</b><button class="btn sm" onclick="receiptForm('${x.id}')">${I('cash')}</button></div>`).join('')}</div>
- <a class="btn" style="width:100%;margin-top:12px" href="${routeLink()}" target="_blank" rel="noopener">${I('map')} باز کردن کل مسیر در گوگل‌مپ</a></div>`; }
+ ${pts.length<=10?`<a class="btn" style="width:100%;margin-top:12px" href="${routeLink()}" target="_blank" rel="noopener">${I('map')} باز کردن کل مسیر در گوگل‌مپ</a>`:`<div class="row" style="margin-top:12px">${[...Array(Math.ceil(pts.length/10)).keys()].map(k=>`<a class="btn" style="flex:1" href="${routeLink(k)}" target="_blank" rel="noopener">${I('map')} بخش ${fm(k+1)}</a>`).join('')}</div>`}</div>`; }
 function drawRouteLine(){ if(!MAP||!ROUTE||typeof L==='undefined') return; const pts=ROUTE.ids.map(cust).filter(Boolean); const ll=(ROUTE.from?[[ROUTE.from.lat,ROUTE.from.lng]]:[]).concat(pts.map(x=>[x.lat,x.lng]));
  L.polyline(ll,{color:'#13a389',weight:4,opacity:.8,dashArray:'8 8'}).addTo(ML);
  pts.forEach((x,i)=>L.marker([x.lat,x.lng],{icon:L.divIcon({className:'rnum',html:`<span>${fm(i+1)}</span>`,iconSize:[26,26],iconAnchor:[13,13]})}).addTo(ML));
@@ -997,7 +1018,7 @@ function viewMap(){
   <button class="btn sm ${MAPF==='debt'?'':'alt'}" onclick="MAPF='debt';drawMarkers()">فقط بدهکارها</button>
   <button class="btn sm ${MAPF==='old'?'':'alt'}" onclick="MAPF='old';drawMarkers()">بدهی کهنه (+۳۰ روز)</button>
   <button class="btn sm bl" onclick="locateMe()">${I('pin')} من کجا هستم؟</button>
-  <button class="btn sm" style="--c:#f08c2e" onclick="planRoute()">${I('truck')} مسیر امروز</button>
+  <button class="btn sm" style="--c:#f08c2e" onclick="routeMenu()">${I('truck')} مسیر امروز</button>
  </div>
  ${routeCard()}
  ${PICK?`<div class="card" style="margin-bottom:12px">👆 روی نقشه جای دکان «${esc((cust(PICK)||{}).name)}» را لمس کنید. <button class="btn sm alt" onclick="PICK=null;render()">لغو</button></div>`:''}
@@ -1114,7 +1135,7 @@ function customerForm(id){
  const del=id&&can('delete')?`<div class="ft"><button class="btn sm alt del" onclick="confirmBtn(this,()=>{save('customer',Object.assign({},cust('${id}'),{deleted:true}));closeModal();go('customers')})">حذف دکان</button></div>`:'';
  openModal(id?'ویرایش دکان':'دکان جدید',
  sec('shop','مشخصات',`${fl('نام دکان *',inp('name',x.name,'placeholder="مثلاً: سوپرمارکت برادران"'))}<div class="f2">${fl('نام صاحب دکان',inp('owner',x.owner))}${fl('شماره تماس',inp('phone',x.phone,'inputmode="tel" placeholder="07xxxxxxxx"'))}</div>${fl('ساحه / آدرس / نشانی',inp('area',x.area,'placeholder="مثلاً: کارته‌سه، نزدیک مسجد…"'))}`)+
- sec('pin','لوکیشن دکان',`<div class="row"><button type="button" class="btn sm bl" onclick="formGPS()">${I('pin')} گرفتن لوکیشن فعلی</button>${id?`<button type="button" class="btn sm alt" onclick="pickOnMap('${id}')">${I('map')} انتخاب روی نقشه</button>`:''}</div><div class="gps" id="gpsInfo" style="margin:8px 2px">${x.lat?'لوکیشن ثبت است ✓':'وقتی داخل دکان هستید «گرفتن لوکیشن» را بزنید.'}</div>
+ sec('truck','روز توزیع (کدام روزها به این دکان جنس می‌برید؟)',`<input type="hidden" id="f_days" value="${(x.days||[]).join(',')}"><div class="days">${WORD.map(d=>`<button type="button" class="${(x.days||[]).includes(d)?'on':''}" onclick="togDay(${d},this)">${WDN[d]}</button>`).join('')}</div>`)+sec('pin','لوکیشن دکان',`<div class="row"><button type="button" class="btn sm bl" onclick="formGPS()">${I('pin')} گرفتن لوکیشن فعلی</button>${id?`<button type="button" class="btn sm alt" onclick="pickOnMap('${id}')">${I('map')} انتخاب روی نقشه</button>`:''}</div><div class="gps" id="gpsInfo" style="margin:8px 2px">${x.lat?'لوکیشن ثبت است ✓':'وقتی داخل دکان هستید «گرفتن لوکیشن» را بزنید.'}</div>
   <details class="more"><summary>${I('menu')} مختصات دستی</summary><div class="f2" style="margin-top:10px">${fl('Latitude',inp('lat',x.lat||'','inputmode="decimal"'))}${fl('Longitude',inp('lng',x.lng||'','inputmode="decimal"'))}</div></details>`)+
  sec('shop','عکس دکان (برای پیدا کردن آسان)',photoBox(x.photo))+sec('cash','حساب',`${fl('نرخ ویژهٔ این دکان (٪ نسبت به قیمت عادی)',inp('padj',x.priceAdj||'','inputmode="decimal" placeholder="مثلاً ‎-3 یعنی ۳٪ ارزان‌تر — خالی یعنی قیمت عادی"'))}<div class="f2">${fl('سقف اعتبار (قرض مجاز)',inp('limit',x.limit||'','inputmode="decimal" placeholder="اختیاری"'))}${fl('طلب قبلی (پیش از این سیستم)',inp('openBal',x.openBal||'','inputmode="decimal" placeholder="۰"'))}</div>${fl('یادداشت',`<textarea class="in" id="f_note" rows="2">${esc(x.note||'')}</textarea>`)}`)+entBar('saveCustomer()',del));
  drawPhotoBox();
@@ -1122,7 +1143,7 @@ function customerForm(id){
 async function formGPS(){ const gi=$('#gpsInfo'); if(gi) gi.textContent='در حال گرفتن لوکیشن…'; try{ const g=await getGPS(); F.gps=g; if($('#f_lat')){ $('#f_lat').value=g.lat; $('#f_lng').value=g.lng; } if($('#gpsInfo')) $('#gpsInfo').innerHTML='✅ لوکیشن گرفته شد — دقت حدود '+fm(g.acc)+' متر'; }catch(e){ if($('#gpsInfo')) $('#gpsInfo').textContent='❌ '+e.message; } }
 function saveCustomer(){ const name=fv('name').trim(); if(!name) return toast('نام دکان لازم است');
  const old=F.id?cust(F.id):{code:nextNo('C')}; const lat=num(fv('lat')), lng=num(fv('lng'));
- const r=save('customer',Object.assign({},old,{name,owner:fv('owner').trim(),phone:fv('phone').trim(),area:fv('area').trim(),limit:num(fv('limit')),priceAdj:num(fv('padj')),photo:photoVal(old),openBal:num(fv('openBal')),note:fv('note').trim(),lat:lat||null,lng:lng||null},F.gps?{gpsAcc:F.gps.acc,gpsAt:nowIso()}:{}));
+ const r=save('customer',Object.assign({},old,{name,owner:fv('owner').trim(),phone:fv('phone').trim(),area:fv('area').trim(),limit:num(fv('limit')),priceAdj:num(fv('padj')),days:(fv('days')||'').split(',').filter(x=>x!=='').map(Number),photo:photoVal(old),openBal:num(fv('openBal')),note:fv('note').trim(),lat:lat||null,lng:lng||null},F.gps?{gpsAcc:F.gps.acc,gpsAt:nowIso()}:{}));
  closeModal(); toast('ذخیره شد ✓'); go('customer',r.id); }
 
 /* ---------- products ---------- */
