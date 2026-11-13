@@ -450,7 +450,7 @@ body.mopen #snack{bottom:auto;top:16px;transform:translate(-50%,-20px)}body.mope
 <script id="engine">
 'use strict';
 const LS = 'ebrahimi_acc_v1';
-const VERSION = '8.1';
+const VERSION = '8.2';
 
 /* ---- Chart of accounts (کدینگ حساب‌ها) ----
    nature: A=asset (debit), L=liability (credit), E=equity (credit), E-=contra equity (debit),
@@ -1037,7 +1037,7 @@ function savePromise(id,clear){ const x=cust(id);
  save('customer',Object.assign({},x,{visits:v},clear?{promiseDate:null,promiseAmt:null,promiseNote:null}:{promiseDate:fv('pdate')||today(),promiseAmt:num(fv('pamt')),promiseNote:fv('pnote').trim(),promiseBy:META.user}));
  closeModal(); toast(clear?'قول حذف شد':'قول پرداخت ثبت شد ✓'); render(); }
 function remindText(id){ const x=cust(id), b=(C().CU[id]||{bal:0}).bal, s=DB.settings;
- return `سلام ${x.owner||x.name} جان، امیدواریم خوب باشید 🌹\nیادآوری دوستانه از ${s.biz||'ابراهیمی'}:\nباقی حساب «${x.name}» نزد ما ${money(b)} است${x.promiseDate?` (قول پرداخت: ${fd(x.promiseDate)})`:''}.\nهر وقت مناسب بود لطفاً تصفیه کنید. تشکر از همکاری شما.`; }
+ return `سلام ${x.owner||x.name} جان، امیدواریم خوب باشید 🌹\nیادآوری دوستانه از ${s.biz||'ابراهیمی'}:\nباقی حساب «${x.name}» نزد ما ${money(b)} است${x.promiseDate?` (قول پرداخت: ${fd(x.promiseDate)})`:''}.${x.plan?(()=>{ const ps=planStatus(x), nx=ps.items.find(i=>!i.ok); return ps.behind>0.5?`\nقسط‌های رسیده: ${money(ps.behind)}`:nx?`\nقسط بعدی: ${money(nx.amt)} تا ${fd(nx.d)}`:''; })():''}\nهر وقت مناسب بود لطفاً تصفیه کنید. تشکر از همکاری شما.`; }
 function agenda(){ const td=today(), c=C(), out=[];
  for(const x of DB.customers){ if(x.deleted) continue; const u=c.CU[x.id]; if(!u||u.bal<=0.5) continue;
   const ps=x.plan?planStatus(x):null; if(ps&&ps.behind>0.5){ out.push({x,u,why:ps.lateDays>0?'plate':'ptoday',pri:ps.lateDays>0?0:1,ps}); continue; }
