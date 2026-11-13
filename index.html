@@ -448,7 +448,7 @@ body.mopen #snack{bottom:auto;top:16px;transform:translate(-50%,-20px)}body.mope
 <script id="engine">
 'use strict';
 const LS = 'ebrahimi_acc_v1';
-const VERSION = '6.3';
+const VERSION = '6.4';
 
 /* ---- Chart of accounts (کدینگ حساب‌ها) ----
    nature: A=asset (debit), L=liability (credit), E=equity (credit), E-=contra equity (debit),
@@ -1173,7 +1173,7 @@ function viewCustomer(){
  return `<div class="row" style="margin-bottom:16px"><button class="btn alt sm" onclick="go('customers')">${I('chev','flip')} همه دکان‌ها</button></div>
  <div class="card chero">
   <div class="ring sm">${ringSvg(pct,st.col)}<div class="in"><b class="${st.cls}">${money(c.bal)}</b><span>${c.bal<-0.5?'پیش‌پرداخت':c.bal>0.5?'بدهی، '+fm(c.oldest)+' روز':'حساب تصفیه است'}</span></div></div>
-  <div class="cinfo">${x.photo?`<img class="cphoto" src="${x.photo}" onclick="viewPhoto(this.src)">`:''}<div class="ctt">${esc(x.name)}</div><div class="mu">${esc([x.code,x.owner,x.phone].filter(Boolean).join('، '))}</div>
+  <div class="cinfo">${x.photo?`<img class="cphoto" src="${x.photo}" onclick="viewPhoto(this.src)">`:''}<div class="ctt">${esc(x.name)}</div><div class="mu">${esc([x.code,x.owner,x.phone].filter(Boolean).join('، '))}</div>${(()=>{ const m={}; DB.txns.forEach(t=>{ if(!t.void&&t.party===x.id&&(t.type==='sale'||t.type==='receipt')&&t.by) m[t.by]=(m[t.by]||0)+1; }); const e=Object.entries(m).sort((p,q)=>q[1]-p[1]); return e.length?`<div class="mu" style="margin-top:4px;font-size:12px">معامله‌ها توسط: ${e.slice(0,3).map(([u,n])=>who(u)+' '+fm(n)).join(' ')}</div>`:''; })()}
    <div class="mu" style="margin-top:4px">${I('pin')} ${esc(x.area||'—')} ${x.lat?'':'<span class="badge" style="--c:var(--or)">بدون لوکیشن</span>'} ${x.hold?`<span class="badge" style="--c:var(--red)">قرض بسته</span>`:''} ${num(x.priceAdj)?`<span class="badge" style="--c:#8b5cf6">نرخ ویژه ${fm(x.priceAdj)}٪</span>`:''}، <a href="#" onclick="pickOnMap('${x.id}');return false">تعیین روی نقشه</a></div>
    <div class="qrow">${act('receipt','#13a389','فروش',`saleForm('${x.id}')`)}${act('box','#8b5cf6','فرمایش',`orderForm('${x.id}')`)}${act('cash','#16a37a','دریافت پول',`receiptForm('${x.id}')`)}${x.lat?act('map','#3b6fd8','مسیر','',gmaps(x.lat,x.lng)):act('pin','#f08c2e','ثبت لوکیشن',`captureCustLoc('${x.id}')`)}${x.phone?act('phone','#8b5cf6','تماس','','tel:'+x.phone):''}${act('wa','#25b05a','واتس‌اپ','',waLink(x.phone,stmtText(x.id)))}${c.bal>0.5?act('clock','#f0b429','قول پرداخت',`promiseForm('${x.id}')`)+act('alert','#e5484d','یادآوری','',waLink(x.phone,remindText(x.id))):''}${act('edit','#7d8796','ویرایش',`customerForm('${x.id}')`)}</div>
    ${x.promiseDate?`<div class="promise ${x.promiseDate<today()?'late':''}" onclick="promiseForm('${x.id}')">${I('clock')} قول پرداخت: <b>${fd(x.promiseDate)}</b>${x.promiseAmt?' — '+money(x.promiseAmt):''}${x.promiseNote?'، '+esc(x.promiseNote):''}${x.promiseDate<today()?'، <b>گذشته!</b>':''}</div>`:''}
