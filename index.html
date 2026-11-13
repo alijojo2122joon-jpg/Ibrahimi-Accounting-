@@ -300,6 +300,7 @@ body.mapfsb #bnav,body.mapfsb #fab{display:none!important}
 .me{width:22px;height:22px;border-radius:50%;background:#3b6fd8;border:4px solid #fff;box-shadow:0 0 0 6px rgba(59,111,216,.25),0 2px 8px rgba(0,0,0,.3);animation:mepulse 2s infinite}
 @keyframes mepulse{0%{box-shadow:0 0 0 0 rgba(59,111,216,.45),0 2px 8px rgba(0,0,0,.3)}70%{box-shadow:0 0 0 14px rgba(59,111,216,0),0 2px 8px rgba(0,0,0,.3)}100%{box-shadow:0 0 0 0 rgba(59,111,216,0),0 2px 8px rgba(0,0,0,.3)}}
 .rnum.dn span{background:#7d8796!important}
+.kbl span{position:absolute;transform:translate(-50%,-50%);white-space:nowrap;font:700 12px Vazirmatn,Tahoma;color:var(--mu);text-shadow:0 0 3px var(--bg),0 0 3px var(--bg),0 0 3px var(--bg);pointer-events:none}
 .mkc{border-radius:50%;background:color-mix(in srgb,var(--c) 88%,transparent);color:#fff;display:flex;flex-direction:column;align-items:center;justify-content:center;border:4px solid color-mix(in srgb,#fff 70%,transparent);box-shadow:0 0 0 6px color-mix(in srgb,var(--c) 25%,transparent),0 4px 12px rgba(0,0,0,.3);box-sizing:border-box;line-height:1.1;cursor:pointer}.mkc b{font-size:15px}.mkc i{font-style:normal;font-size:10px;opacity:.95}
 .pop .pa{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px;margin-top:10px}.pop .pa>*{display:flex;flex-direction:column;align-items:center;gap:3px;padding:8px 2px;border-radius:12px;background:color-mix(in srgb,var(--c) 13%,transparent);color:var(--c);font:700 11.5px Vazirmatn,Tahoma;text-decoration:none;border:0;cursor:pointer}.pop .pa svg.i{width:19px;height:19px}
 .chipf{border:0;cursor:pointer;font:inherit;border-radius:14px;padding:8px 13px;background:var(--bg);box-shadow:var(--upS);color:var(--tx);display:inline-flex;align-items:center;gap:7px;font-weight:700;font-size:13px}
@@ -510,7 +511,7 @@ body.mopen #snack{bottom:auto;top:16px;transform:translate(-50%,-20px)}body.mope
 <script id="engine">
 'use strict';
 const LS = 'ebrahimi_acc_v1';
-const VERSION = '8.4';
+const VERSION = '8.5';
 
 /* ---- Chart of accounts (کدینگ حساب‌ها) ----
    nature: A=asset (debit), L=liability (credit), E=equity (credit), E-=contra equity (debit),
@@ -1176,7 +1177,8 @@ function getGPS(){ return new Promise((res,rej)=>{ if(!navigator.geolocation) re
 let MAPMOVED=false, MAPA='', MAPQ='', MK={}, MAPLAYER=null, MYACC=null, WATCH=null, TILEOK=0, TILEERR=0;
 const MAP_LAYERS={street:['خیابان','https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png','© OpenStreetMap',19],
  sat:['ماهواره','https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}','© Esri',19],
- light:['ساده','https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}.png','© OpenStreetMap © CARTO',19]};
+ light:['ساده','https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}.png','© OpenStreetMap © CARTO',19],
+ kabul:['کابل بدون انترنت','','نقشهٔ تقریبی کابل',18]};
 function mapShops(){ const c=C(), wd=todayW(), lim=addDays(today(),-21), rs=ROUTE?new Set(ROUTE.ids):null;
  return DB.customers.filter(x=>{ if(x.deleted||x.walkin) return false; if(rs) return rs.has(x.id); const u=c.CU[x.id]||{bal:0,oldest:0};
   if(MAPA&&(x.area||'').split(/[،,]/)[0].trim()!==MAPA) return false;
@@ -1199,6 +1201,39 @@ function viewMap(){
  <div style="margin-top:12px">${routeCard()}</div>
  <div class="card" style="margin-top:10px"><h3>${I('alert')} ${MYPOS?'نزدیک‌ترین بدهکارها':'بدهکارها'}<span class="sp"></span></h3><div id="nearList" class="list"></div></div>`;
 }
+/* ---------- built-in simple Kabul base map (offline, approximate) ---------- */
+const KABUL_BOUNDS=[[34.36,68.93],[34.70,69.42]];
+const KB={
+ river:[[34.5100,69.1200],[34.5160,69.1450],[34.5185,69.1520],[34.5175,69.1650],[34.5165,69.1780],[34.5185,69.1950],[34.5230,69.2150],[34.5300,69.2400],[34.5350,69.2700],[34.5420,69.3100]],
+ main:[
+  [[34.5190,69.1500],[34.5175,69.1650],[34.5170,69.1790],[34.5190,69.1900],[34.5240,69.2050]],
+  [[34.5195,69.1500],[34.5080,69.1420],[34.4950,69.1330],[34.4800,69.1220],[34.4650,69.1120]],
+  [[34.5100,69.1340],[34.5060,69.1150],[34.5030,69.0950],[34.5000,69.0750]],
+  [[34.5170,69.1340],[34.5190,69.1500],[34.5260,69.1600],[34.5310,69.1700]],
+  [[34.5310,69.1700],[34.5400,69.1710],[34.5500,69.1720],[34.5640,69.1700],[34.5750,69.1580],[34.5900,69.1500],[34.6150,69.1400]],
+  [[34.5370,69.1860],[34.5450,69.1950],[34.5560,69.2050],[34.5620,69.2120]],
+  [[34.5240,69.2050],[34.5280,69.2300],[34.5350,69.2600],[34.5450,69.3000],[34.5470,69.3300]],
+  [[34.5030,69.1200],[34.4900,69.1050],[34.4830,69.0930],[34.4700,69.0700]],
+  [[34.5170,69.1790],[34.5000,69.1900],[34.4800,69.2000],[34.4500,69.2100]]],
+ minor:[
+  [[34.5420,69.1500],[34.5480,69.1200],[34.5520,69.0900],[34.5560,69.0500]],
+  [[34.5420,69.1450],[34.5440,69.1600],[34.5460,69.1740]],
+  [[34.5310,69.1700],[34.5370,69.1860],[34.5400,69.1950]],
+  [[34.5100,69.1340],[34.5030,69.1450],[34.5000,69.1600],[34.5060,69.1750],[34.5170,69.1790]],
+  [[34.5310,69.1700],[34.5250,69.1800],[34.5210,69.1890]],
+  [[34.5640,69.1700],[34.5580,69.1900],[34.5560,69.2050]]],
+ runway:[[34.5590,69.1970],[34.5690,69.2280]],
+ places:[['خیرخانه',34.5800,69.1560],['سرای شمالی',34.5640,69.1760],['تایمنی',34.5490,69.1770],['قلعهٔ فتح‌الله',34.5445,69.1620],['کارتهٔ پروان',34.5410,69.1500],['باغ بالا',34.5490,69.1370],['شهرنو',34.5365,69.1735],['وزیر اکبرخان',34.5400,69.1940],['مکرویان',34.5230,69.2040],['میدان هوایی',34.5675,69.2140],['مندوی',34.5150,69.1800],['چمن حضوری',34.5205,69.1895],['ده‌مزنگ',34.5205,69.1520],['کوته‌سنگی',34.5160,69.1380],['پل‌سوخته',34.5085,69.1300],['دشت برچی',34.5030,69.0880],['کارتهٔ سه',34.5025,69.1440],['کارتهٔ چهار',34.5050,69.1590],['دارالامان',34.4640,69.1120],['کمپنی',34.4830,69.0930],['بگرامی',34.4880,69.2600],['قرغه',34.5560,69.0480],['پل چرخی',34.5470,69.3150],['خوشحال‌خان',34.5270,69.1200]]};
+let KBL=null;
+function kabulLayer(on){ if(!MAP||typeof L==='undefined') return; if(KBL){ try{ MAP.removeLayer(KBL); }catch(e){} KBL=null; } if(!on) return;
+ KBL=L.layerGroup(); const dark=document.documentElement.dataset.theme==='dark', road=dark?'#5b6472':'#ffffff', edge=dark?'#2f343c':'#c9ced6';
+ L.polyline(KB.river,{color:'#7fb6e6',weight:7,opacity:.85,interactive:false}).addTo(KBL);
+ KB.minor.forEach(l=>{ L.polyline(l,{color:edge,weight:6,interactive:false}).addTo(KBL); L.polyline(l,{color:road,weight:3,interactive:false}).addTo(KBL); });
+ KB.main.forEach(l=>{ L.polyline(l,{color:edge,weight:10,interactive:false}).addTo(KBL); L.polyline(l,{color:dark?'#8a7a45':'#ffd98a',weight:6,interactive:false}).addTo(KBL); });
+ L.polyline(KB.runway,{color:'#9aa3ae',weight:9,interactive:false}).addTo(KBL);
+ KB.places.forEach(([n,a,b])=>L.marker([a,b],{interactive:false,keyboard:false,icon:L.divIcon({className:'kbl',html:`<span>${n}</span>`,iconSize:[0,0]})}).addTo(KBL));
+ KBL.addTo(MAP); try{ KBL.eachLayer(l=>l.bringToBack&&l.bringToBack()); }catch(e){} }
+
 function mapFallback(el){ const pts=mapShops().filter(x=>x.lat); if(!pts.length){ el.innerHTML='<div class="empty">هنوز دکانی لوکیشن ندارد</div>'; return; }
  const la=pts.map(x=>x.lat), ln=pts.map(x=>x.lng), a0=Math.min(...la), a1=Math.max(...la), n0=Math.min(...ln), n1=Math.max(...ln), W=600, H=420, P=30, sx=v=>P+(n1-n0?(v-n0)/(n1-n0):.5)*(W-2*P), sy=v=>P+(a1-a0?(a1-v)/(a1-a0):.5)*(H-2*P);
  el.innerHTML=`<svg viewBox="0 0 ${W} ${H}" style="width:100%;height:100%;background:repeating-linear-gradient(0deg,transparent 0 39px,var(--line) 39px 40px),repeating-linear-gradient(90deg,transparent 0 39px,var(--line) 39px 40px)">${pts.map(x=>{ const u=C().CU[x.id]||{bal:0}, st=custSt(x.id); return `<g style="cursor:pointer" onclick="go('customer','${x.id}')"><circle cx="${sx(x.lng)}" cy="${sy(x.lat)}" r="${u.bal>0.5?9:6}" fill="${st.col}" stroke="#fff" stroke-width="2"/><text x="${sx(x.lng)}" y="${sy(x.lat)-12}" text-anchor="middle" font-size="11" fill="currentColor">${esc(x.name)}</text></g>`; }).join('')}</svg>`;
@@ -1207,7 +1242,7 @@ function initMap(){
  const el=$('#map'); if(!el) return; TILEOK=0; TILEERR=0;
  if(typeof L==='undefined'){ mapFallback(el); drawNear(); return; }
  if(MAP){ try{MAP.remove();}catch(e){} } MK={};
- MAP=L.map(el,{zoomControl:true,attributionControl:true}).setView([34.5281,69.1723],13);
+ MAP=L.map(el,{zoomControl:true,attributionControl:true,maxBounds:KABUL_BOUNDS,maxBoundsViscosity:.9,minZoom:11}).setView([34.5281,69.1723],13); KBL=null;
  setMapLayer(META.mapLayer||'street',true);
  ML=L.layerGroup().addTo(MAP); RL=L.layerGroup().addTo(MAP);
  MAP.on('zoomend',()=>{ const m=$('#map'); m&&m.classList.toggle('lbl',MAP.getZoom()>=15); renderMk(); });
@@ -1219,11 +1254,15 @@ function initMap(){
  [150,600].forEach(ms=>setTimeout(()=>{ if(!MAP) return; try{ MAP.invalidateSize(); if(wantFit&&!MAPMOVED) fitAll(); }catch(e){} },ms));
  MAPMOVED=false; MAP.on('dragstart zoomstart',()=>{ if(MAP._loaded) MAPMOVED=true; });
 }
-function setMapLayer(k,init){ if(!MAP_LAYERS[k]) k='street'; META.mapLayer=k; persist(); const d=MAP_LAYERS[k]; if(MAPLAYER) try{ MAP.removeLayer(MAPLAYER); }catch(e){}
- TILEOK=0; TILEERR=0; MAPLAYER=L.tileLayer(d[1],{maxZoom:d[3],attribution:d[2],crossOrigin:false}).addTo(MAP);
- MAPLAYER.on('tileload',()=>{ TILEOK++; const w=$('#mwarn'); if(w) w.classList.remove('on'); }); MAPLAYER.on('tileerror',()=>{ TILEERR++; if(TILEERR>=4&&!TILEOK){ const w=$('#mwarn'); if(w){ w.innerHTML='تصویر نقشه بارگذاری نشد (انترنت ضعیف یا بسته) — دکان‌ها روی صفحهٔ ساده نشان داده می‌شوند. نقشه‌هایی که قبلاً دیده‌اید بدون انترنت هم می‌آیند.'; w.classList.add('on'); } } });
- $('#map')&&$('#map').classList.toggle('sat',k==='sat'); if(!init) toast('نقشه: '+d[0]); }
-function mapLayerMenu(){ openModal('نوع نقشه',`<div class="grid k3" style="grid-template-columns:repeat(3,minmax(0,1fr));gap:10px">${Object.entries(MAP_LAYERS).map(([k,d])=>`<button class="rpk ${(META.mapLayer||'street')===k?'on':''}" onclick="closeModal();setMapLayer('${k}')"><b>${d[0]}</b><span>${k==='sat'?'عکس هوایی — پیدا کردن دکان آسان‌تر':k==='light'?'کم‌رنگ، دکان‌ها واضح‌تر':'نقشهٔ معمولی'}</span></button>`).join('')}</div>`); }
+function setMapLayer(k,init){ if(!MAP_LAYERS[k]) k='street'; META.mapLayer=k; persist(); const d=MAP_LAYERS[k]; if(MAPLAYER) try{ MAP.removeLayer(MAPLAYER); }catch(e){} MAPLAYER=null; TILEOK=0; TILEERR=0;
+ const w=$('#mwarn'); if(w) w.classList.remove('on'); $('#map')&&$('#map').classList.toggle('sat',k==='sat');
+ if(k==='kabul'){ kabulLayer(true); if(w&&!init){ w.innerHTML='نقشهٔ ساده و <b>تقریبی</b> کابل (بدون انترنت) — جای دکان‌ها دقیق است، سرک‌ها و نام ساحه‌ها تقریبی‌اند.'; w.classList.add('on'); } if(!init) toast('نقشه: کابل بدون انترنت'); return; }
+ kabulLayer(false);
+ MAPLAYER=L.tileLayer(d[1],{maxZoom:d[3],attribution:d[2]}).addTo(MAP);
+ MAPLAYER.on('tileload',()=>{ TILEOK++; const w=$('#mwarn'); if(w) w.classList.remove('on'); if(KBL&&TILEOK>3) kabulLayer(false); });
+ MAPLAYER.on('tileerror',()=>{ TILEERR++; if(TILEERR>=4&&!TILEOK&&!KBL){ kabulLayer(true); const w=$('#mwarn'); if(w){ w.innerHTML='انترنت نیست یا نقشه بسته است — نقشهٔ ساده و تقریبی کابل نشان داده شد. جای دکان‌ها دقیق است.'; w.classList.add('on'); } } });
+ if(!init) toast('نقشه: '+d[0]); }
+function mapLayerMenu(){ openModal('نوع نقشه',`<div class="grid k2" style="grid-template-columns:repeat(2,minmax(0,1fr));gap:10px">${Object.entries(MAP_LAYERS).map(([k,d])=>`<button class="rpk ${(META.mapLayer||'street')===k?'on':''}" onclick="closeModal();setMapLayer('${k}')"><b>${d[0]}</b><span>${k==='sat'?'عکس هوایی — پیدا کردن دکان آسان‌تر':k==='light'?'کم‌رنگ، دکان‌ها واضح‌تر':k==='kabul'?'بدون انترنت، ساده و تقریبی':'نقشهٔ معمولی'}</span></button>`).join('')}</div>`); }
 function mapFull(){ const w=$('#mapwrap'); if(!w) return; w.classList.toggle('mapfs'); document.body.classList.toggle('mapfsb',w.classList.contains('mapfs')); setTimeout(()=>{ try{ MAP.invalidateSize(); }catch(e){} },150); }
 const distTxt=km=>km<1?fm(Math.round(km*1000))+' متر':fm(Math.round(km*10)/10)+' کیلومتر';
 function shopIcon(x,u,st){ const sold=SOLDTODAY.has(x.id), big=u.bal>0.5, s=big?Math.round(Math.min(46,26+Math.sqrt(u.bal)/14)):22;
@@ -1252,7 +1291,7 @@ function renderMk(){ if(!MAP||!ML) return; ML.clearLayers(); MK={}; const z=MAP.
   const lat=g.reduce((s,d)=>s+d.x.lat,0)/g.length, lng=g.reduce((s,d)=>s+d.x.lng,0)/g.length, debt=g.reduce((s,d)=>s+Math.max(0,d.c.bal),0), col=g.some(d=>d.st.cls==='neg')?'#c0392b':g.some(d=>d.c.bal>0.5)?'#d98a00':'#1e8e5a', sz=Math.min(64,34+g.length*2);
   L.marker([lat,lng],{icon:L.divIcon({className:'spin',html:`<div class="mkc" style="--c:${col};width:${sz}px;height:${sz}px"><b>${fm(g.length)}</b>${debt>0.5?`<i>${kfmt(debt)}</i>`:''}</div>`,iconSize:[sz,sz],iconAnchor:[sz/2,sz/2]})}).addTo(ML).on('click',()=>{ const b=L.latLngBounds(g.map(d=>[d.x.lat,d.x.lng])); let tz=Math.min(17,MAP.getBoundsZoom(b.pad(.15))); if(tz<=z) tz=Math.min(17,z+2); MAPMOVED=true; MAP.setView(b.getCenter(),tz); });
  }); }
-function fitAll(){ if(!MAP) return; const pts=MAPDATA.map(d=>[d.x.lat,d.x.lng]); if(!pts.length) return; try{ MAP.fitBounds(L.latLngBounds(pts),{padding:[50,50],maxZoom:16,animate:false}); }catch(e){} }
+function fitAll(){ if(!MAP) return; const pts=MAPDATA.map(d=>[d.x.lat,d.x.lng]); if(!pts.length){ MAP.setView([34.5281,69.1723],12); return; } try{ MAP.fitBounds(L.latLngBounds(pts),{padding:[50,50],maxZoom:16,animate:false}); }catch(e){} }
 function mapSearch(){ const el=$('#mres'); if(!el) return; const q=MAPQ.trim().toLowerCase(); if(!q){ el.innerHTML=''; return; }
  const a=DB.customers.filter(x=>!x.deleted&&!x.walkin&&[x.name,x.owner,x.area,x.phone].join(' ').toLowerCase().includes(q)).slice(0,8);
  el.innerHTML=`<div class="mresl">${a.map(x=>`<div onclick="mapGo('${x.id}')"><b>${esc(x.name)}</b> <span class="mu">${esc(x.area||'')}${x.lat?'':' — بدون لوکیشن'}</span></div>`).join('')||'<div class="mu">پیدا نشد</div>'}</div>`; }
@@ -2010,7 +2049,7 @@ const geoTxt=t=>!t.geo?'':t.geo.m===undefined?'جای ثبت ذخیره شد':t.
 function farEntries(days){ const since=addDays(today(),-days); return DB.txns.filter(t=>!t.void&&t.date>=since&&t.geo&&t.geo.m!==undefined&&t.geo.m>Math.max(500,(t.geo.acc||0)*2)); }
 
 /* ---------- what's new after an update ---------- */
-const NEWS=[['map','#3b6fd8','نقشهٔ تازه',['نقشهٔ خیابان، ماهواره و ساده — دکمهٔ ☰ کنار نقشه','جستجوی دکان روی نقشه، تمام‌صفحه، دنبال کردن موقعیت شما','دکان‌های نزدیک هم در یک دایره جمع می‌شوند (تعداد و طلب)؛ با زدن، نزدیک می‌شود','انگشت را روی نقشه نگه دارید = دکان جدید همان‌جا؛ «جابجا کردن» برای درست کردن جای دکان','مسیر کوتاه‌تر، «ایستگاه بعدی» و تیک دکان‌هایی که امروز رفته‌اید','بدون انترنت هم جای دکان‌ها نشان داده می‌شود']],['user','#8b5cf6','کی ثبت کرده',['نام و ساعت ثبت‌کننده کنار هر سند، فیلتر هر نفر، تاریخچهٔ فعالیت','تأیید مصارف دیگران، تحویل پول بین افراد، هدف فروش هر نفر']],
+const NEWS=[['map','#3b6fd8','نقشهٔ تازه',['نقشهٔ کابل بدون انترنت (ساده و تقریبی) — وقتی انترنت نیست خودش می‌آید؛ نقشه فقط روی کابل است','نقشهٔ خیابان، ماهواره و ساده — دکمهٔ ☰ کنار نقشه','جستجوی دکان روی نقشه، تمام‌صفحه، دنبال کردن موقعیت شما','دکان‌های نزدیک هم در یک دایره جمع می‌شوند (تعداد و طلب)؛ با زدن، نزدیک می‌شود','انگشت را روی نقشه نگه دارید = دکان جدید همان‌جا؛ «جابجا کردن» برای درست کردن جای دکان','مسیر کوتاه‌تر، «ایستگاه بعدی» و تیک دکان‌هایی که امروز رفته‌اید','بدون انترنت هم جای دکان‌ها نشان داده می‌شود']],['user','#8b5cf6','کی ثبت کرده',['نام و ساعت ثبت‌کننده کنار هر سند، فیلتر هر نفر، تاریخچهٔ فعالیت','تأیید مصارف دیگران، تحویل پول بین افراد، هدف فروش هر نفر']],
  ['truck','#0369a1','موتر و خرید',['بارگیری صبح و تطبیق شب موتر','ذخیرهٔ جای ثبت بل (GPS) — اختیاری در تنظیمات','وعدهٔ پرداخت به عمده‌فروش با یادآوری و صورت‌حساب واتس‌اپ','پیشنهاد قیمت فروش تازه وقتی قیمت خرید بالا می‌رود','لیست خرید به تفکیک ارزان‌ترین عمده‌فروش']],
  ['shop','#f08c2e','دکان‌ها',['اجناسی که هر دکان معمولاً می‌خرد، با یک لمس در بل','قسط‌بندی بدهی‌های بزرگ','یکی کردن دکان‌های تکراری','مرجوعی از یک بل مشخص، مشتری گذری','دکان‌هایی که خریدشان کم شده']],
  ['chart','#13a389','گزارش‌ها',['همگام‌سازی بهتر: اگر دو گوشی هم‌زمان چیزهای مختلف یک دکان یا تنظیمات را تغییر دهند، هیچ‌کدام گم نمی‌شود','پیش‌بینی پول ۷ تا ۳۰ روز','گزارش سالانه و کتگوری‌ها، اجناس راکد','کارهای آخر شب، مصارف ثابت ماهانه','دکمهٔ «همه گزارش‌ها» برای پیدا کردن آسان']]];
