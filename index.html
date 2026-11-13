@@ -421,7 +421,7 @@ svg.flip{transform:scaleX(-1)}
 <script id="engine">
 'use strict';
 const LS = 'ebrahimi_acc_v1';
-const VERSION = '3.8';
+const VERSION = '3.9';
 
 /* ---- Chart of accounts (کدینگ حساب‌ها) ----
    nature: A=asset (debit), L=liability (credit), E=equity (credit), E-=contra equity (debit),
@@ -1161,6 +1161,7 @@ function viewProduct(){ const p=prod(R.id); if(!p) return '<div class="empty">پ
  return `<div class="row" style="margin-bottom:16px"><button class="btn alt sm" onclick="go('products')">${I('chev','flip')} همه اجناس</button><span style="flex:1"></span><button class="btn sm alt" onclick="productForm('${p.id}')">${I('edit')} ویرایش</button><button class="btn sm bl" onclick="purchaseForm();setTimeout(()=>addCart('${p.id}'),50)">${I('cart')} خرید</button></div>
  <div class="card">${p.photo?`<img class="cphoto" style="float:left;margin:0" src="${p.photo}" onclick="viewPhoto(this.src)">`:''}<div class="ctt">${esc(p.name)}</div><div class="mu">${esc([p.code,p.cat,p.unit].filter(Boolean).join(' · '))}</div></div>
  <div class="grid k4" style="margin-top:18px">${kpi('box','#3b6fd8','موجودی',fm(s.qty)+' '+esc(p.unit||''),num(p.minQty)?'حد اقل '+fm(p.minQty):'',s.qty<=0?'neg':num(p.minQty)&&s.qty<=num(p.minQty)?'warn':'')}${kpi('trend','#13a389','فروش ۳۰ روز',fm(sold30)+' '+esc(p.unit||''),days!==null?'تقریباً '+fm(days)+' روز دیگر کافی است':'فروش اخیر ندارد')}${kpi('cash','#f08c2e','قیمت فروش',money(p.price),can('cost')?'آخرین خرید '+money(s.lastBuy):'')}${can('cost')?kpi('wallet','#8b5cf6','قیمت تمام‌شده (میانگین)',money(s.avg),'سود تا حالا '+money(s.rev-s.cogs),'',''):''}</div>
+ ${supplierPriceCard(p)}
  ${top.length?`<div class="card" style="margin-top:18px"><h3>${I('shop')} بیشترین خریداران</h3><div class="list">${top.map(([cid,qq])=>{ const x=cust(cid); return x?`<div class="it" onclick="go('customer','${cid}')"><div class="av" style="--c:${colorOf(x.name)}">${esc(x.name[0]||'؟')}</div><div class="m"><div class="t">${esc(x.name)}</div><div class="d">${esc(x.area||'')}</div></div><div class="a">${fm(qq)} ${esc(p.unit||'')}</div></div>`:''; }).join('')}</div></div>`:''}
  <div class="card" style="margin-top:18px"><h3>${I('book')} کاردکس (ورود و خروج جنس)</h3><div class="tw"><table class="tbl"><tr><th>تاریخ</th><th>شرح</th><th class="n">وارده</th><th class="n">صادره</th><th class="n">مانده</th><th class="n">فی</th></tr>
  ${k.slice().reverse().map(r=>`<tr class="${r.id?'click':''}" ${r.id?`onclick="showTxn('${r.id}')"`:''}><td>${fd(r.d)}<div class="mu" style="font-size:11.5px">${esc(r.no||'')}</div></td><td>${esc(r.desc)}</td><td class="n pos">${r.in?fm(r.in):''}</td><td class="n neg">${r.out?fm(r.out):''}</td><td class="n"><b>${fm(r.bal)}</b></td><td class="n mu">${r.price&&(can('cost')||['sale','sreturn'].includes(r.type))?fm(r.price):''}</td></tr>`).join('')||'<tr><td colspan="6" class="empty">حرکتی نیست</td></tr>'}</table></div></div>`; }
@@ -1660,6 +1661,38 @@ function printMonth(){ const ms=persianMonths(12).filter(m=>m.to>=DB.settings.st
  <table class="itbl" style="margin-top:16px"><thead><tr><th>#</th><th>پرفروش‌ترین اجناس</th><th>فروش</th></tr></thead><tbody>${d.prods.map(([id,v],i)=>`<tr><td>${fm(i+1)}</td><td>${esc(pname(id))}</td><td>${fm(v)}</td></tr>`).join('')}</tbody></table>
  <div class="ifoot">تهیه‌شده با ابراهیمی اکانتینگ — ${fd(today())}</div></div>`; try{ window.print(); }catch(e){} }
 
+/* ---------- supplier price comparison for a product ---------- */
+function supplierPrices(pid){ const m={}; DB.txns.filter(t=>!t.void&&t.type==='purchase'&&(t.items||[]).some(i=>i.pid===pid)).sort((a,b)=>(a.date+a.createdAt).localeCompare(b.date+b.createdAt)).forEach(t=>{ const i=t.items.find(x=>x.pid===pid); const o=m[t.party]||(m[t.party]={n:0,min:Infinity}); o.last=num(i.price); o.date=t.date; o.n++; o.min=Math.min(o.min,num(i.price)); }); return Object.entries(m).filter(([id])=>supp(id)).sort((a,b)=>a[1].last-b[1].last); }
+function supplierPriceCard(p){ if(!can('cost')) return ''; const a=supplierPrices(p.id); if(!a.length) return ''; const best=a[0][1].last;
+ return `<div class="card" style="margin-top:18px"><h3>${I('truck')} کدام عمده‌فروش ارزان‌تر داد؟</h3>${a.map(([id,o],k)=>`<div class="tpr" onclick="go('supplier','${id}')"><span class="rk" style="${k===0?'color:#fff;background:linear-gradient(145deg,#1bc3a4,#0f8f78);box-shadow:none':''}">${fm(k+1)}</span><div class="m"><div class="row" style="justify-content:space-between;flex-wrap:nowrap"><b>${esc(supp(id).name)}</b><b>${money(o.last)}</b></div><div class="mu" style="font-size:11.5px">آخرین خرید ${fd(o.date)} · ${fm(o.n)} بار${k?` · <span class="neg">${fm(Math.round((o.last-best)/best*100))}٪ گران‌تر</span>`:' · <span class="pos">ارزان‌ترین</span>'}</div></div></div>`).join('')}</div>`; }
+
+/* ---------- stock movement report (گزارش گدام) ---------- */
+function repStock(){ if(!can('cost')) return '<div class="empty">فقط برای مالک</div>'; const from=RP.from, to=RP.to, rows=[]; let T={o:0,i:0,u:0,c:0};
+ for(const p of DB.products.filter(p=>!p.deleted)){ const k=kardex(p.id); const before=k.filter(r=>r.d<from), inr=k.filter(r=>r.d>=from&&r.d<=to);
+  const o=before.length?before[before.length-1].bal:0, i=inr.reduce((s,r)=>s+r.in,0), u=inr.reduce((s,r)=>s+r.out,0), c=o+i-u, avg=(C().P[p.id]||{avg:0}).avg;
+  if(!o&&!i&&!u&&!c) continue; rows.push({p,o,i,u,c,v:c*avg}); T.o+=o*avg; T.i+=i*avg; T.u+=u*avg; T.c+=c*avg; }
+ rows.sort((a,b)=>b.v-a.v);
+ return `<h3>${I('box')} گزارش گدام — ورود و خروج جنس</h3><div class="hint" style="margin-bottom:10px">موجودی اول بازه + ورودی (خرید، مرجوعی) − خروجی (فروش، ضایعات) = موجودی آخر. ارزش‌ها به قیمت تمام‌شدهٔ میانگین فعلی است.</div>
+ <div class="tw"><table class="tbl"><tr><th>جنس</th><th class="n">اول بازه</th><th class="n">وارده</th><th class="n">صادره</th><th class="n">آخر بازه</th><th class="n">ارزش</th></tr>${rows.map(r=>`<tr class="click" onclick="go('product','${r.p.id}')"><td>${esc(r.p.name)}<div class="mu" style="font-size:11.5px">${esc(r.p.unit||'')}</div></td><td class="n">${fm(r2(r.o))}</td><td class="n pos">${r.i?fm(r2(r.i)):''}</td><td class="n neg">${r.u?fm(r2(r.u)):''}</td><td class="n"><b>${fm(r2(r.c))}</b></td><td class="n">${money(r.v)}</td></tr>`).join('')||'<tr><td colspan="6" class="empty">حرکتی نیست</td></tr>'}
+ <tfoot><tr><td>ارزش کل</td><td class="n">${money(T.o)}</td><td class="n">${money(T.i)}</td><td class="n">${money(T.u)}</td><td class="n">${money(T.c)}</td><td></td></tr></tfoot></table></div>`; }
+
+/* ---------- cash flow statement (صورت جریان نقدی) ---------- */
+function repCash(){ const from=RP.from, to=RP.to, J=C().J.filter(j=>(j.acc==='1010'||j.acc==='1020')&&j.d>=from&&j.d<=to);
+ const cat={sale:'نقد فروش',receipt:'دریافت طلب از دکان‌ها',sreturn:'پس‌دادن پول مرجوعی',purchase:'خرید نقد و کرایه/حمالی',preturn:'پول مرجوعی از عمده‌فروش',payment:'پرداخت به عمده‌فروش‌ها',expense:'مصارف',capital:'آوردن سرمایه',drawing:'برداشت مالک',transfer:'انتقال صندوق ⇄ بانک',cashcount:'کسری/اضافهٔ صندوق',opening:'اول دوره'};
+ const g={}; J.forEach(j=>{ const k=j.type==='expense'?'exp:'+((DB.txns.find(t=>t.id===j.tx)||{}).acc||'6900'):j.type; g[k]=(g[k]||0)+j.dr-j.cr; });
+ const lab=k=>k.startsWith('exp:')?'مصرف — '+ACC[k.slice(4)].name:(cat[k]||k);
+ const open=balOf('1010',addDays(from,-1))+balOf('1020',addDays(from,-1)), close=balOf('1010',to)+balOf('1020',to);
+ const ins=Object.entries(g).filter(([k,v])=>v>0.5&&k!=='transfer').sort((a,b)=>b[1]-a[1]), outs=Object.entries(g).filter(([k,v])=>v<-0.5&&k!=='transfer').sort((a,b)=>a[1]-b[1]);
+ const ti=ins.reduce((s,x)=>s+x[1],0), to2=outs.reduce((s,x)=>s+x[1],0);
+ return `<h3>${I('wallet')} صورت جریان نقدی (صندوق + بانک)</h3><table class="tbl">${trow('موجودی نقد اول بازه',open,'',1)}<tr><td colspan="2" class="mu" style="padding-top:14px">پول آمد از</td></tr>${ins.map(([k,v])=>trow(lab(k),v,'pos')).join('')||'<tr><td colspan="2" class="mu">—</td></tr>'}${trow('جمع ورودی',ti,'pos',1)}
+ <tr><td colspan="2" class="mu" style="padding-top:14px">پول رفت به</td></tr>${outs.map(([k,v])=>trow(lab(k),v,'neg')).join('')||'<tr><td colspan="2" class="mu">—</td></tr>'}${trow('جمع خروجی',to2,'neg',1)}
+ <tfoot><tr><td>موجودی نقد آخر بازه</td><td class="n">${money(close)}</td></tr></tfoot></table><div class="hint" style="margin-top:8px">${Math.abs(open+ti+to2-close)<1?'✓ برابر است: اول + ورودی − خروجی = آخر':''}</div>`; }
+
+/* ---------- per-person performance ---------- */
+function repUsers(){ const from=RP.from, to=RP.to, tx=DB.txns.filter(t=>!t.void&&t.date>=from&&t.date<=to); const users=[...new Set([...(DB.settings.users||[]),...tx.map(t=>t.by).filter(Boolean)])];
+ const st=users.map(u=>{ const a=tx.filter(t=>t.by===u); const sales=a.filter(t=>t.type==='sale'); return {u,bills:sales.length,sales:sales.reduce((s,t)=>s+txnTotal(t),0),coll:a.reduce((s,t)=>s+(t.type==='receipt'?num(t.amount):t.type==='sale'?num(t.paid):0),0),shops:new Set(sales.map(t=>t.party)).size,newShops:DB.customers.filter(x=>x.by===u&&(x.createdAt||'').slice(0,10)>=from&&(x.createdAt||'').slice(0,10)<=to).length,exp:a.filter(t=>t.type==='expense').reduce((s,t)=>s+num(t.amount),0)}; }).filter(x=>x.bills||x.coll||x.exp);
+ return `<h3>${I('user')} کارکرد هر نفر</h3>${st.length?`<div class="grid k2">${st.map(x=>`<div class="ucard" style="align-items:flex-start"><div class="av" style="--c:${colorOf(x.u)};width:46px;height:46px">${esc(x.u[0]||'؟')}</div><div style="flex:1"><b style="font-size:16px">${esc(x.u)}</b><div class="grid k2 mini" style="margin-top:8px;gap:8px"><div><span class="mu">بل فروش</span><b>${fm(x.bills)}</b></div><div><span class="mu">فروش</span><b>${money(x.sales)}</b></div><div><span class="mu">پول جمع کرد</span><b class="pos">${money(x.coll)}</b></div><div><span class="mu">دکان‌ها</span><b>${fm(x.shops)}${x.newShops?` <small class="pos">+${fm(x.newShops)} جدید</small>`:''}</b></div>${x.exp?`<div><span class="mu">مصرف ثبت کرد</span><b class="neg">${money(x.exp)}</b></div>`:''}</div></div></div>`).join('')}</div>`:'<div class="empty">در این بازه فعالیتی نیست</div>'}`; }
+
 /* ---------- transaction detail ---------- */
 function showTxn(id,fresh){ const t=DB.txns.find(x=>x.id===id); if(!t) return; const tt=TT[t.type]; const js=C().J.filter(j=>j.tx===id);
  const items=t.items||[]; const isC=['sale','sreturn','receipt'].includes(t.type); const party=isC?cust(t.party):supp(t.party);
@@ -1719,10 +1752,10 @@ function drawSearch(){ const el=$('#gsr'); if(!el) return; const q=(fv('gsq')||$
 function monthStart(){ const t=today(); try{ const p=new Intl.DateTimeFormat('en-u-ca-persian',{day:'numeric'}).format(new Date(t+'T12:00:00')); const d=parseInt(p,10); if(d>0&&d<32) return addDays(t,-(d-1)); }catch(e){} return t.slice(0,8)+'01'; }
 let RP={from:'',to:''};
 function viewReports(){ const tab=R.tab||'month'; if(!RP.from){ RP.from=monthStart(); RP.to=today(); }
- const tabs=[['month','گزارش ماه'],['pnl','سود و زیان'],['bs','بیلانس‌شیت'],['daily','گزارش روزانه / شبانه'],['aging','طلب‌ها و کهنگی'],['sales','فروش اجناس'],['custs','بهترین مشتری‌ها'],['tb','میزان (تراز آزمایشی)'],['gl','دفتر روزنامه'],['coa','کدینگ حساب‌ها'],['log','فعالیت کاربران']];
+ const tabs=[['month','گزارش ماه'],['pnl','سود و زیان'],['cash','جریان نقدی'],['stock','گزارش گدام'],['users','کارکرد هر نفر'],['bs','بیلانس‌شیت'],['daily','گزارش روزانه / شبانه'],['aging','طلب‌ها و کهنگی'],['sales','فروش اجناس'],['custs','بهترین مشتری‌ها'],['tb','میزان (تراز آزمایشی)'],['gl','دفتر روزنامه'],['coa','کدینگ حساب‌ها'],['log','فعالیت کاربران']];
  const range=`<div class="row noprint" style="margin-bottom:10px"><span class="mu">از</span><input class="in" type="date" style="width:auto" value="${RP.from}" onchange="RP.from=this.value;render()"><span class="mu">تا</span><input class="in" type="date" style="width:auto" value="${RP.to}" onchange="RP.to=this.value;render()">
  <button class="btn sm alt" onclick="RP.from=today();RP.to=today();render()">امروز</button><button class="btn sm alt" onclick="RP.from=monthStart();RP.to=today();render()">این ماه</button><button class="btn sm alt" onclick="RP.from=addDays(today(),-29);RP.to=today();render()">۳۰ روز</button><button class="btn sm alt" onclick="RP.from=DB.settings.startDate;RP.to=today();render()">از ابتدا</button></div><div class="hint" style="margin-bottom:8px">${fd(RP.from)} تا ${fd(RP.to)}</div>`;
- const body={pnl:()=>range+repPnl(),bs:()=>repBS(),daily:()=>repDaily(),aging:()=>repAging(),sales:()=>range+repSales(),custs:()=>range+repCusts(),tb:()=>range+repTB(),gl:()=>range+repGL(),coa:()=>repCOA(),log:()=>repLog(),month:()=>repMonth()}[tab]();
+ const body={pnl:()=>range+repPnl(),bs:()=>repBS(),daily:()=>repDaily(),aging:()=>repAging(),sales:()=>range+repSales(),custs:()=>range+repCusts(),tb:()=>range+repTB(),gl:()=>range+repGL(),coa:()=>repCOA(),log:()=>repLog(),month:()=>repMonth(),cash:()=>range+repCash(),stock:()=>range+repStock(),users:()=>range+repUsers()}[tab]();
  return `<div class="tabs noprint">${tabs.map(t=>`<button class="${tab===t[0]?'on':''}" onclick="R.tab='${t[0]}';render()">${t[1]}</button>`).join('')}</div>${tab==='pnl'||tab==='daily'||tab==='aging'||tab==='month'?body:`<div class="card">${body}</div>`}`; }
 const trow=(l,v,cls='',b)=>`<tr><td>${b?'<b>'+l+'</b>':l}</td><td class="n ${cls}">${b?'<b>'+money(v)+'</b>':money(v)}</td></tr>`;
 /* ---------- chart helpers ---------- */
