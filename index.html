@@ -1868,7 +1868,7 @@ function fixOrphans(){ const l=orphanTxns(); let n=0, u=0; batch(()=>l.forEach(t
 function planPaid(x){ const at=x.plan.at; return DB.txns.filter(t=>!t.void&&t.party===x.id&&(t.createdAt||t.date)>=at&&(t.type==='receipt'||t.type==='sale')).reduce((s,t)=>s+(t.type==='receipt'?num(t.amount)+num(t.discount):num(t.paid)),0); }
 function planStatus(x){ const td=today(), paid=planPaid(x); let cum=0, due=0, firstLate=null; const items=x.plan.items.map(it=>{ cum+=it.amt; const ok=paid>=cum-0.5; if(it.d<=td){ due=cum; if(!ok&&!firstLate) firstLate=it.d; } return Object.assign({},it,{ok}); });
  return {items,paid,due,behind:Math.max(0,due-paid),lateDays:firstLate?daysBetween(firstLate,td):0,done:paid>=cum-0.5}; }
-function planForm(id){ const x=cust(id), b=(C().CU[id]||{bal:0}).bal; if(b<=0.5) return toast('این دکان بدهی ندارد'); F={type:'plan',id,n:4,every:7,start:addDays(today(),7),total:Math.round(b)};
+function planForm(id){ if(!can('edit')) return toast('قسط‌بندی را مالک تعیین می‌کند'); const x=cust(id), b=(C().CU[id]||{bal:0}).bal; if(b<=0.5) return toast('این دکان بدهی ندارد'); F={type:'plan',id,n:4,every:7,start:addDays(today(),7),total:Math.round(b)};
  openModal('قسط‌بندی بدهی — '+x.name,`<div class="hint" style="margin-bottom:12px">بدهی بزرگ را به چند قسط تقسیم کنید. روز هر قسط در خانه یادآوری می‌شود و پولی که دکان می‌دهد خودکار از قسط‌ها کم می‌شود.</div>
  ${fl('مبلغ قسط‌بندی',`<input class="in" inputmode="decimal" value="${F.total}" oninput="F.total=num(this.value);drawPlan()">`)}
  ${fl('تعداد قسط',`<div class="chips">${[2,3,4,6,8,10,12].map(n=>`<button type="button" class="${F.n===n?'on':''}" onclick="F.n=${n};planForm2()">${fm(n)}</button>`).join('')}</div>`)}
