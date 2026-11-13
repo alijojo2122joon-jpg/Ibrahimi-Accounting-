@@ -448,7 +448,7 @@ body.mopen #snack{bottom:auto;top:16px;transform:translate(-50%,-20px)}body.mope
 <script id="engine">
 'use strict';
 const LS = 'ebrahimi_acc_v1';
-const VERSION = '7.1';
+const VERSION = '7.2';
 
 /* ---- Chart of accounts (کدینگ حساب‌ها) ----
    nature: A=asset (debit), L=liability (credit), E=equity (credit), E-=contra equity (debit),
@@ -1780,6 +1780,14 @@ function doMerge(from,to,fromList){ if(!can('delete')) return toast('فقط ما
  save('customer',Object.assign({},a,{deleted:true,mergedInto:to})); });
  toast('✓ یکی شد — '+fm(n)+' معامله منتقل شد'); if(fromList&&dupGroups().length) dupList(); else { closeModal(); go('customer',to); } }
 
+/* ---------- slow / dead stock ---------- */
+let DSD=30;
+function deadStock(days){ const lim=addDays(today(),-days), last={}, c=C(); DB.txns.forEach(t=>{ if(!t.void&&t.type==='sale') (t.items||[]).forEach(i=>{ if(!last[i.pid]||t.date>last[i.pid]) last[i.pid]=t.date; }); });
+ return DB.products.filter(p=>!p.deleted&&(c.P[p.id]||{qty:0}).qty>0&&(!last[p.id]||last[p.id]<lim)&&(p.createdAt||'').slice(0,10)<lim).map(p=>{ const st=c.P[p.id]; return {p,q:st.qty,v:st.qty*st.avg,last:last[p.id]||null}; }).sort((a,b)=>b.v-a.v); }
+function deadStockCard(){ if(!can('cost')) return ''; const a=deadStock(DSD), tv=a.reduce((s,x)=>s+x.v,0), inv=Math.max(1,balOf('1200'));
+ return `<div class="card" style="margin-bottom:18px"><h3>${I('box')} اجناس راکد (بی‌فروش)</h3><div class="tabs" style="margin-top:-6px">${[30,60,90].map(n=>`<button class="${DSD===n?'on':''}" onclick="DSD=${n};render()">${fm(n)} روز</button>`).join('')}</div>
+ ${a.length?`<div class="row" style="gap:16px;margin-bottom:10px"><span>${fm(a.length)} جنس</span><span>ارزش <b class="warn">${money(tv)}</b></span><span class="mu">${fm(Math.round(tv/inv*100))}٪ کل گدام</span></div><div class="slist">${a.slice(0,10).map(x=>`<div class="sr" onclick="go('product','${x.p.id}')"><div class="m"><b>${esc(x.p.name)}</b><div class="mu">موجود ${qtyTxt(x.p,x.q)} — ${x.last?'آخرین فروش '+fd(x.last)+' ('+fm(daysBetween(x.last,today()))+' روز)':'هیچ فروشی ثبت نشده'}</div></div><b>${money(x.v)}</b></div>`).join('')}</div><div class="hint" style="margin-top:8px">پیشنهاد: این اجناس را با تخفیف کم بفروشید یا به عمده‌فروش برگردانید، و تا فروش نرفته دوباره نخرید.</div>`:`<div class="empty">در ${fm(DSD)} روز گذشته همهٔ اجناس فروش داشته‌اند ✓</div>`}</div>`; }
+
 /* ---------- text size ---------- */
 function applyFont(){ const z={lg:1.12,xl:1.25}[META.font]||1; document.body.style.zoom=z===1?'':z; }
 function setFont(v){ META.font=v; persist(); applyFont(); render(); }
@@ -2233,7 +2241,7 @@ function viewReports(){ const tab=R.tab||'month'; if(!RP.from){ RP.from=monthSta
  const tabs=[['month','گزارش ماه'],['pnl','سود و زیان'],['cash','جریان نقدی'],['stock','گزارش گدام'],['users','کارکرد هر نفر'],['shops','سود و ریسک دکان‌ها'],['areas','فروش ساحه‌ها'],['cats','کتگوری‌ها'],['year','گزارش سالانه'],['fc','پیش‌بینی پول'],['bs','بیلانس‌شیت'],['daily','گزارش روزانه / شبانه'],['aging','طلب‌ها و کهنگی'],['sales','فروش اجناس'],['custs','بهترین مشتری‌ها'],['tb','میزان (تراز آزمایشی)'],['gl','دفتر روزنامه'],['coa','کدینگ حساب‌ها'],['log','فعالیت کاربران']];
  const range=`<div class="row noprint" style="margin-bottom:10px"><span class="mu">از</span><input class="in" type="date" style="width:auto" value="${RP.from}" onchange="RP.from=this.value;render()"><span class="mu">تا</span><input class="in" type="date" style="width:auto" value="${RP.to}" onchange="RP.to=this.value;render()">
  <button class="btn sm alt" onclick="RP.from=today();RP.to=today();render()">امروز</button><button class="btn sm alt" onclick="RP.from=monthStart();RP.to=today();render()">این ماه</button><button class="btn sm alt" onclick="RP.from=addDays(today(),-29);RP.to=today();render()">۳۰ روز</button><button class="btn sm alt" onclick="RP.from=DB.settings.startDate;RP.to=today();render()">از ابتدا</button></div><div class="hint" style="margin-bottom:8px">${fd(RP.from)} تا ${fd(RP.to)}</div>`;
- const body={pnl:()=>range+repPnl(),bs:()=>repBS(),daily:()=>repDaily(),aging:()=>repAging(),sales:()=>range+repSales(),custs:()=>range+repCusts(),tb:()=>range+repTB(),gl:()=>range+repGL(),coa:()=>repCOA(),log:()=>repLog(),month:()=>repMonth(),cash:()=>range+repCash(),stock:()=>range+repStock(),users:()=>range+repUsers(),shops:()=>range+repShops(),areas:()=>range+repAreas(),cats:()=>range+repCats(),year:()=>repYear(),fc:()=>repForecast()}[tab]();
+ const body={pnl:()=>range+repPnl(),bs:()=>repBS(),daily:()=>repDaily(),aging:()=>repAging(),sales:()=>range+repSales(),custs:()=>range+repCusts(),tb:()=>range+repTB(),gl:()=>range+repGL(),coa:()=>repCOA(),log:()=>repLog(),month:()=>repMonth(),cash:()=>range+repCash(),stock:()=>deadStockCard()+range+repStock(),users:()=>range+repUsers(),shops:()=>range+repShops(),areas:()=>range+repAreas(),cats:()=>range+repCats(),year:()=>repYear(),fc:()=>repForecast()}[tab]();
  return `<div class="tabs noprint">${tabs.map(t=>`<button class="${tab===t[0]?'on':''}" onclick="R.tab='${t[0]}';render()">${t[1]}</button>`).join('')}</div>${tab==='pnl'||tab==='daily'||tab==='aging'||tab==='month'?body:`<div class="card">${body}</div>`}`; }
 const trow=(l,v,cls='',b)=>`<tr><td>${b?'<b>'+l+'</b>':l}</td><td class="n ${cls}">${b?'<b>'+money(v)+'</b>':money(v)}</td></tr>`;
 /* ---------- chart helpers ---------- */
