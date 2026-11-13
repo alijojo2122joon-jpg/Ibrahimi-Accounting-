@@ -425,7 +425,7 @@ svg.flip{transform:scaleX(-1)}
 <script id="engine">
 'use strict';
 const LS = 'ebrahimi_acc_v1';
-const VERSION = '4.0';
+const VERSION = '4.1';
 
 /* ---- Chart of accounts (کدینگ حساب‌ها) ----
    nature: A=asset (debit), L=liability (credit), E=equity (credit), E-=contra equity (debit),
@@ -485,12 +485,12 @@ function today(){ const d=new Date(); d.setMinutes(d.getMinutes()-d.getTimezoneO
 function addDays(iso,n){ const d=new Date(iso+'T12:00:00Z'); d.setUTCDate(d.getUTCDate()+n); return d.toISOString().slice(0,10); }
 function daysBetween(a,b){ return Math.round((new Date(b+'T12:00:00Z')-new Date(a+'T12:00:00Z'))/864e5); }
 
-function defaultDB(){ return {products:[],customers:[],suppliers:[],txns:[],
+function defaultDB(){ return {products:[],customers:[],suppliers:[],txns:[],devices:[],
  settings:{id:'settings',kind:'settings',biz:'ابراهیمی اکانتینگ',users:['ابراهیمی','پدر'],startDate:today(),updatedAt:'1970-01-01T00:00:00.000Z'}}; }
 function load(){
  try{ DB=JSON.parse(localStorage.getItem(LS)); }catch(e){ DB=null; }
  if(!DB||typeof DB!=='object') DB=defaultDB();
- ['products','customers','suppliers','txns'].forEach(k=>{ if(!Array.isArray(DB[k])) DB[k]=[]; });
+ ['products','customers','suppliers','txns','devices'].forEach(k=>{ if(!Array.isArray(DB[k])) DB[k]=[]; });
  if(!DB.settings) DB.settings=defaultDB().settings;
  try{ META=JSON.parse(localStorage.getItem(LS+'_meta')); }catch(e){ META=null; }
  const L22='ABCDEFGHJKMNPRSTUVWXYZ', rl=()=>L22[Math.floor(Math.random()*22)];
@@ -512,10 +512,10 @@ function persist(){ DB.savedAt=nowIso(); let ok=false;
  if(!ok&&typeof toast==='function') toast('⚠️ خطا در ذخیره‌سازی — فوراً بکاپ بگیرید');
  return ok; }
 async function loadIDB(){ if(!idbOK) return false; try{ const v=await idbGet('db');
-  if(v&&Array.isArray(v.txns)&&(!DB.savedAt||(v.savedAt||'')>DB.savedAt)){ DB=v; ['products','customers','suppliers','txns'].forEach(k=>{ if(!Array.isArray(DB[k])) DB[k]=[]; }); invalidate(); return true; }
+  if(v&&Array.isArray(v.txns)&&(!DB.savedAt||(v.savedAt||'')>DB.savedAt)){ DB=v; ['products','customers','suppliers','txns','devices'].forEach(k=>{ if(!Array.isArray(DB[k])) DB[k]=[]; }); invalidate(); return true; }
   if(!v&&DB.savedAt) idbSet('db',DB).catch(()=>{});
  }catch(e){ idbOK=false; } return false; }
-const KIND = {product:'products',customer:'customers',supplier:'suppliers',txn:'txns'};
+const KIND = {product:'products',customer:'customers',supplier:'suppliers',txn:'txns',device:'devices'};
 let _C=null; function invalidate(){ _C=null; }
 function C(){ return _C||(_C=compute()); }
 let onSaved=null;
@@ -524,12 +524,12 @@ function save(kind,rec){
  if(!rec.id) rec.id=uid();
  if(!rec.createdAt){ rec.createdAt=rec.updatedAt; rec.by=META.user; }
  if(kind==='settings'){ rec.id='settings'; DB.settings=rec; }
- else { const arr=DB[KIND[kind]]; const i=arr.findIndex(x=>x.id===rec.id); if(i>=0) arr[i]=rec; else arr.push(rec); }
+ else { if(!Array.isArray(DB[KIND[kind]])) DB[KIND[kind]]=[]; const arr=DB[KIND[kind]]; const i=arr.findIndex(x=>x.id===rec.id); if(i>=0) arr[i]=rec; else arr.push(rec); }
  if(!META.dirty.includes(rec.id)) META.dirty.push(rec.id);
  persist(); invalidate(); if(onSaved) onSaved();
  return rec;
 }
-function allRecords(){ return [DB.settings,...DB.products,...DB.customers,...DB.suppliers,...DB.txns]; }
+function allRecords(){ return [DB.settings,...DB.products,...DB.customers,...DB.suppliers,...DB.txns,...(DB.devices||[])]; }
 function findRec(id){ return allRecords().find(r=>r.id===id); }
 function nextNo(prefix){
  const re=new RegExp('^'+prefix+'-'+META.device+'(\\d+)$'); let mx=0;
@@ -653,6 +653,7 @@ async function syncNow(){
  syncState='busy'; if(typeof drawTop==='function') drawTop();
  const base=sc.url.replace(/\/+$/,'')+'/rest/v1/records';
  try{
+  { const did='dev-'+META.device, d=(DB.devices||[]).find(x=>x.id===did); if(!d||Date.now()-new Date(d.updatedAt).getTime()>5*60000||d.user!==META.user){ const ua=navigator.userAgent, nm=/Android/i.test(ua)?'گوشی Android':/iPhone|iPad/i.test(ua)?'آیفون':/Windows/i.test(ua)?'کامپیوتر Windows':/Mac/i.test(ua)?'Mac':'دستگاه'; save('device',Object.assign({},d||{},{id:did,name:(d&&d.custom)||nm,user:META.user,docs:DB.txns.length})); } }
   const ids=META.dirty.slice(); const recs=ids.map(findRec).filter(Boolean);
   for(let i=0;i<recs.length;i+=200){
    const chunk=recs.slice(i,i+200).map(r=>({id:r.id,kind:r.kind,data:r}));
@@ -669,7 +670,7 @@ async function syncNow(){
     const local=findRec(r.id);
     if(META.dirty.includes(r.id) && local && local.updatedAt>=r.updatedAt) continue;
     if(!local || (r.updatedAt||'')>(local.updatedAt||'')){
-     if(r.kind==='settings') DB.settings=r; else if(KIND[r.kind]){ const arr=DB[KIND[r.kind]]; const i=arr.findIndex(x=>x.id===r.id); if(i>=0) arr[i]=r; else arr.push(r); }
+     if(r.kind==='settings') DB.settings=r; else if(KIND[r.kind]){ if(!Array.isArray(DB[KIND[r.kind]])) DB[KIND[r.kind]]=[]; const arr=DB[KIND[r.kind]]; const i=arr.findIndex(x=>x.id===r.id); if(i>=0) arr[i]=r; else arr.push(r); }
      changed=true; }
     if(!META.lastPull||row.updated_at>META.lastPull) META.lastPull=row.updated_at;
    }
@@ -882,6 +883,7 @@ function viewDash(){
  const rate=p30.netSales>0?Math.min(100,recv30/p30.netSales*100):0;
  return `
  ${can('settings')&&DB.txns.length>15&&!META.sync.url&&(!META.lastBackup||daysBetween(META.lastBackup.slice(0,10),today())>=7)?`<div class="card banner"><div class="ic" style="--c:#e5484d">${I('alert')}</div><div style="flex:1"><b>${META.lastBackup?'آخرین بکاپ '+fm(daysBetween(META.lastBackup.slice(0,10),today()))+' روز پیش بود':'هنوز از اطلاعات بکاپ نگرفته‌اید'}</b><div class="hint">اگر گوشی گم یا خراب شود، حساب‌ها از بین می‌رود. یک فایل بکاپ بگیرید و در تلگرام یا گوگل‌درایو نگه دارید.</div></div><button class="btn sm red" onclick="exportJSON();render()">بکاپ</button></div>`:''}
+ ${META.sync.url&&(syncState==='err'||(META.dirty.length>0&&META.lastSyncAt&&Date.now()-new Date(META.lastSyncAt).getTime()>3600000))?`<div class="card banner"><div class="ic" style="--c:#e5484d">${I('sync')}</div><div style="flex:1"><b>${fm(META.dirty.length)} ثبت هنوز به دستگاه‌های دیگر نرفته</b><div class="hint">${syncState==='err'?esc(META.lastSyncErr||'خطای همگام‌سازی'):'انترنت را بررسی کنید'}</div></div><button class="btn sm" onclick="doSync(true)">دوباره</button></div>`:''}
  ${typeof deferredInstall!=='undefined'&&deferredInstall?`<div class="card banner"><div class="ic" style="--c:#13a389">${I('in')}</div><div style="flex:1"><b>اپ را روی گوشی نصب کنید</b><div class="hint">مثل یک برنامه باز می‌شود و بدون انترنت هم کار می‌کند.</div></div><button class="btn sm" onclick="installApp()">نصب</button></div>`:''}
  ${setupCard()}
  <div class="qrow dashq">${[['receipt','#13a389','فروش','saleForm()'],['cash','#16a37a','دریافت پول','receiptForm()'],['cart','#3b6fd8','خرید عمده','purchaseForm()'],['fuel','#e5484d','مصرف','expenseForm()'],['map','#f08c2e','نقشه',"go('map')"],['shop','#8b5cf6','دکان جدید','customerForm()'],['wallet','#0f8f78','بستن صندوق','cashCloseForm()']].map(q=>act(q[0],q[1],q[2],q[3])).join('')}</div>
@@ -1872,6 +1874,7 @@ function viewSettings(){ const s=DB.settings, sc=META.sync;
  ۱) در supabase.com یک پروژهٔ رایگان بسازید. ۲) یک «رمز همگام‌سازی» دلخواه پایین بنویسید. ۳) کد SQL زیر را کاپی کرده در SQL Editor اجرا کنید. ۴) Project URL و anon key را از Settings › API اینجا بگذارید. ۵) روی همهٔ دستگاه‌ها همین سه مقدار را وارد کنید.</div>
  <div class="grid k3" style="margin-top:10px">${fl('Project URL',`<input class="in" id="s_url" dir="ltr" value="${esc(sc.url||'')}" placeholder="https://xxxx.supabase.co">`)}${fl('anon / publishable key',`<input class="in" id="s_key" dir="ltr" value="${esc(sc.key||'')}">`)}${fl('رمز همگام‌سازی (طولانی و مخفی)',`<input class="in" id="s_secret" dir="ltr" value="${esc(sc.secret||'')}" oninput="$('#sqlBox').textContent=syncSQL(this.value)">`)}</div>
  <div class="row"><button class="btn" onclick="saveSync()">${I('check')} ذخیره و همگام‌سازی</button><button class="btn alt" onclick="doSync(true)">${I('sync')} همین حالا همگام کن</button><button class="btn alt sm" onclick="navigator.clipboard.writeText($('#sqlBox').textContent).then(()=>toast('SQL کاپی شد'))">کاپی SQL</button>${sc.url?`<button class="btn" style="--c:#3b6fd8" onclick="joinForm()">${I('sync')} وصل کردن دستگاه دوم (QR)</button>`:''}</div>
+ ${(DB.devices||[]).length?`<div class="sech" style="margin-top:14px">${I('sync')} دستگاه‌های وصل</div><div class="list">${DB.devices.slice().sort((a,b)=>(b.updatedAt||'').localeCompare(a.updatedAt||'')).map(d=>{ const mins=Math.round((Date.now()-new Date(d.updatedAt).getTime())/60000), on=mins<10; return `<div class="it" style="cursor:default"><div class="ic" style="--c:${on?'#16a37a':'#7d8796'};width:38px;height:38px">${I(/گوشی|آیفون/.test(d.name)?'phone':'home')}</div><div class="m"><div class="t">${esc(d.name)} ${d.id==='dev-'+META.device?'<span class="badge" style="--c:var(--g2)">همین دستگاه</span>':''}</div><div class="d">${esc(d.user||'')} · ${on?'<span class="pos">آنلاین</span>':'آخرین بار '+(mins<60?fm(mins)+' دقیقه':mins<1440?fm(Math.round(mins/60))+' ساعت':fm(Math.round(mins/1440))+' روز')+' پیش'}</div></div></div>`; }).join('')}</div>`:''}
  <div class="hint" style="margin-top:6px">وضعیت: ${syncState==='ok'?'✅ همگام':syncState==='err'?'❌ '+esc(META.lastSyncErr||''):syncState==='off'?'خاموش':'…'} ${META.lastSyncAt?' · آخرین همگام‌سازی: '+new Date(META.lastSyncAt).toLocaleString('fa-AF'):''} · ${fm(META.dirty.length)} ثبت ارسال‌نشده</div>
  <details style="margin-top:8px"><summary class="mu">نمایش کد SQL</summary><pre class="code" id="sqlBox">${esc(syncSQL(sc.secret))}</pre></details></div>
  </div><div class="hint" style="margin-top:10px;text-align:center">ابراهیمی اکانتینگ نسخهٔ ${VERSION}</div>`; }
