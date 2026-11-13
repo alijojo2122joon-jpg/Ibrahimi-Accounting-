@@ -446,7 +446,7 @@ body.mopen #snack{bottom:auto;top:16px;transform:translate(-50%,-20px)}body.mope
 <script id="engine">
 'use strict';
 const LS = 'ebrahimi_acc_v1';
-const VERSION = '5.2';
+const VERSION = '5.3';
 
 /* ---- Chart of accounts (کدینگ حساب‌ها) ----
    nature: A=asset (debit), L=liability (credit), E=equity (credit), E-=contra equity (debit),
@@ -1139,7 +1139,7 @@ let CA='';
 function viewCustomers(){ const c=C(), cs=DB.customers.filter(x=>!x.deleted), deb=cs.filter(x=>(c.CU[x.id]||{}).bal>0.5), tot=deb.reduce((s,x)=>s+c.CU[x.id].bal,0), old=deb.filter(x=>c.CU[x.id].oldest>30).length, nl=cs.filter(x=>!x.lat).length;
  const areas={}; cs.forEach(x=>{ const a=(x.area||'').split(/[،,]/)[0].trim(); if(a) areas[a]=(areas[a]||0)+1; }); const top=Object.entries(areas).sort((a,b)=>b[1]-a[1]).slice(0,10);
  return `<div class="grid k4">${kpi('in','#f08c2e','مجموع طلب',money(tot),fm(deb.length)+' دکان بدهکار','warn',"CF='debt';render()")}${kpi('clock','#e5484d','بدهی کهنه',fm(old),'بیش از ۳۰ روز',old?'neg':'',"CF='old';render()")}${kpi('shop','#13a389','همه دکان‌ها',fm(cs.length),'')}${kpi('pin','#3b6fd8','بدون لوکیشن',fm(nl),'روی نقشه نیستند','',"CF='noloc';render()")}</div>
- <div class="row" style="margin:18px 0 12px"><div class="sbox" style="flex:1;min-width:200px;margin:0">${I('search')}<input placeholder="جستجوی نام دکان، صاحب، شماره، ساحه…" value="${esc(CQ)}" oninput="CQ=this.value;drawCList()"></div><button class="btn" onclick="customerForm()">${I('plus')} دکان جدید</button><button class="btn alt" onclick="bulkForm('c')">${I('in')} ورود گروهی</button><button class="btn" style="--c:#25b05a" onclick="bulkRemind()">${I('wa')} یادآوری گروهی</button></div>
+ <div class="row" style="margin:18px 0 12px"><div class="sbox" style="flex:1;min-width:200px;margin:0">${I('search')}<input placeholder="جستجوی نام دکان، صاحب، شماره، ساحه…" value="${esc(CQ)}" oninput="CQ=this.value;drawCList()"></div><button class="btn" onclick="customerForm()">${I('plus')} دکان جدید</button><button class="btn alt" onclick="bulkForm('c')">${I('in')} ورود گروهی</button><button class="btn alt" onclick="printCollect()">${I('print')} لیست وصولی</button><button class="btn" style="--c:#25b05a" onclick="bulkRemind()">${I('wa')} یادآوری گروهی</button></div>
  ${top.length>1?`<div class="tabs">${[['','همه ساحه‌ها'],...top.map(t=>[t[0],t[0]+' ('+fm(t[1])+')'])].map(t=>`<button class="${CA===t[0]?'on':''}" onclick="CA='${esc(t[0]).replace(/'/g,'')}';render()">${esc(t[1])}</button>`).join('')}</div>`:''}
  <div class="tabs">${[['all','همه'],['debt','بدهکار'],['old','بدهی +۳۰ روز'],['noloc','بدون لوکیشن'],['credit','پیش‌پرداخت'],['sleep','خواب (+۲۱ روز بی‌خرید)']].map(f=>`<button class="${CF===f[0]?'on':''}" onclick="CF='${f[0]}';render()">${f[1]}</button>`).join('')}
  <select class="in" style="width:auto" onchange="CS=this.value;drawCList()">${[['bal','بیشترین بدهی'],['old','قدیمی‌ترین بدهی'],['name','الفبا'],['last','آخرین معامله'],['sales','بیشترین خرید']].map(o=>`<option value="${o[0]}" ${CS===o[0]?'selected':''}>${o[1]}</option>`).join('')}</select></div>
@@ -1218,7 +1218,7 @@ function viewProducts(){ const c=C(), ps=DB.products.filter(p=>!p.deleted);
  const cats=[...new Set(ps.map(p=>p.cat).filter(Boolean))];
  return `<div class="grid k4">${kpi('box','#3b6fd8','تعداد اجناس',fm(ps.length),cats.length?fm(cats.length)+' کتگوری':'')}${can('cost')?kpi('wallet','#13a389','ارزش جنس در هنگر',money(val),'به قیمت تمام‌شده'):kpi('wallet','#13a389','موجود در هنگر',fm(ps.reduce((s,p)=>s+Math.max(0,(c.P[p.id]||{qty:0}).qty),0)),'واحد')}${kpi('alert','#f08c2e','کم‌موجود',fm(low),'زیر حد اقل','warn',"shopList()")}${kpi('out','#e5484d','تمام‌شده',fm(out),'موجودی صفر یا منفی',out?'neg':'')}</div>
  <div class="row" style="margin:18px 0 12px"><div class="sbox" style="flex:1;min-width:200px;margin:0">${I('search')}<input placeholder="جستجوی جنس، کد یا کتگوری…" value="${esc(PQ)}" oninput="PQ=this.value;drawPList()"></div>
- <button class="btn" onclick="productForm()">${I('plus')} جنس جدید</button><button class="btn alt" onclick="bulkForm('p')">${I('in')} ورود گروهی</button><button class="btn" style="--c:#f08c2e" onclick="shopList()">${I('cart')} لیست خرید مندوی</button>${can('edit')?`<button class="btn" style="--c:#8b5cf6" onclick="priceBulkForm()">${I('trend')} تغییر گروهی قیمت</button>`:''}<button class="btn" style="--c:#25b05a" onclick="priceList()">${I('wa')} لیست قیمت</button><button class="btn alt" onclick="adjustForm()">${I('box')} شمارش هنگر</button></div>
+ <button class="btn" onclick="productForm()">${I('plus')} جنس جدید</button><button class="btn alt" onclick="bulkForm('p')">${I('in')} ورود گروهی</button><button class="btn" style="--c:#f08c2e" onclick="shopList()">${I('cart')} لیست خرید مندوی</button>${can('edit')?`<button class="btn" style="--c:#8b5cf6" onclick="priceBulkForm()">${I('trend')} تغییر گروهی قیمت</button>`:''}<button class="btn" style="--c:#25b05a" onclick="priceList()">${I('wa')} لیست قیمت</button><button class="btn alt" onclick="printCountSheet()">${I('print')} برگهٔ شمارش</button><button class="btn alt" onclick="adjustForm()">${I('box')} شمارش هنگر</button></div>
  <div class="tabs">${['',...cats].map(k=>`<button class="${PCAT===k?'on':''}" onclick="PCAT='${esc(k).replace(/'/g,'')}';render()">${k?esc(k):'همه'}</button>`).join('')}<span style="flex:1"></span><button class="${PVIEW==='cards'?'on':''}" onclick="PVIEW='cards';drawPList()">کارت</button><button class="${PVIEW==='table'?'on':''}" onclick="PVIEW='table';drawPList()">جدول</button></div>
  <div id="plist"></div>`; }
 function drawPList(){ const el=$('#plist'); if(!el) return; const c=C(), q=PQ.trim().toLowerCase();
@@ -1584,6 +1584,26 @@ function printStatement(cid){ const x=cust(cid), s=DB.settings, c=C().CU[cid]||{
  <table class="itbl"><thead><tr><th>تاریخ</th><th>شرح</th><th>نمبر</th><th>بدهکار</th><th>بستانکار</th><th>مانده</th></tr></thead><tbody>${rows.map(r=>`<tr><td>${fd(r.d)}</td><td>${esc(r.desc)}</td><td>${esc(r.no||'')}</td><td>${r.dr?fm(r.dr):''}</td><td>${r.cr?fm(r.cr):''}</td><td><b>${fm(r.bal)}</b></td></tr>`).join('')}</tbody></table>
  <table class="itot"><tr class="b"><td>مانده حساب شما</td><td>${money(c.bal)}</td></tr></table>
  <div class="isig"><div>امضای فروشنده</div><div>امضای مشتری</div></div><div class="ifoot">تشکر از همکاری شما — ${esc(s.biz||'')}</div></div>`;
+ try{ window.print(); }catch(e){ toast('چاپ در این صفحه ممکن نیست'); } }
+
+const pHead=(title,sub)=>{ const s=DB.settings; return `<div class="ih"><div><div class="ib">${esc(s.biz||'ابراهیمی اکانتینگ')}</div><div>${esc(s.addr||'')}</div></div><div class="ihr"><div class="itl">${title}</div><div>تاریخ: ${fd(today())}</div>${sub?`<div>${sub}</div>`:''}</div></div>`; };
+function printCollect(){ const c=C(), g=x=>c.CU[x.id]||{bal:0,oldest:0};
+ let a=DB.customers.filter(x=>!x.deleted&&g(x).bal>0.5); if(CA) a=a.filter(x=>(x.area||'').split(/[،,]/)[0].trim()===CA);
+ if(ROUTE&&ROUTE.ids&&ROUTE.ids.length){ const o={}; ROUTE.ids.forEach((id,i)=>o[id]=i+1); a.sort((x,y)=>(o[x.id]||999)-(o[y.id]||999)||g(y).bal-g(x).bal); } else a.sort((x,y)=>(x.area||'').localeCompare(y.area||'','fa')||g(y).bal-g(x).bal);
+ if(!a.length) return toast('دکان بدهکاری نیست');
+ const lastPay=id=>{ const t=DB.txns.filter(t=>!t.void&&t.party===id&&(t.type==='receipt'||(t.type==='sale'&&num(t.paid)>0))).sort((p,q)=>q.date.localeCompare(p.date))[0]; return t?fd(t.date):'—'; };
+ const tot=a.reduce((s,x)=>s+g(x).bal,0);
+ $('#printArea').innerHTML=`<div class="inv">${pHead('لیست وصولی طلب‌ها',(CA?'ساحه: '+esc(CA)+'، ':'')+fm(a.length)+' دکان')}
+ <table class="itbl"><thead><tr><th>#</th><th>دکان</th><th>صاحب / شماره</th><th>ساحه</th><th>طلب</th><th>روز</th><th>آخرین پول</th><th style="width:90px">گرفته شد</th><th style="width:70px">امضا</th></tr></thead><tbody>${a.map((x,i)=>`<tr><td>${fm(i+1)}</td><td><b>${esc(x.name)}</b></td><td>${esc(x.owner||'')}<br><span dir="ltr">${esc(x.phone||'')}</span></td><td>${esc(x.area||'')}</td><td><b>${fm(g(x).bal)}</b></td><td>${fm(g(x).oldest)}</td><td>${lastPay(x.id)}</td><td></td><td></td></tr>`).join('')}</tbody></table>
+ <table class="itot"><tr class="b"><td>مجموع طلب</td><td>${money(tot)}</td></tr><tr><td>مجموع گرفته‌شده</td><td>................</td></tr></table>
+ <div class="isig"><div>امضای وصول‌کننده</div><div>امضای مالک</div></div></div>`;
+ try{ window.print(); }catch(e){ toast('چاپ در این صفحه ممکن نیست'); } }
+function printCountSheet(){ const c=C(); const ps=DB.products.filter(p=>!p.deleted&&(!PCAT||p.cat===PCAT)).sort((x,y)=>(x.cat||'').localeCompare(y.cat||'','fa')||x.name.localeCompare(y.name,'fa')); if(!ps.length) return toast('جنسی نیست');
+ const show=can('cost'); let cat=null;
+ $('#printArea').innerHTML=`<div class="inv">${pHead('برگهٔ شمارش گدام',(PCAT?'کتگوری: '+esc(PCAT)+'، ':'')+fm(ps.length)+' قلم')}
+ <table class="itbl"><thead><tr><th>#</th><th>جنس</th><th>کد</th><th>در سیستم</th><th style="width:95px">شمرده شد</th><th style="width:80px">تفاوت</th>${show?'<th>قیمت تمام‌شده</th>':''}</tr></thead><tbody>${ps.map((p,i)=>{ const st=c.P[p.id]||{qty:0,avg:0}; const h=p.cat!==cat?`<tr><td colspan="${show?7:6}" style="background:#eee;font-weight:800">${esc(p.cat||'بدون کتگوری')}</td></tr>`:''; cat=p.cat; return h+`<tr><td>${fm(i+1)}</td><td><b>${esc(p.name)}</b></td><td>${esc(p.code||'')}</td><td>${qtyTxt(p,st.qty)}</td><td></td><td></td>${show?`<td>${fm(Math.round(st.avg))}</td>`:''}</tr>`; }).join('')}</tbody></table>
+ <div class="hint" style="margin-top:8px">بعد از شمارش، تفاوت‌ها را در «شمارش هنگر» ثبت کنید.</div>
+ <div class="isig"><div>شمارنده</div><div>امضای مالک</div></div></div>`;
  try{ window.print(); }catch(e){ toast('چاپ در این صفحه ممکن نیست'); } }
 
 /* ---------- text size ---------- */
