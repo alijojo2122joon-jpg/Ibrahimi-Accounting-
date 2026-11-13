@@ -448,7 +448,7 @@ body.mopen #snack{bottom:auto;top:16px;transform:translate(-50%,-20px)}body.mope
 <script id="engine">
 'use strict';
 const LS = 'ebrahimi_acc_v1';
-const VERSION = '6.2';
+const VERSION = '6.3';
 
 /* ---- Chart of accounts (کدینگ حساب‌ها) ----
    nature: A=asset (debit), L=liability (credit), E=equity (credit), E-=contra equity (debit),
@@ -1456,7 +1456,7 @@ function printTxn(id){ const t=DB.txns.find(x=>x.id===id); if(!t) return; const 
   else if(t.type==='receipt') rows=tr('بدهی قبلی',before)+tr('مبلغ دریافت شده',num(t.amount),1)+(t.discount?tr('تخفیف',num(t.discount)):'')+tr('باقی‌مانده',after,1);
   else rows=tr('ارزش مرجوعی',g,1)+tr('بدهی بعد از مرجوعی',after,1);
  } else rows=tr('مجموع',txnTotal(t),1)+(t.paid?tr('پرداخت شد',num(t.paid)):'');
- $('#printArea').innerHTML=`<div class="inv"><div class="ih"><div><div class="ib">${esc(s.biz||'ابراهیمی اکانتینگ')}</div><div>${esc(s.addr||'')}</div><div dir="ltr" style="text-align:right">${esc(s.phone||'')}</div></div><div class="ihr"><div class="itl">${TT[t.type][0]}</div><div>نمبر: <b>${esc(t.no)}</b></div><div>تاریخ: ${fd(t.date)}</div></div></div>
+ $('#printArea').innerHTML=`<div class="inv"><div class="ih"><div><div class="ib">${esc(s.biz||'ابراهیمی اکانتینگ')}</div><div>${esc(s.addr||'')}</div><div dir="ltr" style="text-align:right">${esc(s.phone||'')}</div></div><div class="ihr"><div class="itl">${TT[t.type][0]}</div><div>نمبر: <b>${esc(t.no)}</b></div><div>تاریخ: ${fd(t.date)}</div>${t.by?`<div>${t.type==='sale'?'فروشنده':'ثبت'}: ${esc(t.by)}</div>`:''}</div></div>
  ${party?`<div class="ip"><span>${isC?'مشتری':'عمده‌فروش'}:</span> <b>${esc(party.name)}</b>${party.owner?' — '+esc(party.owner):''}${party.phone?'، '+esc(party.phone):''}${party.area?'، '+esc(party.area):''}</div>`:''}
  ${items.length?`<table class="itbl"><thead><tr><th>#</th><th>جنس</th><th>تعداد</th><th>فی</th><th>جمع</th></tr></thead><tbody>${items.map((i,k)=>`<tr><td>${fm(k+1)}</td><td>${esc(pname(i.pid))}</td><td>${iq(i)}</td><td>${fm(ip(i))}</td><td>${fm(num(i.qty)*num(i.price))}</td></tr>`).join('')}</tbody></table>`:''}
  <table class="itot">${rows}</table>${t.note?`<div class="inote">یادداشت: ${esc(t.note)}</div>`:''}
@@ -1685,7 +1685,7 @@ async function txnImage(id){ const t=DB.txns.find(x=>x.id===id); if(!t) return; 
  const gr=x.createLinearGradient(0,0,W,260); gr.addColorStop(0,'#1bc3a4'); gr.addColorStop(1,'#0f8f78'); x.fillStyle=gr; x.fillRect(0,0,W,250);
  x.strokeStyle='rgba(255,255,255,.35)'; x.lineWidth=10; x.beginPath(); x.arc(150,125,80,Math.PI*0.9,Math.PI*1.9); x.stroke();
  txt(s.biz||'ابراهیمی اکانتینگ',W-P,105,F(800,58),'#fff'); txt([s.phone,s.addr].filter(Boolean).join(' ،  ')||'حسابداری توزیع عمده',W-P,170,F(400,30),'rgba(255,255,255,.9)');
- let y=330; txt(TT[t.type][0],W-P,y,F(800,44),'#18211f'); txt(t.no,P,y-4,F(700,30),'#0f8f78','left'); y+=48; txt('تاریخ: '+fd(t.date),W-P,y,F(400,28),'#6b7a76');
+ let y=330; txt(TT[t.type][0],W-P,y,F(800,44),'#18211f'); txt(t.no,P,y-4,F(700,30),'#0f8f78','left'); y+=48; txt('تاریخ: '+fd(t.date),W-P,y,F(400,28),'#6b7a76'); if(t.by) txt((t.type==='sale'?'فروشنده: ':'ثبت: ')+t.by,P,y,F(400,26),'#6b7a76','left');
  if(party){ y+=40; x.fillStyle='#fff'; rr(x,P,y,W-2*P,86,22); x.fill(); txt((isC?'مشتری: ':'عمده‌فروش: ')+party.name,W-P-28,y+55,F(700,32),'#18211f'); if(party.area) txt(party.area,P+28,y+55,F(400,26),'#6b7a76','left'); y+=86; }
  if(items.length){ y+=50; txt('جنس',W-P,y,F(700,26),'#6b7a76'); txt('تعداد × فی',W/2,y,F(700,26),'#6b7a76','center'); txt('جمع',P,y,F(700,26),'#6b7a76','left'); y+=20;
   items.forEach((i,k)=>{ x.fillStyle=k%2?'#eef1f4':'#fff'; x.fillRect(P-10,y,W-2*P+20,rowH); const yy=y+48;
