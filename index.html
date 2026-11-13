@@ -7,6 +7,9 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <title>ابراهیمی اکانتینگ</title>
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="icons/icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@400;600;800&display=swap">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
@@ -242,6 +245,7 @@ svg.flip{transform:scaleX(-1)}
 #side .keys{font-size:11px;color:var(--mu);margin-top:14px;text-align:center;direction:rtl}
 /* printable invoice */
 #printArea{display:none}
+.banner{display:flex;align-items:center;gap:14px;margin-bottom:18px}
 .slist .sr{display:flex;gap:10px;align-items:center;padding:10px 4px;border-bottom:1px solid var(--line);cursor:pointer}.slist .sr .m{flex:1;min-width:0}.slist .sr .a{text-align:left;white-space:nowrap}.slist .mu{font-size:12px}
 .only-m{display:none}
 @media (max-width:860px){
@@ -302,7 +306,7 @@ svg.flip{transform:scaleX(-1)}
 <script id="engine">
 'use strict';
 const LS = 'ebrahimi_acc_v1';
-const VERSION = '1.2.1';
+const VERSION = '1.3';
 
 /* ---- Chart of accounts (کدینگ حساب‌ها) ----
    nature: A=asset (debit), L=liability (credit), E=equity (credit), E-=contra equity (debit),
@@ -683,6 +687,7 @@ function viewDash(){
  const recv30=DB.txns.filter(t=>!t.void&&t.date>=addDays(td,-29)&&t.date<=td).reduce((s,t)=>s+(t.type==='receipt'?num(t.amount):t.type==='sale'?num(t.paid):0),0);
  const rate=p30.netSales>0?Math.min(100,recv30/p30.netSales*100):0;
  return `
+ ${typeof deferredInstall!=='undefined'&&deferredInstall?`<div class="card banner"><div class="ic" style="--c:#13a389">${I('in')}</div><div style="flex:1"><b>اپ را روی گوشی نصب کنید</b><div class="hint">مثل یک برنامه باز می‌شود و بدون انترنت هم کار می‌کند.</div></div><button class="btn sm" onclick="installApp()">نصب</button></div>`:''}
  ${DB.txns.length===0&&DB.customers.length===0?`<div class="card" style="margin-bottom:18px"><b>👋 خوش آمدید!</b><div class="hint">۱) در «اجناس» اجناس‌تان را با موجودی فعلی ثبت کنید. ۲) در «دکان‌ها» مشتریان و طلب قبلی‌شان را بنویسید. ۳) با دکمهٔ «＋» فروش، خرید و دریافت پول را ثبت کنید. برای امتحان می‌توانید از تنظیمات «دادهٔ آزمایشی» را بارگذاری کنید.</div></div>`:''}
  <div class="qrow dashq">${[['receipt','#13a389','فروش','saleForm()'],['cash','#16a37a','دریافت پول','receiptForm()'],['cart','#3b6fd8','خرید عمده','purchaseForm()'],['fuel','#e5484d','مصرف','expenseForm()'],['map','#f08c2e','نقشه',"go('map')"],['shop','#8b5cf6','دکان جدید','customerForm()']].map(q=>act(q[0],q[1],q[2],q[3])).join('')}</div>
  <div class="card hero">
@@ -1195,6 +1200,11 @@ onSaved=()=>{ clearTimeout(syncTimer); syncTimer=setTimeout(()=>doSync(false),15
 window.addEventListener('hashchange',()=>{ const h=location.hash.slice(1); if(h&&h!==R.v&&NAV.concat([['more']]).some(n=>n[0]===h)){ R={v:h,id:null,tab:null}; render(); } });
 document.addEventListener('keydown',e=>{ const open=!$('#modal').classList.contains('hide'); if(e.key==='Escape'&&open) return closeModal(); if(open||e.target.matches('input,select,textarea')) return;
  const k={F2:saleForm,F3:receiptForm,F4:purchaseForm,F8:expenseForm}[e.key]; if(k){ e.preventDefault(); k(); } });
+/* PWA: offline + install */
+let deferredInstall=null;
+try{ if('serviceWorker' in navigator && location.protocol==='https:' && window.top===window.self) navigator.serviceWorker.register('sw.js').catch(()=>{}); }catch(e){}
+window.addEventListener('beforeinstallprompt',e=>{ e.preventDefault(); deferredInstall=e; if(R.v==='settings'||R.v==='dash') render(); });
+async function installApp(){ if(!deferredInstall) return toast('از منوی مرورگر «Add to Home screen» را بزنید'); deferredInstall.prompt(); await deferredInstall.userChoice; deferredInstall=null; render(); }
 window.addEventListener('online',()=>doSync(false));
 document.addEventListener('visibilitychange',()=>{ if(!document.hidden) doSync(false); });
 setInterval(()=>doSync(false),60000);
