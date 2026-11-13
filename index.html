@@ -245,6 +245,11 @@ svg.flip{transform:scaleX(-1)}
 #side .keys{font-size:11px;color:var(--mu);margin-top:14px;text-align:center;direction:rtl}
 /* printable invoice */
 #printArea{display:none}
+.simplehi{margin:4px 4px 16px}.simplehi b{font-size:22px;font-weight:800}
+.bigtiles{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px;margin-top:18px}
+.bigtiles button{border:0;background:var(--bg);border-radius:24px;padding:22px 10px;box-shadow:var(--up);display:flex;flex-direction:column;align-items:center;gap:12px;cursor:pointer;color:var(--tx)}
+.bigtiles button:active{box-shadow:var(--in)}.bigtiles .ic{width:64px;height:64px}.bigtiles .ic svg.i{width:30px;height:30px}.bigtiles b{font-size:18px}
+
 body.mopen #snack{bottom:auto;top:16px;transform:translate(-50%,-20px)}body.mopen #snack.on{transform:translate(-50%,0)}
 .cp.ex input{font-size:12px;padding:8px 0}
 .scanov{position:fixed;inset:0;background:#000;z-index:7000;display:flex;flex-direction:column;align-items:center;justify-content:center}
@@ -441,7 +446,7 @@ body.mopen #snack{bottom:auto;top:16px;transform:translate(-50%,-20px)}body.mope
 <script id="engine">
 'use strict';
 const LS = 'ebrahimi_acc_v1';
-const VERSION = '4.9';
+const VERSION = '5.0';
 
 /* ---- Chart of accounts (کدینگ حساب‌ها) ----
    nature: A=asset (debit), L=liability (credit), E=equity (credit), E-=contra equity (debit),
@@ -874,7 +879,7 @@ function usersCard(){ const s=DB.settings, me=META.user;
  return `<div class="card"><h3>${I('user')} کاربران، نقش و رمز</h3><div class="list">${(s.users||[]).map(u=>`<div class="urow"><div class="uh"><div class="av" style="--c:${colorOf(u)}">${esc(u[0]||'؟')}</div><div class="m"><div class="t">${esc(u)} ${u===me?'<span class="badge" style="--c:var(--g2)">شما</span>':''}</div>
   <div class="d">${(s.pins||{})[u]?'🔒 رمز دارد':'بدون رمز'}</div></div></div><div class="uc">
   <select class="in" style="width:auto;padding:8px" onchange="setRole('${esc(u).replace(/'/g,'')}',this.value)">${Object.entries(ROLE_N).map(([k,v])=>`<option value="${k}" ${roleOf(u)===k?'selected':''}>${v}</option>`).join('')}</select>
-  <button class="btn sm alt" onclick="setPin('${esc(u).replace(/'/g,'')}')">${(s.pins||{})[u]?'تغییر رمز':'گذاشتن رمز'}</button>${(s.pins||{})[u]?`<button class="btn sm alt" onclick="confirmBtn(this,()=>removePin('${esc(u).replace(/'/g,'')}'))">✕</button>`:''}</div></div>`).join('')}</div>
+  <button class="btn sm ${(s.simple||{})[u]?'':'alt'}" onclick="setSimple('${esc(u).replace(/'/g,'')}',${!(s.simple||{})[u]})">${(s.simple||{})[u]?'حالت ساده ✓':'حالت ساده'}</button><button class="btn sm alt" onclick="setPin('${esc(u).replace(/'/g,'')}')">${(s.pins||{})[u]?'تغییر رمز':'گذاشتن رمز'}</button>${(s.pins||{})[u]?`<button class="btn sm alt" onclick="confirmBtn(this,()=>removePin('${esc(u).replace(/'/g,'')}'))">✕</button>`:''}</div></div>`).join('')}</div>
   <div class="row" style="margin-top:6px"><input class="in" id="s_newuser" placeholder="نام کاربر جدید" style="flex:1;min-width:140px"><button class="btn sm" onclick="addUser()">＋ افزودن</button></div>
   ${fl('قفل خودکار بعد از بی‌کاری',`<select class="in" id="s_autolock" onchange="save('settings',Object.assign({},DB.settings,{autoLock:num(this.value)}));toast('ذخیره شد')">${[[0,'هرگز'],[2,'۲ دقیقه'],[5,'۵ دقیقه'],[15,'۱۵ دقیقه'],[30,'۳۰ دقیقه']].map(o=>`<option value="${o[0]}" ${num(s.autoLock)===o[0]?'selected':''}>${o[1]}</option>`).join('')}</select>`)}
   <div class="hint">«فروشنده» می‌تواند بل، دریافت، خرید و مصرف ثبت کند؛ ولی ویرایش و ابطال سند، گزارش‌های سود و زیان، قیمت تمام‌شده و تنظیمات را نمی‌بیند. با رمز، گوشی را اگر کسی دیگر بردارد حساب‌ها را نمی‌بیند.</div></div>`; }
@@ -895,7 +900,18 @@ function viewMore(){
 /* ---------- dashboard ---------- */
 function custSt(id){ const c=C().CU[id]; if(!c||c.bal<=0.5) return {col:'#1e8e5a',lb:'تصفیه',cls:'pos'};
  const cu=cust(id)||{}; if(c.oldest>30||(num(cu.limit)&&c.bal>num(cu.limit))) return {col:'#c0392b',lb:'بدهی کهنه',cls:'neg'}; return {col:'#d98a00',lb:'بدهکار',cls:'warn'}; }
+const isSimple=()=>!!((DB.settings.simple||{})[META.user]);
+function setSimple(u,v){ save('settings',Object.assign({},DB.settings,{simple:Object.assign({},DB.settings.simple||{},{[u]:v})})); toast(v?'حالت ساده روشن شد':'حالت کامل'); render(); }
+function viewSimple(){ const td=today(), recv=DB.txns.filter(t=>!t.void&&t.date===td&&t.by===META.user).reduce((s,t)=>s+(t.type==='receipt'?num(t.amount):t.type==='sale'?num(t.paid):0),0), bills=DB.txns.filter(t=>!t.void&&t.date===td&&t.type==='sale'&&t.by===META.user).length;
+ const h=new Date().getHours(), hi=h<11?'صبح بخیر':h<16?'روز بخیر':'شب بخیر';
+ const T=[['receipt','#13a389','بل فروش','saleForm()'],['cash','#16a37a','پول گرفتم','receiptForm()'],['box','#8b5cf6','فرمایش','orderForm()'],['fuel','#e5484d','مصرف','expenseForm()'],['shop','#f08c2e','دکان‌ها',"go('customers')"],['map','#3b6fd8','نقشه',"go('map')"]];
+ return `<div class="simplehi"><b>${hi}، ${esc(META.user)}</b><div class="mu">${fd(td)}</div></div>
+ <div class="grid k2" style="grid-template-columns:repeat(2,minmax(0,1fr))">${kpi('cash','#16a37a','پولی که امروز گرفتید',money(recv),fm(bills)+' بل فروش','pos')}${kpi('wallet','#13a389','باید در دست شما باشد',money(recv-DB.txns.filter(t=>!t.void&&t.date===td&&t.by===META.user&&t.method!=='bank'&&['expense','payment','drawing'].includes(t.type)).reduce((s,t)=>s+num(t.amount),0)),'نقد امروز منهای مصارف')}</div>
+ <div class="bigtiles">${T.map(t=>`<button onclick="${t[3]}"><span class="ic" style="--c:${t[1]}">${I(t[0])}</span><b>${t[2]}</b></button>`).join('')}</div>
+ ${ordersCard()}${agendaCard()}${todayShopsCard()}
+ <div style="text-align:center;margin-top:22px"><button class="btn alt" onclick="setSimple(META.user,false)">نمایش کامل</button></div>`; }
 function viewDash(){
+ if(isSimple()) return viewSimple();
  const td=today(), c=C(), S=sums(null,null), Td=sums(td,td);
  const ar=S['1100']||0, ap=-(S['2100']||0), inv=S['1200']||0, cash=S['1010']||0, bank=S['1020']||0;
  const salesT=-(Td['4100']||0)-(Td['4200']||0);
