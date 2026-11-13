@@ -163,7 +163,7 @@ details summary{cursor:pointer}
  .irow.adj{grid-template-columns:1fr 80px 30px}
  .sheet{width:100vw;max-height:94vh;border-radius:26px 26px 0 0;position:fixed;bottom:0}
  #modal{align-items:flex-end}
- #map{height:55vh}
+ #map{height:62vh}
 }
 /* v1.2 — forms, POS, customer hero, chart, print */
 .sec{margin-bottom:18px}
@@ -295,6 +295,7 @@ body.mapfsb #bnav,body.mapfsb #fab{display:none!important}
 .mwarn{display:none;position:absolute;top:70px;right:14px;left:62px;z-index:1050;background:#fff7e6;color:#8a5300;border-radius:12px;padding:8px 12px;font-size:12.5px;box-shadow:var(--upS)}.mwarn.on{display:block}
 .spin{background:none;border:0}
 .mk{border-radius:50%;background:var(--c);color:#fff;display:grid;place-items:center;font-weight:800;border:3px solid #fff;box-shadow:0 3px 10px rgba(0,0,0,.35);box-sizing:border-box;line-height:1}
+.mk{position:relative}.mk s{position:absolute;top:-6px;left:-6px;width:17px;height:17px;border-radius:50%;background:#16a37a;border:2px solid #fff;font:800 10px/13px Tahoma;text-decoration:none;text-align:center;color:#fff}
 .mk.pl{outline:3px dashed #e5484d;outline-offset:2px}
 .me{width:22px;height:22px;border-radius:50%;background:#3b6fd8;border:4px solid #fff;box-shadow:0 0 0 6px rgba(59,111,216,.25),0 2px 8px rgba(0,0,0,.3);animation:mepulse 2s infinite}
 @keyframes mepulse{0%{box-shadow:0 0 0 0 rgba(59,111,216,.45),0 2px 8px rgba(0,0,0,.3)}70%{box-shadow:0 0 0 14px rgba(59,111,216,0),0 2px 8px rgba(0,0,0,.3)}100%{box-shadow:0 0 0 0 rgba(59,111,216,0),0 2px 8px rgba(0,0,0,.3)}}
@@ -1187,7 +1188,7 @@ function viewMap(){
   <div class="msearch"><div class="sbox" style="margin:0">${I('search')}<input id="mq" placeholder="جستجوی دکان روی نقشه…" value="${esc(MAPQ)}" oninput="MAPQ=this.value;mapSearch()" autocomplete="off"></div><div id="mres"></div></div>
   <div class="mctl"><button title="من کجا هستم" id="mbLoc" class="${WATCH!==null?'on':''}" onclick="locateMe()">${I('pin')}</button><button title="همه دکان‌ها" onclick="drawMarkers(true)">${I('map')}</button><button title="نوع نقشه" onclick="mapLayerMenu()">${I('menu')}</button><button title="تمام صفحه" onclick="mapFull()">⛶</button></div>
   <div class="mstat" id="mstat"></div><div class="mwarn" id="mwarn"></div></div>
- <div class="hint" style="margin:8px 2px">${I('pin')} 🟢 تصفیه، 🟠 بدهکار، 🔴 بدهی کهنه یا بیش از سقف — هرچه دایره بزرگ‌تر، بدهی بیشتر. برای ساختن دکان جدید، روی نقشه <b>انگشت را نگه دارید</b>.${nloc?` <a href="javascript:void 0" onclick="CF='noloc';go('customers')"><b>${fm(nloc)}</b> دکان هنوز لوکیشن ندارد</a>`:''}</div>
+ <div class="hint" style="margin:8px 2px">${I('pin')} 🟢 تصفیه، 🟠 بدهکار، 🔴 بدهی کهنه یا بیش از سقف — هرچه دایره بزرگ‌تر، بدهی بیشتر، ✓ سبز یعنی امروز با آن دکان معامله شده. برای ساختن دکان جدید، روی نقشه <b>انگشت را نگه دارید</b>.${nloc?` <a href="javascript:void 0" onclick="CF='noloc';go('customers')"><b>${fm(nloc)}</b> دکان هنوز لوکیشن ندارد</a>`:''}</div>
  <div class="card" style="margin-top:10px"><h3>${I('alert')} ${MYPOS?'نزدیک‌ترین بدهکارها':'بدهکارها'}<span class="sp"></span></h3><div id="nearList" class="list"></div></div>`;
 }
 function mapFallback(el){ const pts=mapShops().filter(x=>x.lat); if(!pts.length){ el.innerHTML='<div class="empty">هنوز دکانی لوکیشن ندارد</div>'; return; }
@@ -1217,8 +1218,8 @@ function setMapLayer(k,init){ if(!MAP_LAYERS[k]) k='street'; META.mapLayer=k; pe
 function mapLayerMenu(){ openModal('نوع نقشه',`<div class="grid k3" style="grid-template-columns:repeat(3,minmax(0,1fr));gap:10px">${Object.entries(MAP_LAYERS).map(([k,d])=>`<button class="rpk ${(META.mapLayer||'street')===k?'on':''}" onclick="closeModal();setMapLayer('${k}')"><b>${d[0]}</b><span>${k==='sat'?'عکس هوایی — پیدا کردن دکان آسان‌تر':k==='light'?'کم‌رنگ، دکان‌ها واضح‌تر':'نقشهٔ معمولی'}</span></button>`).join('')}</div>`); }
 function mapFull(){ const w=$('#mapwrap'); if(!w) return; w.classList.toggle('mapfs'); document.body.classList.toggle('mapfsb',w.classList.contains('mapfs')); setTimeout(()=>{ try{ MAP.invalidateSize(); }catch(e){} },150); }
 const distTxt=km=>km<1?fm(Math.round(km*1000))+' متر':fm(Math.round(km*10)/10)+' کیلومتر';
-function shopIcon(x,u,st){ const big=u.bal>0.5, s=big?Math.round(Math.min(46,26+Math.sqrt(u.bal)/14)):22;
- return L.divIcon({className:'spin',html:`<div class="mk ${x.plan&&planStatus(x).behind>0.5?'pl':''}" style="--c:${st.col};width:${s}px;height:${s}px;font-size:${Math.round(s*.42)}px">${esc((x.name.replace(/^(دکان|سوپرمارکت|فروشگاه|مارکیت)\s*/,'')||x.name)[0]||'؟')}</div>`,iconSize:[s,s],iconAnchor:[s/2,s/2],popupAnchor:[0,-s/2]}); }
+function shopIcon(x,u,st){ const sold=SOLDTODAY.has(x.id), big=u.bal>0.5, s=big?Math.round(Math.min(46,26+Math.sqrt(u.bal)/14)):22;
+ return L.divIcon({className:'spin',html:`<div class="mk ${x.plan&&planStatus(x).behind>0.5?'pl':''}" style="--c:${st.col};width:${s}px;height:${s}px;font-size:${Math.round(s*.42)}px">${esc((x.name.replace(/^(دکان|سوپرمارکت|فروشگاه|مارکیت)\s*/,'')||x.name)[0]||'؟')}${sold?'<s>✓</s>':''}</div>`,iconSize:[s,s],iconAnchor:[s/2,s/2],popupAnchor:[0,-s/2]}); }
 function shopPopup(x){ const c=C().CU[x.id]||{bal:0,oldest:0,last:null}, st=custSt(x.id), lastV=(x.visits||[]).slice(-1)[0];
  return `<div class="pop">${x.photo?`<img src="${x.photo}" style="width:100%;max-height:120px;object-fit:cover;border-radius:10px;margin-bottom:6px">`:''}<b>${esc(x.name)}</b><div class="mu">${esc([x.owner,x.phone,x.area].filter(Boolean).join('، '))}</div>
   <div style="margin-top:6px">بدهی: <b class="${st.cls}">${money(c.bal)}</b>${c.bal>0.5?`، ${fm(c.oldest)} روز`:''}</div>
@@ -1228,20 +1229,20 @@ function shopPopup(x){ const c=C().CU[x.id]||{bal:0,oldest:0,last:null}, st=cust
 function drawMarkers(fit){
  document.querySelectorAll('.mapbar .chipf').forEach(b=>b.classList.toggle('on',b.dataset.f===MAPF));
  drawNear(); if(!MAP||!ML){ const el=$('#map'); if(el&&typeof L==='undefined') mapFallback(el); return; }
- let debt=0; MAPDATA=mapShops().filter(x=>x.lat).map(x=>{ const c=C().CU[x.id]||{bal:0,oldest:0}; debt+=Math.max(0,c.bal); return {x,c,st:custSt(x.id)}; });
- const ms=$('#mstat'); if(ms) ms.innerHTML=`<b>${fm(MAPDATA.length)}</b> دکان${debt>0.5?` — طلب <b>${kfmt(debt)}</b>`:''}`;
+ SOLDTODAY=new Set(DB.txns.filter(t=>!t.void&&t.date===today()&&(t.type==='sale'||t.type==='receipt')).map(t=>t.party)); let debt=0; MAPDATA=mapShops().filter(x=>x.lat).map(x=>{ const c=C().CU[x.id]||{bal:0,oldest:0}; debt+=Math.max(0,c.bal); return {x,c,st:custSt(x.id)}; });
+ const ms=$('#mstat'), vis=MAPDATA.filter(d=>SOLDTODAY.has(d.x.id)).length; if(ms) ms.innerHTML=`<b>${fm(MAPDATA.length)}</b> دکان${debt>0.5?` — طلب <b>${kfmt(debt)}</b>`:''}${MAPF==='today'||vis?`<br>امروز ${fm(vis)} دکان ✓`:''}`;
  renderMk(); if(fit&&MAPDATA.length) fitAll();
 }
-let MAPDATA=[];
+let MAPDATA=[], SOLDTODAY=new Set();
 function singleMk(d){ const {x,c,st}=d; const m=L.marker([x.lat,x.lng],{icon:shopIcon(x,c,st),riseOnHover:true}).addTo(ML);
  m.bindTooltip(esc(x.name)+(c.bal>0.5?' — '+kfmt(c.bal):''),{direction:'top',permanent:true,className:'mlbl',offset:[0,-12]});
  m.bindPopup(()=>shopPopup(x),{maxWidth:300,minWidth:250,autoPanPaddingTopLeft:[20,80],autoPanPaddingBottomRight:[70,20]}); MK[x.id]=m; }
 function renderMk(){ if(!MAP||!ML) return; ML.clearLayers(); MK={}; const z=MAP.getZoom();
  if(z>=15||MAPDATA.length<=12){ MAPDATA.forEach(singleMk); return; }
- const G={}, S=58; MAPDATA.forEach(d=>{ const p=MAP.project([d.x.lat,d.x.lng],z), k=Math.floor(p.x/S)+':'+Math.floor(p.y/S); (G[k]=G[k]||[]).push(d); });
+ const G={}, S=66; MAPDATA.forEach(d=>{ const p=MAP.project([d.x.lat,d.x.lng],z), k=Math.floor(p.x/S)+':'+Math.floor(p.y/S); (G[k]=G[k]||[]).push(d); });
  Object.values(G).forEach(g=>{ if(g.length===1) return singleMk(g[0]);
   const lat=g.reduce((s,d)=>s+d.x.lat,0)/g.length, lng=g.reduce((s,d)=>s+d.x.lng,0)/g.length, debt=g.reduce((s,d)=>s+Math.max(0,d.c.bal),0), col=g.some(d=>d.st.cls==='neg')?'#c0392b':g.some(d=>d.c.bal>0.5)?'#d98a00':'#1e8e5a', sz=Math.min(64,34+g.length*2);
-  L.marker([lat,lng],{icon:L.divIcon({className:'spin',html:`<div class="mkc" style="--c:${col};width:${sz}px;height:${sz}px"><b>${fm(g.length)}</b>${debt>0.5?`<i>${kfmt(debt)}</i>`:''}</div>`,iconSize:[sz,sz],iconAnchor:[sz/2,sz/2]})}).addTo(ML).on('click',()=>{ try{ MAP.fitBounds(L.latLngBounds(g.map(d=>[d.x.lat,d.x.lng])),{padding:[60,60],maxZoom:17}); }catch(e){ MAP.setView([lat,lng],z+2); } });
+  L.marker([lat,lng],{icon:L.divIcon({className:'spin',html:`<div class="mkc" style="--c:${col};width:${sz}px;height:${sz}px"><b>${fm(g.length)}</b>${debt>0.5?`<i>${kfmt(debt)}</i>`:''}</div>`,iconSize:[sz,sz],iconAnchor:[sz/2,sz/2]})}).addTo(ML).on('click',()=>{ const b=L.latLngBounds(g.map(d=>[d.x.lat,d.x.lng])); let tz=Math.min(17,MAP.getBoundsZoom(b.pad(.15))); if(tz<=z) tz=Math.min(17,z+2); MAPMOVED=true; MAP.setView(b.getCenter(),tz); });
  }); }
 function fitAll(){ if(!MAP) return; const pts=MAPDATA.map(d=>[d.x.lat,d.x.lng]); if(!pts.length) return; try{ MAP.fitBounds(L.latLngBounds(pts),{padding:[50,50],maxZoom:16,animate:false}); }catch(e){} }
 function mapSearch(){ const el=$('#mres'); if(!el) return; const q=MAPQ.trim().toLowerCase(); if(!q){ el.innerHTML=''; return; }
