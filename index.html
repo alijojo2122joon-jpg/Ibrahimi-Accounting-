@@ -573,7 +573,7 @@ body.mopen #snack{bottom:auto;top:16px;transform:translate(-50%,-20px)}body.mope
 <script id="engine">
 'use strict';
 const LS = 'ebrahimi_acc_v1';
-const VERSION = '9.17';
+const VERSION = '9.18';
 
 /* ---- Chart of accounts (کدینگ حساب‌ها) ----
    nature: A=asset (debit), L=liability (credit), E=equity (credit), E-=contra equity (debit),
@@ -2238,17 +2238,17 @@ function ctPick(pid,k){ const p=prod(pid)||{}, sale=CT.mode==='sale', st=(C().P[
   <div class="chips">${['0.25','0.5','1','2','3','5','10','20','50'].map(x=>`<button onclick="$('#ctqty').value='${x}';ctCalc()">${fm(num(x))}</button>`).join('')}</div>
   ${sale||can('cost')?`<label class="fl" style="margin-top:12px"><span>${sale?'قیمت فروش':'قیمت خرید'} هر <b id="ctun2">${esc(F.u2?p.unit2:(p.unit||''))}</b></span><input class="in" id="ctpr" inputmode="decimal" value="${r2(pr0)}" oninput="ctCalc()"></label>`:''}
   <div class="sum" id="ctsum"></div>
-  <button class="btn big" style="width:100%;margin-top:12px" onclick="ctAdd()">${it?'تغییر':'افزودن'}</button>`);
+  ${it?`<button class="btn big" style="width:100%;margin-top:12px" onclick="ctAdd()">تغییر</button>`:`<button class="btn big" style="width:100%;margin-top:12px" onclick="ctAdd('pay')">${I('check')} ${sale?'ثبت فروش':'ثبت ورود جنس'}${CT.cart.length?` <small style="opacity:.8">(با ${fm(CT.cart.length)} جنس دیگر)</small>`:''}</button><button class="btn alt" style="width:100%;margin-top:8px" onclick="ctAdd()">＋ این را بگذار، جنس دیگر هم ${sale?'فروخته شد':'رسید'}</button>`}`);
  setTimeout(()=>{ const e=$('#ctqty'); if(e){ e.focus(); e.select(); } ctCalc(); },60); }
 function ctUnit(u2){ if(F.u2===u2) return; const p=prod(F.pid), n=pk(p), pr=$('#ctpr');
  if(pr){ const v=num(pr.value); pr.value=r2(u2?(num(p.price2)&&CT.mode==='sale'?num(p.price2):v/n):v*n); }
  F.u2=u2; $('#ctu1').classList.toggle('on',!u2); $('#ctu2').classList.toggle('on',u2); $('#ctun').textContent=u2?p.unit2:(p.unit||''); const u=$('#ctun2'); if(u) u.textContent=$('#ctun').textContent; ctCalc(); }
 function ctCalc(){ const q=num(($('#ctqty')||{}).value), pr=$('#ctpr')?num($('#ctpr').value):0, el=$('#ctsum'); if(el) el.innerHTML=q&&pr?`<div><span>جمع</span><b>${money(r2(q*pr))}</b></div>`:''; }
-function ctAdd(){ const q=num(($('#ctqty')||{}).value); if(!(q>0)) return toast('مقدار را بنویسید'); const p=prod(F.pid), n=pk(p), sale=CT.mode==='sale';
+function ctAdd(next){ const q=num(($('#ctqty')||{}).value); if(!(q>0)) return toast('مقدار را بنویسید'); const p=prod(F.pid), n=pk(p), sale=CT.mode==='sale';
  let pr=$('#ctpr')?num($('#ctpr').value):ctPrice(F.pid)/(F.u2?n:1); if(sale&&!(pr>0)) return toast('قیمت را بنویسید');
  if(sale&&!can('edit')){ const a=(C().P[F.pid]||{avg:0}).avg, per=F.u2?pr*n:pr; if(a>0&&per<a-0.01) return toast('⛔ این قیمت زیر قیمت خرید است — از مالک بپرسید'); }
  const it=F.u2?{pid:F.pid,u2:true,q2:q,p2:pr,qty:q/n,price:pr*n}:{pid:F.pid,qty:q,price:pr};
- if(F.k!=null) CT.cart[F.k]=it; else CT.cart.push(it); closeModal(); render(); }
+ if(F.k!=null) CT.cart[F.k]=it; else CT.cart.push(it); closeModal(); render(); if(next==='pay') setTimeout(ctPay,120); }
 function ctItems(){ return CT.cart.map(i=>Object.assign({pid:i.pid,qty:r2(num(i.qty)*1e6)/1e6,price:r2(num(i.price)*1e4)/1e4},i.u2?{u2:true,q2:num(i.q2),p2:num(i.p2)}:{})); }
 function ctSaveSale(){ if(!CT.cart.length) return; const lock=DB.settings.lockDate; if(lock&&today()<=lock) return toast('حساب‌ها قفل است');
  if(!cust('walkin')) save('customer',{id:'walkin',code:'C-0000',name:'مشتری گذری (نقدی)',walkin:true,area:''});
@@ -2268,7 +2268,7 @@ function ctLog(){ const td=today(), sale=CT.log==='sale', tx=DB.txns.filter(t=>!
  return `<div class="card ctclose"><div class="ctcl ${cl?'done':''}">${cl?`<div class="m"><b>✓ حساب امروز بسته شد</b><div class="mu">${who(cl.by)} ساعت ${hm(cl.createdAt)} · شمرده: ${money(cl.counted)}${(cl.edits||[]).length?' · ویرایش‌شده':''}${cl.to?' · تحویل به '+esc(cl.to):''}</div></div><button class="btn sm alt" onclick="ctCloseView('${cl.id}')">گزارش</button>`:`<div class="m"><b>آخر روز: بستن حساب امروز</b><div class="mu">پول را بشمارید، جمع فروش و جنس رسیده را ببینید و پول را تحویل بدهید</div></div>`}${ctOpen().bills||!cl?`<button class="btn sm" onclick="ctCloseForm()">${I('lock')} ${cl?'بستن دوباره':'بستن حساب'}</button>`:''}</div><div class="ctlinks"><a onclick="go('closes')">${I('book')} همهٔ حساب‌های بسته‌شده — روزانه، هفته‌وار، ماهوار</a></div></div>
  <div class="card"><h3>${I('clock')} ثبت‌های امروز<span class="sp"></span><div class="seg" style="width:auto"><button class="${sale?'on':''}" onclick="CT.log='sale';render()">فروش</button><button class="${sale?'':'on'}" onclick="CT.log='in';render()">ورود جنس</button></div></h3>
   ${tx.length?`<div class="cttot" style="margin:0 0 10px"><span>${fm(tx.length)} ${sale?'بل':'ورود'} · ${Object.entries(byU).map(([u,n])=>esc(u)+' '+fm(n)).join('، ')}</span>${sale||can('cost')?`<b>${money(sale?cash:tot)}${sale&&tot-cash>0.5?` <small class="mu">+ ${money(tot-cash)} قرض</small>`:''}</b>`:''}</div>`:''}
-  <div class="list">${lines.slice(0,80).map(({t,i})=>`<div class="it" onclick="showTxn('${t.id}')"><div class="m"><div class="t">${esc(pname(i.pid))} — ${iq(i)}</div><div class="d">${who(t.by)} ساعت ${hm(t.createdAt)} · ${esc(partyName(t)||'')}</div></div>${sale||can('cost')?`<div class="a">${money(num(i.qty)*num(i.price))}</div>`:''}</div>`).join('')||`<div class="empty">امروز هنوز ${sale?'فروشی':'جنسی'} ثبت نشده</div>`}</div></div>`; }
+  <div class="list">${lines.slice(0,80).map(({t,i})=>`<div class="it" onclick="ctLogTap('${t.id}','${i.pid}')"><div class="m"><div class="t">${esc(pname(i.pid))} — ${iq(i)}</div><div class="d">${who(t.by)} ساعت ${hm(t.createdAt)} · ${esc(partyName(t)||'')}</div></div>${sale||can('cost')?`<div class="a">${money(num(i.qty)*num(i.price))}</div>`:''}</div>`).join('')||`<div class="empty">امروز هنوز ${sale?'فروشی':'جنسی'} ثبت نشده</div>`}</div></div>`; }
 
 /* ---------- counter day close (بستن حساب امروز هنگر) ---------- */
 function ctLastClose(d){ return DB.txns.filter(t=>!t.void&&t.type==='dclose'&&t.date===d).sort((a,b)=>(b.createdAt||'').localeCompare(a.createdAt||''))[0]||null; }
@@ -2511,6 +2511,23 @@ function buyShare(){ const d=BY.d, a=buysOn(d).filter(b=>b.status!=='skip'), g={
 /* settings: each card folds; only what you open stays open (remembered on this device) */
 function setColl(){ const open=new Set(META.setOpen||['نمایش']); $('#view').querySelectorAll(':scope>.card,:scope>div>.card').forEach(c=>{ const h=c.querySelector(':scope>h3'); if(!h) return; const k=h.textContent.trim().slice(0,18); c.classList.add('col'); c.dataset.k=k; if(!open.has(k)) c.classList.add('shut'); }); }
 document.addEventListener('click',e=>{ const h=e.target.closest&&e.target.closest('.card.col>h3'); if(!h||e.target.closest('button,a,input,select,label')) return; const c=h.parentNode, k=c.dataset.k, o=new Set(META.setOpen||['نمایش']); c.classList.toggle('shut'); c.classList.contains('shut')?o.delete(k):o.add(k); META.setOpen=[...o]; persist(); });
+
+/* step 2 after quantity: how was it paid (sale) / where did it come from (stock-in) — then saved */
+function ctPay(){ if(!CT.cart.length) return; const sale=CT.mode==='sale', sh=sale||can('cost');
+ const rows=CT.cart.map(i=>`<div class="ctag"><div><span>${esc(pname(i.pid))}</span><b>${iq(i)}</b>${sh?`<small>${money(num(i.qty)*num(i.price))}</small>`:''}</div></div>`).join('');
+ if(sale) openModal('ثبت فروش',`${rows}<div class="cttot"><span>جمع</span><b>${money(ctTot())}</b></div>
+  <button class="btn big" style="width:100%" onclick="closeModal();ctSaveSale()">${I('cash')} نقد گرفتم — ثبت</button>
+  <button class="btn alt" style="width:100%;margin-top:8px" onclick="ctToShop()">${I('shop')} قرض — به حساب یک دکان</button>
+  <button class="btn alt" style="width:100%;margin-top:8px" onclick="closeModal()">＋ جنس دیگر هم اضافه کنم</button>`);
+ else openModal('ثبت ورود جنس',`${rows}${sh?`<div class="cttot"><span>ارزش خرید</span><b>${money(ctTot())}</b></div>`:''}
+  ${fl('از کدام عمده‌فروش رسید؟',`<select class="in" id="ctsid" onchange="CT.sid=this.value"><option value="">نامعلوم / بعداً مالک درست می‌کند</option>${DB.suppliers.filter(x=>!x.deleted&&!x.unknown).map(x=>`<option value="${x.id}" ${CT.sid===x.id?'selected':''}>${esc(x.name)}</option>`).join('')}</select>`)}
+  ${fl('یادداشت (اختیاری)',`<input class="in" id="ctnote" placeholder="مثلاً: موتر حاجی، ۲ بوجی پاره بود">`)}
+  <button class="btn big" style="width:100%" onclick="ctSaveIn();closeModal()">${I('check')} ثبت ورود به هنگر</button>
+  <button class="btn alt" style="width:100%;margin-top:8px" onclick="closeModal()">＋ جنس دیگر هم اضافه کنم</button>`); }
+/* tap a line in today's log: sell the same thing again, or open its bill */
+function ctLogTap(tid,pid){ const p=prod(pid)||{};
+ openModal(p.name||'',`<button class="btn big" style="width:100%" onclick="closeModal();setTimeout(()=>ctPick('${pid}'),120)">${I(CT.mode==='sale'?'receipt':'in')} ${CT.mode==='sale'?'دوباره همین جنس را بفروش':'دوباره همین جنس رسید'}</button>
+  <button class="btn alt" style="width:100%;margin-top:8px" onclick="showTxn('${tid}')">${I('book')} دیدن بل</button>`); }
 
 /* ---------- text size ---------- */
 function applyFont(){ const z={lg:1.12,xl:1.25}[META.font]||1; document.body.style.zoom=z===1?'':z; }
