@@ -1,5 +1,5 @@
 /* Ibrahimi Accounting — offline service worker */
-const VER = 'ia-v9.19';
+const VER = 'ia-v9.21';
 const SHELL = ['./', './index.html', './manifest.json', './icons/icon-192.png', './icons/icon-512.png', './icons/icon.svg'];
 const RUNTIME = 'ia-runtime';
 const TILES = 'ia-tiles';
@@ -15,7 +15,7 @@ self.addEventListener('fetch', e => {
   const url = new URL(req.url);
   if (url.hostname.endsWith('supabase.co')) return;               // sync traffic: always live
   if (req.mode === 'navigate') {                                   // app page: network first, cache fallback
-    e.respondWith(fetch(req).then(r => { const cp = r.clone(); caches.open(VER).then(c => c.put('./index.html', cp)); return r; }).catch(() => caches.match('./index.html')));
+    e.respondWith(fetch(req,{cache:'no-cache'}).then(r => { if(r.ok){ const cp = r.clone(); caches.open(VER).then(c => c.put('./index.html', cp)); } return r; }).catch(() => caches.match('./index.html')));
     return;
   }
   if (/tile\.openstreetmap\.org|arcgisonline\.com|cartocdn\.com/.test(url.hostname)) {           // map tiles: cache first, keep last 600
