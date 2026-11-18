@@ -568,6 +568,7 @@ body.desk-mode main{max-width:780px;margin:auto}
 .desk-sale{width:100%;justify-content:center;min-height:48px}.desk-form{display:grid;gap:10px}
 .desk-item{padding:12px;border:1px solid var(--line);border-radius:12px;margin-bottom:8px}
 .desk-item small{color:var(--mu)}.desk-form [hidden]{display:none!important}
+.release-note{margin:0 0 18px}.release-note h3{margin:0 0 6px}.release-note ul{margin:0;padding-inline-start:22px}.release-note li{margin:5px 0;line-height:1.7}
 </style>
 </head>
 <body>
@@ -592,7 +593,19 @@ body.desk-mode main{max-width:780px;margin:auto}
 <script id="engine">
 'use strict';
 const LS = 'ebrahimi_acc_v1';
-const VERSION = '9.20';
+// Add each release at the top. Its version and notes appear together in the app.
+const RELEASES = [
+ {version:'9.21', notes:[
+  'هر بار که نسخهٔ تازه می‌رسد، در اولین ورود خلاصهٔ تغییرات را می‌بینید.',
+  'از صفحهٔ اول، «تغییرات نسخه» را بزنید تا دوباره تغییرات را بخوانید.'
+ ]},
+ {version:'9.20', notes:[
+  'از صفحهٔ اول «بازار با موتر» یا «هنگر» را انتخاب کنید. هر بخش دفتر فروش روزانهٔ خودش را دارد.',
+  'در بل ساده می‌توانید به افغانی یا دالر فروش کنید، پول نقد یا قرض را بنویسید و مصارف همان بل را ثبت کنید.',
+  'مالک در بل قیمت خرید، سود ناخالص و فایده پس از مصارف را می‌بیند. فروش هنگر در تطبیق بار موتر حساب نمی‌شود.'
+ ]}
+];
+const VERSION = RELEASES[0].version;
 
 /* ---- Chart of accounts (کدینگ حساب‌ها) ----
    nature: A=asset (debit), L=liability (credit), E=equity (credit), E-=contra equity (debit),
@@ -1022,7 +1035,7 @@ let deskDay=today();
 function deskMenuShortcut(){document.querySelector('.desk-choice')?.focus();}
 function deskMenu(){
  const entry=(key,icon,sub)=>`<button class="desk-choice" onclick="go('${key}')"><span class="desk-icon">${I(icon)}</span><span><b>${desks[key]}</b><small>${sub}</small></span>${I('chev')}</button>`;
- return `<section class="desk-wrap"><h2>کجا کار می‌کنید؟</h2>${entry('market','truck','فروش به دکان‌ها و حساب بار موتر')}${entry('hangar','box','فروش از هنگر و ورود جنس')}<button class="btn alt" onclick="go('more')">${I('menu')} همهٔ امکانات</button></section>`;
+ return `<section class="desk-wrap"><h2>کجا کار می‌کنید؟</h2>${entry('market','truck','فروش به دکان‌ها و حساب بار موتر')}${entry('hangar','box','فروش از هنگر و ورود جنس')}<button class="btn alt" onclick="go('more')">${I('menu')} همهٔ امکانات</button><button class="desk-back" onclick="whatsNew(true)">تغییرات نسخه · <bdi>${VERSION}</bdi></button></section>`;
 }
 function deskView(){
  const hangar=R.v==='hangar', name=desks[R.v];
@@ -1180,7 +1193,7 @@ function render(){
  if(!BOOTED&&idbOK&&!DB.txns.length&&num(META.recCount)>=4000){ const v=$('#view'); if(v) v.innerHTML='<div class="card" style="text-align:center;padding:40px"><b>در حال باز کردن حساب‌ها…</b><div class="mu" style="margin-top:8px">'+fm(META.recCount)+' سند</div></div>'; return; }
  if(!can(R.v)) R={v:'dash',id:null,tab:null};
  if(R.v==='dash'&&!R.dash&&isCounterU()) R.v='counter';
- drawSide(); drawTop();
+ drawSide(); drawTop(); queueReleaseNotes();
  if(MAP&&R.v!=='map'){ try{MAP.remove();}catch(e){} MAP=null; }
  const v=$('#view'); if(v&&R.v!==LASTV){ v.style.animation='none'; void v.offsetWidth; v.style.animation=''; } LASTV=R.v;
  const views={work:deskMenu,market:deskView,hangar:deskView,buys:viewBuys,closes:viewCloses,counter:viewCounter,dash:viewDash,map:viewMap,customers:viewCustomers,customer:viewCustomer,products:viewProducts,product:viewProduct,suppliers:viewSuppliers,supplier:viewSupplier,txns:viewTxns,reports:viewReports,settings:viewSettings,more:viewMore,help:viewHelp,truck:truckView,persons:viewPersons,person:viewPerson};
@@ -1199,7 +1212,7 @@ function logErr(e,where){ try{ const l=(META.errLog||[]).slice(-19); l.push({at:
 window.addEventListener('error',e=>{ logErr(e.error||e.message,'global'); });
 window.addEventListener('unhandledrejection',e=>{ logErr(e.reason,'promise'); });
 function openModal(title,html){ $('#mTitle').textContent=title; $('#mBody').innerHTML=html; $('#modal').classList.remove('hide'); document.body.classList.add('mopen'); }
-function closeModal(){ document.body.classList.remove('mopen'); $('#modal').classList.add('hide'); $('#mBody').innerHTML=''; F={}; }
+function closeModal(){ document.body.classList.remove('mopen'); $('#modal').classList.add('hide'); $('#mBody').innerHTML=''; F={}; queueReleaseNotes(); }
 function quickMenu(){
  const M=[['receipt','#13a389','فروش','saleForm()'],['cash','#16a37a','دریافت پول','receiptForm()'],['cart','#3b6fd8','خرید','purchaseForm()'],['fuel','#e5484d','مصرف','expenseForm()']];
  const G=[['پول',[['out','#8b5cf6','پرداخت به عمده‌فروش','paymentForm()'],['wallet','#0e7490','تحویل پول به نفر دیگر','handoverForm()'],['wallet','#0f8f78','بستن صندوق','cashCloseForm()'],['bank','#0f5c4d','آوردن سرمایه',"cashForm('capital')"],['home','#a0522d','برداشت مالک',"cashForm('drawing')"],['sync','#607d8b','صندوق ⇄ بانک',"cashForm('transfer')"]]],
@@ -1245,7 +1258,7 @@ async function pinKey(k){
  if(!LK.first&&LK.pin.length===4){ /* allow 4-digit pins: wait briefly for more digits */ clearTimeout(LK.t); LK.t=setTimeout(()=>{ if(LK.mode==='set'&&!LK.first&&LK.pin.length===4){ LK.first=LK.pin; LK.pin=''; drawLock(); } },900); }
  drawLock(); }
 function unlockAs(u){ META.user=u; persist(); try{ sessionStorage.setItem('ia_unlock','1'); }catch(e){} lastAct=Date.now(); closeLock(); if(!can(R.v)&&['reports','settings'].includes(R.v)) R.v='dash'; render(); toast('خوش آمدید '+u); }
-function closeLock(){ clearTimeout(LK.t); $('#lock').classList.add('hide'); $('#lock').innerHTML=''; LK={user:META.user,pin:'',mode:'unlock'}; }
+function closeLock(){ clearTimeout(LK.t); $('#lock').classList.add('hide'); $('#lock').innerHTML=''; LK={user:META.user,pin:'',mode:'unlock'}; queueReleaseNotes(); }
 function setPin(u){ closeModal(); LK={mode:'set',target:u,pin:'',first:''}; drawLock(); }
 function removePin(u){ const pins=Object.assign({},DB.settings.pins||{}); delete pins[u]; save('settings',Object.assign({},DB.settings,{pins})); toast('رمز «'+u+'» برداشته شد'); render(); }
 function needUnlock(){ if(!hasPins()) return false; try{ return sessionStorage.getItem('ia_unlock')!=='1'; }catch(e){ return true; } }
@@ -2355,13 +2368,28 @@ const geoTxt=t=>!t.geo?'':t.geo.m===undefined?'جای ثبت ذخیره شد':t.
 function farEntries(days){ const since=addDays(today(),-days); return DB.txns.filter(t=>!t.void&&t.date>=since&&t.geo&&t.geo.m!==undefined&&t.geo.m>Math.max(500,(t.geo.acc||0)*2)); }
 
 /* ---------- what's new after an update ---------- */
-const NEWS=[['check','#16a37a','سریع و محکم برای سال‌ها',['ذخیره هر سند جداگانه — ثبت بل با هر مقدار اطلاعات فوری است','با 300 هزار سند آزمایش شد: ثبت بل کمتر از یک‌دهم ثانیه','اگر صفحه‌ای خطا بدهد، برنامه بسته نمی‌شود و اطلاعات سالم می‌ماند','در تنظیمات: مقدار اطلاعات و جای خالی مرورگر']],['map','#3b6fd8','نقشهٔ تازه',['نقشهٔ کابل بدون انترنت (ساده و تقریبی) — وقتی انترنت نیست خودش می‌آید؛ نقشه فقط روی کابل است','نقشهٔ خیابان، ماهواره و ساده — دکمهٔ ☰ کنار نقشه','جستجوی دکان روی نقشه، تمام‌صفحه، دنبال کردن موقعیت شما','دکان‌های نزدیک هم در یک دایره جمع می‌شوند (تعداد و طلب)؛ با زدن، نزدیک می‌شود','انگشت را روی نقشه نگه دارید = دکان جدید همان‌جا؛ «جابجا کردن» برای درست کردن جای دکان','مسیر کوتاه‌تر، «ایستگاه بعدی» و تیک دکان‌هایی که امروز رفته‌اید','بدون انترنت هم جای دکان‌ها نشان داده می‌شود']],['user','#8b5cf6','کی ثبت کرده',['نام و ساعت ثبت‌کننده کنار هر سند، فیلتر هر نفر، تاریخچهٔ فعالیت','تأیید مصارف دیگران، تحویل پول بین افراد، هدف فروش هر نفر']],
- ['truck','#0369a1','موتر و خرید',['بارگیری صبح و تطبیق شب موتر','ذخیرهٔ جای ثبت بل (GPS) — اختیاری در تنظیمات','وعدهٔ پرداخت به عمده‌فروش با یادآوری و صورت‌حساب واتس‌اپ','پیشنهاد قیمت فروش تازه وقتی قیمت خرید بالا می‌رود','لیست خرید به تفکیک ارزان‌ترین عمده‌فروش']],
- ['shop','#f08c2e','دکان‌ها',['اجناسی که هر دکان معمولاً می‌خرد، با یک لمس در بل','قسط‌بندی بدهی‌های بزرگ','یکی کردن دکان‌های تکراری','مرجوعی از یک بل مشخص، مشتری گذری','دکان‌هایی که خریدشان کم شده']],
- ['chart','#13a389','گزارش‌ها',['همگام‌سازی بهتر: اگر دو گوشی هم‌زمان چیزهای مختلف یک دکان یا تنظیمات را تغییر دهند، هیچ‌کدام گم نمی‌شود','پیش‌بینی پول 7 تا 30 روز','گزارش سالانه و کتگوری‌ها، اجناس راکد','کارهای آخر شب، مصارف ثابت ماهانه','دکمهٔ «همه گزارش‌ها» برای پیدا کردن آسان']]];
-function whatsNew(force){ const seen=META.seenVer; if(!force&&(!DB.txns.length||seen===VERSION)) return; META.seenVer=VERSION; persist();
- if($('#modal')&&!$('#modal').classList.contains('hide')) return;
- openModal('تازه‌های نسخهٔ '+fm(VERSION),NEWS.map(g=>`<div class="card" style="padding:12px 14px;margin-bottom:10px"><div class="row" style="gap:10px;margin-bottom:6px"><span class="ic" style="--c:${g[1]};width:34px;height:34px">${I(g[0])}</span><b>${g[2]}</b></div>${g[3].map(l=>`<div class="mu" style="font-size:13px;margin:3px 0">• ${l}</div>`).join('')}</div>`).join('')+`<div class="row" style="margin-top:6px"><button class="btn" onclick="closeModal();go('help')">${I('book')} راهنمای کامل</button><button class="btn alt" onclick="closeModal()">بستن</button></div>`); }
+let releaseCheckReady=false, releaseTimer;
+const seenReleaseKey=()=>LS+'_release_'+META.user;
+const readReleases=new Map();
+function seenRelease(){
+ if(readReleases.has(META.user)) return readReleases.get(META.user);
+ try{ return localStorage.getItem(seenReleaseKey())||META.seenVer; }catch(e){ return META.seenVer; }
+}
+function queueReleaseNotes(){
+ if(!releaseCheckReady||seenRelease()===VERSION) return;
+ clearTimeout(releaseTimer); releaseTimer=setTimeout(()=>whatsNew(false),0);
+}
+function whatsNew(all=false){
+ if(!BOOTED||document.hidden||!$('#lock').classList.contains('hide')||!$('#modal').classList.contains('hide')) return;
+ const seen=seenRelease();
+ if(!all&&seen===VERSION) return;
+ const previous=RELEASES.findIndex(r=>r.version===seen);
+ const updates=all||previous<0?RELEASES:RELEASES.slice(0,previous);
+ const sections=updates.map(r=>`<section class="release-note"><h3>نسخهٔ <bdi>${esc(r.version)}</bdi></h3><ul>${r.notes.map(n=>`<li>${esc(n)}</li>`).join('')}</ul></section>`).join('');
+ openModal(all?'تغییرات نسخه‌ها':'چه چیز تازه شده؟',sections+'<button class="btn" onclick="closeModal()">فهمیدم</button>');
+ readReleases.set(META.user,VERSION);
+ try{ localStorage.setItem(seenReleaseKey(),VERSION); }catch(e){}
+}
 
 /* ---------- shop counter (فروش هنگر): fast sale + stock-in with units ---------- */
 let CT={mode:'sale',cart:[],q:'',cat:'',sid:'',log:'sale'};
@@ -2805,7 +2833,7 @@ function viewHelp(){ const G=[
   ['میان‌بُرها روی کامپیوتر','F2 فروش، F3 دریافت پول، F4 خرید، F8 مصرف، / جستجو، Esc بستن'],
   ['امنیت','در تنظیمات برای هر نفر رمز بگذارید. نقش «فروشنده» سود و قیمت خرید را نمی‌بیند و نمی‌تواند سند را پاک یا عوض کند.'],
   ['گوشی و کامپیوتر با هم','با همگام‌سازی (تنظیمات) هر چیزی که در گوشی ثبت شود روی کامپیوتر هم می‌آید. بدون انترنت هم ثبت کنید؛ وقتی انترنت آمد خودش می‌فرستد.']]]];
- return `<div class="row" style="margin-bottom:14px"><button class="btn" onclick="whatsNew(true)">${I('trend')} تازه‌های نسخهٔ ${fm(VERSION)}</button></div>`+G.map(([ic,col,t,items],k)=>`<div class="card" style="margin-bottom:18px"><h3><span class="ic" style="--c:${col};width:40px;height:40px;margin:4px">${I(ic)}</span> ${t}</h3>${items.map(([q,a],i)=>`<details class="more" style="margin-top:10px" ${k===0&&i===0?'open':''}><summary>${esc(q)}</summary><div class="hint" style="margin-top:8px;color:var(--tx);font-size:13.5px">${esc(a)}</div></details>`).join('')}</div>`).join(''); }
+ return `<div class="row" style="margin-bottom:14px"><button class="btn" onclick="whatsNew(true)">${I('trend')} تازه‌های نسخهٔ ${esc(VERSION)}</button></div>`+G.map(([ic,col,t,items],k)=>`<div class="card" style="margin-bottom:18px"><h3><span class="ic" style="--c:${col};width:40px;height:40px;margin:4px">${I(ic)}</span> ${t}</h3>${items.map(([q,a],i)=>`<details class="more" style="margin-top:10px" ${k===0&&i===0?'open':''}><summary>${esc(q)}</summary><div class="hint" style="margin-top:8px;color:var(--tx);font-size:13.5px">${esc(a)}</div></details>`).join('')}</div>`).join(''); }
 
 /* ---------- connect a second device with a link / QR ---------- */
 const b64u=s=>btoa(unescape(encodeURIComponent(s))).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'');
@@ -3326,7 +3354,7 @@ function exportCSV(k){ const c=C();
  if(k==='stock') dl('stock-'+today()+'.csv',csv([['کد','جنس','واحد','موجودی','قیمت تمام‌شده','قیمت فروش','ارزش'],...DB.products.filter(p=>!p.deleted).map(p=>{ const s=c.P[p.id]||{qty:0,avg:0}; return [p.code,p.name,p.unit,r2(s.qty),r2(s.avg),p.price,r2(s.qty*s.avg)]; })]),'text/csv'); }
 function wipeAll(){ DB=defaultDB(); META.dirty=[]; META.lastPull=''; persist(); invalidate(); toast('همه پاک شد'); go('dash'); }
 function loadDemo(){
- META.setupDone=1; META.seenVer=VERSION; DB=defaultDB(); const sd=addDays(today(),-75); DB.settings.startDate=sd; persist(); invalidate();
+ META.setupDone=1; DB=defaultDB(); const sd=addDays(today(),-75); DB.settings.startDate=sd; persist(); invalidate();
  const P=[['روغن آفتاب 5 لیتره','روغن','قطی',780,690,40],['برنج سیلا 25 کیلو','برنج و آرد','بوجی',2650,2380,15],['آرد 50 کیلو','برنج و آرد','بوجی',1900,1720,20],['بوره 50 کیلو','مواد خوراکی','بوجی',3400,3150,10],['چای سبز 1 کیلو','مواد خوراکی','بسته',420,360,30],['صابون لباس','شوینده','کارتن',950,820,12],['پودر لباس 3 کیلو','شوینده','دانه',310,260,24],['نوشابه 250 میلی (کارتن)','نوشیدنی','کارتن',540,470,25]]
   .map(a=>save('product',{code:nextNo('P'),name:a[0],cat:a[1],unit:a[2],price:a[3],openCost:a[4],openQty:a[5]*5,minQty:Math.round(a[5]/2)}));
  const S=[['تجارتخانه حاجی رحیم','مندوی، سرای عشقری'],['شرکت پخش نوشابه','شهرنو']].map(a=>save('supplier',{code:nextNo('S'),name:a[0],area:a[1]}));
@@ -3392,11 +3420,11 @@ try{ if('serviceWorker' in navigator && location.protocol==='https:' && window.t
 window.addEventListener('beforeinstallprompt',e=>{ e.preventDefault(); deferredInstall=e; if(R.v==='settings'||R.v==='dash') render(); });
 async function installApp(){ if(!deferredInstall) return toast('از منوی مرورگر «Add to Home screen» را بزنید'); deferredInstall.prompt(); await deferredInstall.userChoice; deferredInstall=null; render(); }
 window.addEventListener('online',()=>doSync(false));
-document.addEventListener('visibilitychange',()=>{ if(!document.hidden) doSync(false); });
+document.addEventListener('visibilitychange',()=>{ if(!document.hidden){ doSync(false); queueReleaseNotes(); } });
 setInterval(()=>doSync(false),60000);
 { const h=location.hash.slice(1); if(Object.hasOwn(desks,h)||NAV.some(n=>n[0]===h)||h==='more') R.v=h; }
 render();
-loadIDB().then(()=>{ BOOTED=true; render(); doSync(false); setTimeout(checkJoin,300); setTimeout(notifyDue,2500); if(!desks[R.v]) setTimeout(whatsNew,1200); });
+loadIDB().then(()=>{ BOOTED=true; render(); doSync(false); checkJoin(); releaseCheckReady=true; queueReleaseNotes(); setTimeout(notifyDue,2500); });
 try{ navigator.storage&&navigator.storage.persist&&navigator.storage.persist(); }catch(e){}
 if(needUnlock()){ LK={user:META.user,pin:'',mode:'unlock'}; drawLock(); }
 </script>
