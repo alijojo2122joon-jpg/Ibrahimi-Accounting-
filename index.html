@@ -582,6 +582,11 @@ body.desk-mode main{max-width:780px;margin:auto}
 .market-remove,.market-link{background:none;border:0;cursor:pointer;min-height:40px;padding:4px 0;justify-self:start}
 .market-remove{color:var(--mu)}.market-link{color:var(--g2);text-decoration:underline}
 .market-footer{border-top:1px solid var(--line);padding-top:12px;overflow-wrap:anywhere}
+
+.debt-page .fl{margin:0}.debt-page .in{max-width:100%}.debt-page #debt-list{display:grid;gap:14px;min-width:0}
+.debt-table{width:100%;table-layout:fixed;border-collapse:collapse;font-size:14px;background:var(--card)}
+.debt-table caption{text-align:start;font-weight:700;padding:12px 0 6px}.debt-table td,.debt-table th{border:1px solid var(--mu);padding:8px;text-align:start;overflow-wrap:anywhere}
+.debt-table th{width:44%;font-weight:500}.debt-table td{font-weight:650}.debt-table .fl>span{font-size:12px}
 </style>
 </head>
 <body>
@@ -608,6 +613,7 @@ body.desk-mode main{max-width:780px;margin:auto}
 const LS = 'ebrahimi_acc_v1';
 // Add each release at the top. Its version and notes appear together in the app.
 const RELEASES = [
+ {version:'9.24', notes:['در بازار «لیست باقیات» را باز کنید. هر بل باز، جنس و تعداد، نرخ خرید و فروش، جمع پول، مشتری و نشانی او را خانه‌به‌خانه نشان می‌دهد.','تاریخ و نرخ دالر را برای مقایسه وارد کنید تا تفاوت ارزیِ طلب باقی را جدا از فایده یا ضرر فروش ببینید.']},
  {version:'9.23', notes:['در فروش بازار، خانه‌های ثبت فروش و مشخصات بل‌های ثبت‌شده زیر هم می‌آیند. در موبایل با بالا و پایین رفتن می‌توانید همه را ببینید.','نام دکان و جنس را دستی بنویسید. مناصفه، نصف فایدهٔ ناخالص بل است و در همان فهرست حساب می‌شود.']},
  {version:'9.22', notes:['فروش بازار به شکل دفتر افقی است. هر جنس یک سطر دارد و تاریخ، نمبر بل، تعداد، قیمت‌ها، ارز، فایده و مصارف کنار هم دیده می‌شوند.','برای ثبت فروش، دکان و جنس را انتخاب کنید. تاریخ، نمبر بل و قیمت پیشنهادی خودکار می‌آیند.']},
  {version:'9.21', notes:[
@@ -1046,7 +1052,7 @@ const kpi=(ic,c,l,v,s,cls='',on='')=>`<div class="card kpi" ${on?`style="cursor:
 function setTheme(t){ META.theme=t; persist(); document.documentElement.dataset.theme=t; const m=document.querySelector('meta[name=theme-color]'); if(m) m.content=t==='dark'?'#2a2e35':'#e6eaef'; drawTop(); }
 const NAV=[['dash','home','داشبورد'],['counter','cart','فروش هنگر'],['map','map','نقشهٔ دکان‌ها'],['customers','shop','مشتریان (دکان‌ها)'],['products','box','اجناس و گدام'],['suppliers','truck','عمده‌فروش‌ها'],['txns','book','دفتر معاملات'],['reports','chart','گزارش‌های مالی'],['settings','gear','تنظیمات و پشتیبان']];
 /* Daily sales desks. The existing counter flag also identifies older warehouse sales. */
-const desks={work:'دفتر فروش',market:'بازار با موتر',hangar:'هنگر'};
+const desks={work:'دفتر فروش',market:'بازار با موتر',hangar:'هنگر',debts:'لیست باقیات'};
 let deskDay=today();
 function deskMenuShortcut(){document.querySelector('.desk-choice')?.focus();}
 function deskMenu(){
@@ -1072,9 +1078,129 @@ function marketBillList(t,link=true){
  return `<article class="market-bill"><dl class="market-fields">${marketPair('تاریخ',fd(t.date))}${marketPair('نمبر بل',invoice)}${marketPair('دکان',esc(partyName(t)))}</dl>
  ${lines}<dl class="market-fields">${marketPair('محاسبه به',unit)}${can('profit')?marketPair('فایده (سود ناخالص)',profit):''}${can('profit')?marketPair('مناصفه (نصف فایده)',costs.length&&costs.every(v=>v>0)?fmt((txnTotal(t)-num(C().costs[t.id]))/2):'قیمت خرید تکمیل نیست'):''}${t.saleExpense?marketPair('مصارف',fmt(num(t.saleExpense))):''}</dl></article>`;
 }
+/* Outstanding market invoices at the close of the selected day. A payment at sale
+   belongs to that invoice. Later unassigned payments settle the oldest debt first. */
+let debtDate=today(), debtQuery='';
+function openMarketDebts(date){
+ const accounts=new Map(), byId=new Map();
+ function account(id){
+  if(!accounts.has(id)) accounts.set(id,{rows:[],first:0,advance:0});
+  return accounts.get(id);
+ }
+ function debit(a,amount,bill){
+  const used=Math.min(amount,a.advance);a.advance-=used;
+  const left=r2(amount-used);if(left<=0)return;
+  const row={bill,left};a.rows.push(row);if(bill)byId.set(bill.id,row);
+ }
+ function credit(a,amount,ref){
+  const linked=ref&&byId.get(ref);
+  if(linked&&a.rows.includes(linked)){const cut=Math.min(linked.left,amount);linked.left=r2(linked.left-cut);amount=r2(amount-cut);}
+  while(amount>0&&a.first<a.rows.length){
+   const row=a.rows[a.first],cut=Math.min(row.left,amount);row.left=r2(row.left-cut);amount=r2(amount-cut);
+   if(!row.left)a.first++;
+  }
+  a.advance=r2(a.advance+amount);
+ }
+ if(!DB.settings.startDate||DB.settings.startDate<=date){
+  for(const c of DB.customers){if(c.deleted||!num(c.openBal))continue;const a=account(c.id);
+   if(c.openBal>0)debit(a,num(c.openBal));else credit(a,-num(c.openBal));}
+ }
+ for(const t of C().sorted){
+  if(t.date>date)break;
+  if(!['sale','receipt','sreturn'].includes(t.type))continue;
+  const a=account(t.party);
+  if(t.type==='sale'){const amount=r2(txnTotal(t)-num(t.paid));if(amount>0)debit(a,amount,t);else if(amount<0)credit(a,-amount);}
+  if(t.type==='receipt')credit(a,r2(num(t.amount)+num(t.discount)));
+  if(t.type==='sreturn'){const amount=r2(txnTotal(t)-num(t.paid));if(amount>=0)credit(a,amount,t.ref);else debit(a,-amount);}
+ }
+ return [...byId.values()].filter(r=>r.left>0&&!r.bill.counter).reverse();
+}
+const debtMoney=(n,unit='افغانی')=>fm(r2(n))+' '+unit;
+function debtTable(title,rows){
+ return `<table class="debt-table"><caption>${title}</caption><tbody>${rows.map(([key,value])=>`<tr><th scope="row">${key}</th><td>${value}</td></tr>`).join('')}</tbody></table>`;
+}
+function marketDebtFX(left,usd,base,current){
+ if(!(base>0&&current>0))return null;
+ if(usd){const dollars=left/base,worth=dollars*current;return {worth,change:worth-left,unit:'افغانی'};}
+ const worth=left/current;return {worth,change:worth-left/base,unit:'دالر'};
+}
+function debtRates(){return META.debtRates||{};}
+function keepDebtRate(el){
+ const value=num(el.value),day=el.dataset.day;
+ if(el.value.trim()&&!(value>0)){toast('نرخ باید بیشتر از صفر باشد');return;}
+ META.debtRates={...debtRates()};if(value>0)META.debtRates[day]=value;else delete META.debtRates[day];
+ try{localStorage.setItem(LS+'_meta',JSON.stringify(META));}catch(e){}
+ render();
+}
+function debtRateInput(day,label){
+ return fl(label,`<input class="in" data-day="${esc(day)}" inputmode="decimal" placeholder="۱ دالر = چند افغانی؟" value="${esc(debtRates()[day]||'')}" onchange="keepDebtRate(this)">`);
+}
+function debtFXBox(t,left){
+ const usd=num(t.saleRate)>0,base=usd?num(t.saleRate):num(t.debtBaseRate)||num(debtRates()[t.date]);
+ const end=num(debtRates()[debtDate])||(debtDate===t.date?base:0);
+ const fx=marketDebtFX(left,usd,base,end);
+ const rateText=base?fm(base)+' افغانی':debtRateInput(t.date,'نرخ همان روز');
+ const rows=[['نرخ دالر در روز بل',rateText],['فاصله از فروش',fm(daysBetween(t.date,debtDate))+' روز']];
+ if(fx){rows.push([usd?'ارزش طلب دالری به افغانی':'ارزش طلب افغانی به دالر',debtMoney(fx.worth,fx.unit)],
+  ['اثر تغییر نرخ',r2(fx.change)===0?'بدون تفاوت':(fx.change>0?'فایدهٔ ارزی · ':'ضرر ارزی · ')+debtMoney(Math.abs(fx.change),fx.unit)]);}
+ else rows.push(['نتیجه','نرخ روز بل و روز مقایسه را وارد کنید.']);
+ return debtTable('مقایسهٔ نرخ دالر',rows);
+}
+function debtHasGeo(c){return c.lat!=null&&c.lng!=null&&c.lat!==''&&c.lng!==''&&Number.isFinite(+c.lat)&&Number.isFinite(+c.lng)&&Math.abs(+c.lat)<=90&&Math.abs(+c.lng)<=180;}
+function debtCard({bill:t,left}){
+ const c=cust(t.party)||{},usd=num(t.saleRate)>0,rate=usd?t.saleRate:1,unit=usd?'دالر':'افغانی',fmt=n=>debtMoney(n/rate,unit);
+ const total=txnTotal(t),costs=C().E.marketLineCosts.get(t.id)||[],gross=total-num(C().costs[t.id]),net=gross-num(t.saleExpense);
+ const contact=[['نام مشتری',esc(c.owner||c.name||'ثبت نشده')],['نام دکان',esc(c.name||'ثبت نشده')],['شماره تماس',esc(c.phone||'ثبت نشده')],['آدرس',esc(c.area||'ثبت نشده')],
+ ['لوکیشن',debtHasGeo(c)?`<a target="_blank" rel="noopener" href="${gmaps(+c.lat,+c.lng)}">دیدن روی نقشه</a>`:'ثبت نشده']];
+ const items=(t.items||[]).map((i,k)=>{
+  const qty=i.u2?num(i.q2):num(i.qty),rows=[['نام جنس',esc(pname(i.pid))],['تعداد تحویل‌شده',esc(iq(i))]];
+  if(can('cost'))rows.push(['نرخ خرید فی واحد',costs[k]>0&&qty>0?fmt(costs[k]*num(i.qty)/qty):'ثبت نشده']);
+  rows.push(['نرخ فروش فی واحد',fmt(ip(i))],['مبلغ این جنس',fmt(num(i.qty)*num(i.price))]);
+  return debtTable('جنس '+fm(k+1),rows);
+ }).join('');
+ const date=WDN[new Date(t.date+'T12:00:00').getDay()]+'، '+fd(t.date);
+ const summary=[['روز و تاریخ معامله',date],['ارز معامله',unit],['جمع کل بل',fmt(total)],['نقد هنگام فروش',fmt(num(t.paid))],['تصفیه از حساب مشتری',fmt(Math.max(0,total-num(t.paid)-left))],['پول باقی',fmt(left)]];
+ if(num(t.discount))summary.splice(2,0,['تخفیف بل',fmt(t.discount)]);
+ if(can('profit')){
+  const known=costs.length&&costs.every(v=>v>0);
+  summary.push(['جمع قیمت خرید',known?fmt(C().costs[t.id]):'قیمت خرید تکمیل نیست'],[gross<0?'ضرر ناخالص فروش':'فایدهٔ ناخالص فروش',known?fmt(Math.abs(gross)):'قیمت خرید تکمیل نیست'],['مصارف بل',fmt(num(t.saleExpense))],[net<0?'ضرر فروش پس از مصارف':'فایدهٔ فروش پس از مصارف',known?fmt(Math.abs(net)):'قیمت خرید تکمیل نیست']);
+ }
+ return `<article class="market-bill"><h3>${esc(c.name||'مشتری')} · <bdi>${esc(t.no)}</bdi></h3>${debtTable('مشخصات مشتری',contact)}${items}${debtTable('حساب بل',summary)}${debtFXBox(t,left)}</article>`;
+}
+function debtResults(){
+ const q=marketNameKey(debtQuery),rows=openMarketDebts(debtDate).filter(({bill:t})=>{
+  const c=cust(t.party)||{};return !q||marketNameKey([c.name,c.owner,c.phone,t.no,...t.items.map(i=>pname(i.pid))].join(' ')).includes(q);
+ });
+ let afn=0,usd=0;for(const {bill,left} of rows){if(bill.saleRate>0)usd+=left/bill.saleRate;else afn+=left;}
+ return debtTable('جمع کل باقیات'+(q?' در جستجو':''),[['تعداد بل',fm(rows.length)],['طلب افغانی',debtMoney(afn)],['طلب دالری',debtMoney(usd,'دالر')]])+
+ rows.map(debtCard).join('')+(rows.length?'':'<p class="mu">تا این تاریخ بل بازار با پول باقی پیدا نشد.</p>');
+}
+function debtView(){
+ return `<section class="desk-wrap market-page debt-page"><button class="desk-back" onclick="go('market')">‹ برگشت به بازار</button>
+ <div class="desk-line"><h2>لیست باقیات</h2><button class="btn" onclick="debtForm()">＋ ثبت فروش قرضی</button></div>
+ ${fl('حساب تا تاریخ / روز مقایسه',`<input class="in" id="debt-day" type="date" value="${esc(debtDate)}" onchange="debtDate=this.value||today();render()">`)}
+ ${debtRateInput(debtDate,'نرخ دالر در روز مقایسه (اختیاری)')}
+ ${fl('جستجوی مشتری، جنس یا نمبر بل',`<input class="in" id="debt-find" value="${esc(debtQuery)}" oninput="debtQuery=this.value;$('#debt-list').innerHTML=debtResults()">`)}
+ <details class="more"><summary>حساب باقیات چگونه گرفته می‌شود؟</summary><p>دریافت بعدی اول از قدیمی‌ترین طلب مشتری کم می‌شود. مرجوعی دارای نمبر بل از همان بل کم می‌شود. بل تصفیه‌شده از این لیست بیرون می‌رود.</p>
+ <p>مقایسهٔ ارزی فرض می‌کند باقیات به ارز بل پرداخت می‌شود. برای طلب دالری، تفاوت به افغانی و برای طلب افغانی، تفاوت ارزش آن به دالر نشان داده می‌شود. این مقایسه مبلغ قرض و سود ثبت‌شده را تغییر نمی‌دهد.</p></details>
+ <div id="debt-list">${debtResults()}</div></section>`;
+}
+function debtContactFields(){
+ return `<details class="more" open><summary>مشخصات مشتری قرضدار</summary>
+ ${fl('نام مشتری',inp('debtOwner'))}${fl('شماره تماس',inp('debtPhone','','inputmode="tel"'))}${fl('آدرس',inp('debtArea'))}
+ <button class="btn sm alt" type="button" onclick="debtGPS()">گرفتن لوکیشن فعلی دکان</button><p id="debt-gps" class="mu">وقتی در دکان هستید، لوکیشن را بگیرید.</p></details>`;
+}
+async function debtGPS(){
+ const form=F, name=fv('nc_name'), status=$('#debt-gps');status.textContent='در حال گرفتن لوکیشن…';
+ try{const g=await getGPS();if(form!==F||name!==fv('nc_name')||!status.isConnected)return;F.debtGPS=g;status.textContent='لوکیشن دکان گرفته شد.';}
+ catch(e){if(status.isConnected)status.textContent=e.message;}
+}
+function debtForm(){F={type:'sale',desk:'market',debtEntry:true,cart:[],lines:[]};marketForm();}
+
 function marketView(){
  const bills=C().sorted.filter(t=>t.type==='sale'&&!t.counter&&t.date===deskDay).reverse();
  return `<section class="desk-wrap market-page"><button class="desk-back" onclick="go('work')">‹ تغییر بخش</button>
+ <button class="btn alt" onclick="go('debts')">لیست باقیات</button>
  <div class="desk-line"><h2>دفتر فروش بازار</h2><button class="btn" onclick="deskForm()">＋ ثبت فروش</button></div>
  <div class="desk-line"><label>تاریخ دفتر <input type="date" class="in" value="${esc(deskDay)}" onchange="deskDay=this.value||today();render()"></label><b>مجموع فروش · ${money(bills.reduce((s,t)=>s+txnTotal(t),0))}</b></div>
  <div class="market-bills">${bills.map(t=>marketBillList(t)).join('')||'<p class="mu">در این تاریخ فروش ثبت نشده.</p>'}</div>
@@ -1101,34 +1227,41 @@ function marketNames(records){
 function marketCustomer(){
  const name=fv('nc_name').trim(), record=F.customerNames.find(name);
  $('#f_party').value=record?record.id:name&&record!==null?'__new':'';
+ if(F.debtEntry){
+  for(const [field,key] of [['debtOwner','owner'],['debtPhone','phone'],['debtArea','area']])$('#f_'+field).value=record?.[key]||'';
+  F.debtGPS=null;$('#debt-gps').textContent=record&&debtHasGeo(record)?'لوکیشن دکان ثبت است.':'وقتی در دکان هستید، لوکیشن را بگیرید.';
+ }
  deskParty();
 }
 function marketProduct(line){
  const name=line.el.querySelector('.market-name').value.trim(), p=F.productNames.find(name);
  const field=line.el.querySelector('.dp');
  const id=p?.id||'';
+ const unitBox=line.el.querySelector('.debt-unit');if(unitBox){unitBox.hidden=!!p||!name;line.el.querySelector('.du').closest('label').hidden=!unitBox.hidden;}
  const draftCost=line.el.querySelector('.market-cost');
  if(draftCost){ draftCost.hidden=!!p||!name; line.el.querySelector('.dc').hidden=!draftCost.hidden; }
  if(field.value!==id){field.value=id;field.onchange();}
  else deskRates();
 }
 function marketForm(){
- const customers=DB.customers.filter(c=>!c.deleted);
- if(!customers.some(c=>c.id==='walkin')) customers.push({id:'walkin',name:'مشتری گذری (نقدی)'});
+ const customers=DB.customers.filter(c=>!c.deleted&&(!F.debtEntry||c.id!=='walkin'));
+ if(!F.debtEntry&&!customers.some(c=>c.id==='walkin')) customers.push({id:'walkin',name:'مشتری گذری (نقدی)'});
  F.customerNames=marketNames(customers);
  F.productNames=marketNames(DB.products.filter(p=>!p.deleted));
- openModal('ثبت فروش بازار',`<div class="desk-form market-form">
+ openModal(F.debtEntry?'ثبت فروش قرضی':'ثبت فروش بازار',`<div class="desk-form market-form">
  ${fl('تاریخ','<input class="in" type="date" id="f_date" value="'+today()+'" onchange="deskRates()">')}
  <dl class="market-fields">${marketPair('نمبر بل','<bdi>'+esc(nextNo('INV'))+'</bdi>')}</dl>
  ${fl('نام دکان','<input class="in" id="f_nc_name" list="market-shops" placeholder="نام دکان را بنویسید" oninput="marketCustomer()" autocomplete="off">')}
  <input type="hidden" id="f_party"><datalist id="market-shops">${F.customerNames.options}</datalist><datalist id="market-products">${F.productNames.options}</datalist>
+ ${F.debtEntry?debtContactFields():''}
  ${fl('محاسبه به','<select class="in" id="desk-cur" onchange="deskCurrency()"><option value="AFN">افغانی</option><option value="USD">دالر</option></select>')}
  <div id="desk-rate-box" hidden>${fl('یک دالر چند افغانی؟',`<input class="in" id="desk-rate" inputmode="decimal" value="${esc((META.rates||{}).USD||'')}" oninput="deskRates()">`)}</div>
+ ${F.debtEntry?`<div id="debt-base-wrap">${fl('نرخ دالر روز فروش (اختیاری برای بل افغانی)',inp('debtBase','','inputmode="decimal"'))}</div>`:''}
  <div id="desk-lines"></div><button class="desk-back" onclick="deskLine()">＋ جنس دیگر</button>
  ${can('profit')?fl('فایده (سود ناخالص بل)','<output id="market-profit">—</output>'):''}
  ${can('profit')?fl('مناصفه (نصف فایده)','<output id="market-half">—</output>'):''}
  <details class="more"><summary>مصارف بل (اختیاری)</summary>${fl('مصارف','<input class="in" id="desk-exp" inputmode="decimal" placeholder="0" oninput="deskSummary()">')}</details>
- ${fl('پرداخت','<select class="in" id="desk-pay" onchange="deskSummary()"><option value="full">نقد</option><option value="credit">قرض</option><option value="part">قسمتی نقد</option></select>')}
+ ${fl('پرداخت',`<select class="in" id="desk-pay" onchange="deskSummary()">${F.debtEntry?'':'<option value="full">نقد</option>'}<option value="credit">قرض</option><option value="part">قسمتی نقد</option></select>`)}
  <div id="desk-part" hidden>${fl('پول گرفته‌شده','<input class="in" id="desk-cash" inputmode="decimal" oninput="deskSummary()">')}</div>
  <input type="hidden" id="f_paid"><div class="market-footer"><strong id="desk-tot"></strong><button class="btn" onclick="deskSubmit()">ثبت بل</button></div></div>`);
  deskLine();deskParty();
@@ -1137,6 +1270,7 @@ function marketEntryFields(){
  return fl('جنس','<input class="in market-name" list="market-products" placeholder="نام جنس را بنویسید" autocomplete="off"><input type="hidden" class="dp">')+
  fl('تعداد','<input class="in dq" inputmode="decimal" value="1">')+
  fl('واحد','<select class="in du"></select>')+
+ (F.debtEntry?'<label class="fl debt-unit" hidden><span>واحد جنس جدید</span><input class="in" value="کارتن"></label>':'')+
  (can('cost')?fl('قیمت خرید فی واحد','<output class="dc">—</output><input class="in market-cost" aria-label="قیمت خرید جنس جدید" inputmode="decimal" hidden oninput="deskSummary()">'):'')+
  fl('قیمت فروش فی واحد','<input class="in ds" inputmode="decimal">')+
  '<button class="market-remove" type="button">حذف قلم</button>';
@@ -1155,6 +1289,7 @@ function deskView(){
 }
 function deskStock(){ if(CT.mode!=='in'){ ctMode('in'); if(CT.mode!=='in') return; } go('counter'); }
 function deskForm(){
+ if(R.v==='debts')return debtForm();
  const hangar=R.v==='hangar';
  if(hangar&&!DB.products.some(p=>!p.deleted)) return openModal('ثبت اولین جنس','<p>برای ثبت بل، اول نام جنس، قیمت و موجودی آن را وارد کنید.</p><button class="btn" onclick="productForm()">ثبت جنس</button>');
  F={type:'sale',desk:R.v,cart:[],lines:[]};
@@ -1179,7 +1314,7 @@ function deskCurrency(){
  const selected=$('#desk-cur').value;
  if((F.lines.some(line=>line.manual||num(line.el.querySelector('.market-cost')?.value))||num($('#desk-exp').value)||num($('#desk-cash').value))&&!confirm('با تغییر ارز، قیمت‌های دستی و مبلغ‌های واردشده پاک می‌شود. ادامه می‌دهید؟')){ $('#desk-cur').value=F.currency||'AFN'; return; }
  F.currency=selected;
- const usd=selected==='USD'; $('#desk-rate-box').hidden=!usd;
+ const usd=selected==='USD'; $('#desk-rate-box').hidden=!usd; if(F.debtEntry)$('#debt-base-wrap').hidden=usd;
  // Inputs after a currency change use fresh catalog prices. Never reinterpret entered cash or expenses.
  $('#desk-exp').value=''; $('#desk-cash').value='';
  F.lines.forEach(line=>{line.manual=false;const cost=line.el.querySelector('.market-cost');if(cost)cost.value='';}); deskRates();
@@ -1222,7 +1357,7 @@ function deskValues(line){
  const el=line.el, pid=el.querySelector('.dp').value, units=num(el.querySelector('.du').value)||1;
  const name=el.querySelector('.market-name')?.value.trim()||'';
  const avg=!pid&&name?num(el.querySelector('.market-cost')?.value)*deskRate():num(((F.stock||{})[pid]||{}).avg);
- return {pid,name,units,qty:num(el.querySelector('.dq').value),price:num(el.querySelector('.ds').value),avg};
+ return {pid,name,units,newUnit:el.querySelector('.debt-unit input')?.value.trim()||'دانه',qty:num(el.querySelector('.dq').value),price:num(el.querySelector('.ds').value),avg};
 }
 function deskRates(){
  const rate=deskRate(), date=fv('date');
@@ -1294,9 +1429,9 @@ function prepareMarketNames(rows,rate){
   if(can('cost')&&!(v.avg>0)){toast('قیمت خرید جنس جدید را بنویسید');return false;}
   let product=drafts.get(key);
   if(!product){
-   product={id:uid(),name:v.name,unit:'دانه',price:r2(v.price*rate),openCost:r2(v.avg),openQty:0};
+   product={id:uid(),name:v.name,unit:v.newUnit,price:r2(v.price*rate),openCost:r2(v.avg),openQty:0};
    drafts.set(key,product);F.pendingRecords.push(['product',product]);
-  }else if(product.openCost!==r2(v.avg)){toast('برای یک جنس جدید قیمت خرید یکسان بنویسید');return false;}
+  }else if(product.unit!==v.newUnit){toast('برای یک جنس جدید واحد یکسان بنویسید');return false;}else if(product.openCost!==r2(v.avg)){toast('برای یک جنس جدید قیمت خرید یکسان بنویسید');return false;}
   v.pid=product.id;
  }
  return true;
@@ -1304,10 +1439,15 @@ function prepareMarketNames(rows,rate){
 function deskSubmit(){
  const rate=deskRate(), usd=$('#desk-cur').value==='USD', rows=F.lines.map(deskValues), mode=$('#desk-pay').value;
  if(!fv('date')) return toast('تاریخ را انتخاب کنید');
+ if(F.debtEntry){
+  const name=marketNameKey(fv('nc_name')),walkin=marketNameKey(cust('walkin')?.name||'مشتری گذری (نقدی)');
+  if(fv('party')==='walkin'||name===walkin)return toast('برای فروش قرضی، نام مشتری را بنویسید');
+ }
  if(!(rate>0)) return toast('نرخ دالر را بنویسید');
  if(!fv('party')) return toast(F.desk==='market'?'نام دکان را بنویسید؛ برای نام تکراری، گزینهٔ دارای کد را انتخاب کنید':'دکان را انتخاب کنید');
  if(rows.some(v=>(!v.pid&&!(F.desk==='market'&&v.name))||v.qty<=0||v.price<=0)) return toast('جنس، تعداد و قیمت فروش هر قلم را تکمیل کنید');
  const expense=num($('#desk-exp').value); if(expense<0) return toast('مصارف منفی ثبت نمی‌شود');
+ if(F.debtEntry&&fv('debtBase').trim()&&!usd&&!(num(fv('debtBase'))>0))return toast('نرخ دالر روز فروش باید بیشتر از صفر باشد');
  if(F.desk==='market'&&!prepareMarketNames(rows,rate)) return;
  F.cart=rows.map(v=>{const price=r2(v.price*rate);return {pid:v.pid,qty:v.qty/v.units,price:price*v.units,...(v.units>1?{u2:true,q2:v.qty,p2:price}:{})};});
  const total=txnTotal({type:'sale',items:readItems()});
@@ -1353,7 +1493,7 @@ function render(){
  drawSide(); drawTop(); queueReleaseNotes();
  if(MAP&&R.v!=='map'){ try{MAP.remove();}catch(e){} MAP=null; }
  const v=$('#view'); if(v&&R.v!==LASTV){ v.style.animation='none'; void v.offsetWidth; v.style.animation=''; } LASTV=R.v;
- const views={work:deskMenu,market:marketView,hangar:deskView,buys:viewBuys,closes:viewCloses,counter:viewCounter,dash:viewDash,map:viewMap,customers:viewCustomers,customer:viewCustomer,products:viewProducts,product:viewProduct,suppliers:viewSuppliers,supplier:viewSupplier,txns:viewTxns,reports:viewReports,settings:viewSettings,more:viewMore,help:viewHelp,truck:truckView,persons:viewPersons,person:viewPerson};
+ const views={work:deskMenu,market:marketView,debts:debtView,hangar:deskView,buys:viewBuys,closes:viewCloses,counter:viewCounter,dash:viewDash,map:viewMap,customers:viewCustomers,customer:viewCustomer,products:viewProducts,product:viewProduct,suppliers:viewSuppliers,supplier:viewSupplier,txns:viewTxns,reports:viewReports,settings:viewSettings,more:viewMore,help:viewHelp,truck:truckView,persons:viewPersons,person:viewPerson};
  try{ v.innerHTML=(views[R.v]||viewDash)();
   if(R.v==='map') setTimeout(initMap,30);
   if(R.v==='customers') drawCList();
@@ -2171,11 +2311,23 @@ function saveTxn(type){
   const short=t.items.filter(i=>num(i.qty)>(C().P[i.pid]||{qty:0}).qty+prevQ(i.pid)); if(short.length) toast('⚠️ موجودی '+short.map(i=>pname(i.pid)).join('، ')+' کافی نیست — ثبت شد، موجودی را بررسی کنید'); }
  const editing=F.editId;
  if(editing){ const o=DB.txns.find(x=>x.id===editing); const snap=Object.assign({},o); delete snap.history;
-  ['saleRate','saleExpense','counter','geo','gps','dc','hid','ref','order'].forEach(k=>{ if(o[k]!=null&&t[k]==null) t[k]=o[k]; });
+  ['debtBaseRate','saleRate','saleExpense','counter','geo','gps','dc','hid','ref','order'].forEach(k=>{ if(o[k]!=null&&t[k]==null) t[k]=o[k]; });
   Object.assign(t,{id:o.id,no:o.no,createdAt:o.createdAt,by:o.by,editedBy:META.user,editedAt:nowIso(),history:[...(o.history||[]),{at:nowIso(),by:META.user,prev:snap}]}); }
  else t.no=nextNo(TT[type][1]);
  if(fromCounter&&!editing) t.counter=true;
  const oldLB=type==='purchase'&&!editing?Object.fromEntries((t.items||[]).map(i=>[i.pid,(C().P[i.pid]||{}).lastBuy||0])):null;
+ if(F.debtEntry){
+  if(!t.saleRate&&num(fv('debtBase'))>0)t.debtBaseRate=num(fv('debtBase'));
+  const pending=F.pendingRecords.find(([kind,r])=>kind==='customer'&&r.id===t.party);
+  const original=pending?pending[1]:cust(t.party), updates={};
+  for(const [field,key] of [['debtOwner','owner'],['debtPhone','phone'],['debtArea','area']]){
+   const value=fv(field).trim();if(value&&value!==original?.[key])updates[key]=value;
+  }
+  if(F.debtGPS)Object.assign(updates,{lat:F.debtGPS.lat,lng:F.debtGPS.lng,gpsAcc:F.debtGPS.acc,gpsAt:nowIso()});
+  if(pending)Object.assign(original,updates);
+  else if(original&&Object.keys(updates).length) F.pendingRecords.push(['customer',{...original,...updates}]);
+  debtDate=t.date;debtQuery='';
+ }
  if(F.desk){ deskDay=t.date; if(t.saleRate) META.rates={...META.rates,USD:t.saleRate}; }
  let r;
  if(F.pendingRecords?.length){
@@ -2185,7 +2337,7 @@ function saveTxn(type){
  if(editing){ showTxn(r.id); return; }
  if(fromCounter){ CT.cart=[]; render(); }
  if(fromOrder){ const o=(DB.orders||[]).find(x=>x.id===fromOrder); if(o) save('order',Object.assign({},o,{status:'done',txn:r.id,doneBy:META.user,doneAt:nowIso()})); }
- if(type==='sale'){ if(R.v==='market') return; if(R.v==='hangar') deskBill(r.id,true); else showTxn(r.id,true); }
+ if(type==='sale'){ if(R.v==='market'||R.v==='debts') return; if(R.v==='hangar') deskBill(r.id,true); else showTxn(r.id,true); }
 }
 
 /* ---------- edit an existing document (keeps a full history of previous versions) ---------- */
